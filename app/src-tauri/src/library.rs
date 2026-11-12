@@ -168,12 +168,18 @@ pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail
     };
     let kind = item.kind;
     // Plusieurs sources pour ce contenu : si la première ne répond pas, la suivante prend le relais.
-    let mut d = match source_detail(&st, &item).await {
+    // Une source qui tarde ne bloque pas la fiche quand d'autres copies existent.
+    let first = if item.alternates.is_empty() {
+        source_detail(&st, &item).await
+    } else {
+        tokio::time::timeout(Duration::from_secs(8), source_detail(&st, &item)).await.unwrap_or_else(|_| Err("La source ne répond pas.".into()))
+    };
+    let mut d = match first {
         Ok(d) => d,
         Err(first) => {
             let mut found = None;
             for alt in &item.alternates {
-                if let Ok(mut alt_d) = source_detail(&st, alt).await {
+                if let Ok(Ok(mut alt_d)) = tokio::time::timeout(Duration::from_secs(8), source_detail(&st, alt)).await {
                     let alt_url = alt_d.item.url.take();
                     alt_d.item = VodItem { url: alt_url.or(item.url.clone()), ..item.clone() };
                     found = Some(alt_d);

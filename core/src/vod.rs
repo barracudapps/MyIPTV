@@ -233,9 +233,10 @@ pub fn group_copies(items: Vec<VodItem>) -> Vec<VodItem> {
         .collect()
 }
 
-/// Contenu par identifiant, y compris une copie regroupée sous un autre (historique, favoris).
+/// Contenu par identifiant : l'entrée regroupée, ou la copie exacte quand l'identifiant
+/// est celui d'une copie (historique, favoris, épisodes lus depuis une autre source).
 pub fn find_copy<'a>(items: &'a [VodItem], id: &str) -> Option<&'a VodItem> {
-    items.iter().find(|i| i.id == id).or_else(|| items.iter().find(|i| i.alternates.iter().any(|a| a.id == id)))
+    items.iter().find(|i| i.id == id).or_else(|| items.iter().flat_map(|i| i.alternates.iter()).find(|a| a.id == id))
 }
 
 // ------------------------------------------------------------------ Titres
@@ -796,7 +797,7 @@ mod tests {
         assert_eq!(out[0].year, Some(1988));
         assert_eq!(out[0].alternates.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), ["a"]);
         assert_eq!(out[1].id, "c");
-        assert_eq!(find_copy(&out, "a").map(|i| i.id.as_str()), Some("b"));
+        assert_eq!(find_copy(&out, "a").map(|i| i.id.as_str()), Some("a"));
     }
     use super::*;
 

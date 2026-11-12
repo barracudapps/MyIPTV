@@ -284,7 +284,10 @@ export async function createWebBackend(): Promise<Backend> {
       let firstError: unknown;
       for (const copy of [item, ...(item.alternates ?? [])]) {
         try {
-          d = await sourceDetail(copy);
+          // Une source qui tarde ne bloque pas la fiche quand d'autres copies existent.
+          d = item.alternates?.length
+            ? await Promise.race([sourceDetail(copy), new Promise<never>((_, no) => setTimeout(() => no(new Error("La source ne répond pas.")), 8000))])
+            : await sourceDetail(copy);
           if (copy !== item) d = { ...d, item: { ...item, url: d.item.url ?? item.url } };
           break;
         } catch (e) {

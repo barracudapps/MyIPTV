@@ -6,7 +6,7 @@ import { getBackend } from "../platform";
 import type { Channel, Episode, PlayInfo, Programme, VodItem } from "../types";
 import { adultAccess, channelAccess, maxAge, type Access, type Profile } from "../lib/parental";
 import { errorMessage } from "../lib/util";
-import { useSettings } from "./settings";
+import { metaKeys, useSettings } from "./settings";
 import { askPin, useUi } from "./ui";
 import { fun } from "../lib/fun";
 
@@ -163,6 +163,47 @@ async function startStream(token: number, index: number, forceRemux?: boolean) {
   }
 }
 
+/** Sources déjà essayées pour l'épisode en cours (identifiants des copies de la série). */
+const triedEpisodeCopies = new Map<string, Set<string>>();
+
+/**
+ * Échec d'un épisode : cherche le même épisode (saison et numéro) dans une autre copie de la
+ * série et le lance, à la position atteinte. Faux s'il ne reste aucune copie à essayer.
+ */
+function tryEpisodeElsewhere(reason: string): boolean {
+  const { media } = usePlayer.getState();
+  const ep = media?.episode;
+  const copies = media?.item.alternates ?? [];
+  if (!media || !ep || !copies.length) return false;
+  const key = `${media.item.id}|${ep.season}|${ep.episode}`;
+  const tried = triedEpisodeCopies.get(key) ?? new Set<string>([ep.id]);
+  triedEpisodeCopies.set(key, tried);
+  const remaining = copies.filter((c) => !tried.has(c.id));
+  if (!remaining.length) return false;
+  const token = usePlayer.getState().token;
+  const position = (document.querySelector(".player video") as HTMLVideoElement | null)?.currentTime ?? media.resumeAt;
+  void (async () => {
+    const backend = await getBackend();
+    for (const copy of remaining) {
+      tried.add(copy.id);
+      try {
+        const d = await backend.vodDetail(copy.id, metaKeys());
+        const episodes = d.seasons.flatMap((s) => s.episodes);
+        const same = episodes.find((e) => e.season === ep.season && e.episode === ep.episode);
+        if (!same || usePlayer.getState().token !== token) continue;
+        tried.add(same.id);
+        useUi.getState().toast(`Épisode indisponible sur cette source : lecture depuis une autre source.`, "info");
+        await usePlayer.getState().playMedia(media.item, { episode: same, queue: episodes, resumeAt: position > 5 ? position : media.resumeAt, age: media.age });
+        return;
+      } catch {
+        // Copie injoignable : on passe à la suivante.
+      }
+    }
+    if (usePlayer.getState().token === token) usePlayer.setState({ loading: false, error: reason });
+  })();
+  return true;
+}
+
 function activeProfile(): Profile | undefined {
   const s = useSettings.getState();
   return s.profiles.find((p) => p.id === s.activeProfileId);
@@ -253,7 +294,9 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
 
   tryNextStream(reason) {
     const { streams, streamIndex, channel, catchup, media } = get();
-    if (catchup || streams.length < 2 || (!channel && !media) || media?.episode) return false;
+    // Épisode d'une série présente sur plusieurs sources : le même épisode ailleurs.
+    if (media?.episode && !catchup) return tryEpisodeElsewhere(reason);
+    if (catchup || streams.length < 2 || (!channel && !media)) return false;
     const key = channel?.id ?? media!.item.id;
     const marked = streams.map((s, i) => (i === streamIndex ? { ...s, failed: reason } : s));
     const next = marked.findIndex((s, i) => i > streamIndex && !s.failed && s.probe?.ok !== false);
