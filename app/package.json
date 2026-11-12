@@ -17,6 +17,7 @@
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.26",
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "hls.js": "^1.5.17",
     "mpegts.js": "^1.7.3",
     "react": "^18.3.1",

@@ -39,6 +39,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/remux/:sid", get(remux))
         .route("/rec/:file", get(rec_file))
         .route("/health", get(|| async { "ok" }))
+        .route("/embed", get(embed_page))
         .with_state(state)
 }
 
@@ -126,6 +127,31 @@ pub fn rewrite_playlist(base: &str, playlist_url: &Url, body: &str, up: &Upstrea
         out.push('\n');
     }
     out
+}
+
+pub fn embed_page_url(base: &str, embed: &str) -> String {
+    format!("{base}/embed?u={}", enc(embed))
+}
+
+#[derive(Deserialize)]
+struct EmbedQuery {
+    u: String,
+}
+
+/// Page minimale contenant le lecteur intégré officiel (YouTube, Dailymotion) : servie en HTTP
+/// local, elle lui donne l'origine web et le référent qu'il exige.
+async fn embed_page(Query(q): Query<EmbedQuery>) -> Response {
+    let allowed = ["https://www.youtube-nocookie.com/embed/", "https://www.dailymotion.com/embed/video/"];
+    if !allowed.iter().any(|p| q.u.starts_with(p)) {
+        return error(StatusCode::BAD_REQUEST, "lecteur non autorisé");
+    }
+    let src = q.u.replace('&', "&amp;").replace('"', "&quot;").replace('<', "&lt;");
+    let html = format!(
+        r#"<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="strict-origin-when-cross-origin"><style>html,body{{margin:0;height:100%;background:#000;overflow:hidden}}iframe{{border:0;width:100%;height:100%}}</style></head><body><iframe src="{src}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></body></html>"#
+    );
+    let mut r = Response::new(Body::from(html));
+    r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html; charset=utf-8"));
+    r
 }
 
 #[derive(Deserialize)]

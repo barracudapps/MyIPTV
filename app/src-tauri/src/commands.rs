@@ -449,10 +449,13 @@ pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     // Arrête la lecture précédente (supprime son enregistrement).
     st.session.lock().await.take();
     // Direct officiel publié sur YouTube : lecteur intégré officiel.
-    if iptv_core::youtube::is_youtube(&req.url) {
+    if iptv_core::youtube::is_youtube(&req.url) || iptv_core::youtube::is_dailymotion(&req.url) {
         st.session.lock().await.take();
-        let embed = youtube_embed(&st, &req.url).await.ok_or("Direct YouTube introuvable (la chaîne ne diffuse peut-être pas en ce moment).")?;
-        return Ok(PlayInfo::simple(embed, "youtube", false, None));
+        return Ok(match youtube_embed(&st, &req.url).await {
+            // La page locale fournit une origine web au lecteur intégré (sinon YouTube refuse souvent de s'afficher).
+            Some(embed) => PlayInfo::simple(crate::server::embed_page_url(&st.base_url(), &embed), "youtube", false, None),
+            None => PlayInfo::simple(req.url.clone(), "webpage", false, Some("direct introuvable : la chaîne ne diffuse peut-être pas en ce moment".into())),
+        });
     }
     // Épisode Internet Archive : le fichier vidéo est choisi au moment de la lecture.
     if let Some(identifier) = req.url.strip_prefix("archive:") {
@@ -499,7 +502,8 @@ pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     // L'extension de l'URL ment souvent : on regarde les premiers octets du flux.
     let kind = match sniff(&st, &up).await {
         Some(k @ ("hls" | "mpegts" | "native")) => k,
-        Some("html") => return Err("Cette adresse mène à une page web, pas à un flux vidéo.".into()),
+        // Page du direct sur le site de la chaîne : proposée à l'ouverture dans le navigateur.
+        Some("html") => return Ok(PlayInfo::simple(req.url.clone(), "webpage", false, None)),
         Some(_) if has_ffmpeg => return Ok(remux_session(&st, &up).await),
         Some(other) => {
             warning = Some(format!("format {other} non pris en charge sans ffmpeg"));
@@ -555,8 +559,11 @@ pub(crate) fn classify_head(head: &[u8], ct: &str, path: &str) -> &'static str {
 /// Lecteur intégré YouTube ; pour un lien par nom de chaîne, l'identifiant est lu une fois
 /// sur la page publique de la chaîne puis gardé en mémoire.
 async fn youtube_embed(st: &AppState, url: &str) -> Option<String> {
-    if let Some(e) = iptv_core::youtube::embed_from_url(url) {
+    if let Some(e) = iptv_core::youtube::embed_for(url) {
         return Some(e);
+    }
+    if !iptv_core::youtube::is_youtube(url) {
+        return None;
     }
     if let Some(e) = st.youtube_cache.lock().await.get(url) {
         return Some(e.clone());
@@ -574,8 +581,7 @@ async fn youtube_embed(st: &AppState, url: &str) -> Option<String> {
         .text()
         .await
         .ok()?;
-    let id = iptv_core::youtube::channel_id_from_page(&page)?;
-    let embed = format!("{}/live_stream?channel={id}&autoplay=1", iptv_core::youtube::EMBED);
+    let embed = iptv_core::youtube::embed_from_page(&page)?;
     st.youtube_cache.lock().await.insert(url.to_string(), embed.clone());
     Some(embed)
 }

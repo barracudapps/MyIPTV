@@ -77,12 +77,12 @@ pub fn catchup_url(channel: JsValue, start: f64, stop: f64, now: f64) -> Result<
 
 #[wasm_bindgen(js_name = youtubeEmbed)]
 pub fn youtube_embed(url: &str) -> Option<String> {
-    crate::youtube::embed_from_url(url)
+    crate::youtube::embed_for(url)
 }
 
 #[wasm_bindgen(js_name = isYoutube)]
 pub fn is_youtube(url: &str) -> bool {
-    crate::youtube::is_youtube(url)
+    crate::youtube::is_youtube(url) || crate::youtube::is_dailymotion(url)
 }
 
 #[wasm_bindgen(js_name = analyzeRisk)]

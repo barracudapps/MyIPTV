@@ -82,7 +82,7 @@ export interface EpgStats {
   errors: string[];
 }
 
-export type StreamKind = "hls" | "mpegts" | "native" | "remux" | "youtube";
+export type StreamKind = "hls" | "mpegts" | "native" | "remux" | "youtube" | "webpage";
 
 export interface StreamTrack {
   index: number;

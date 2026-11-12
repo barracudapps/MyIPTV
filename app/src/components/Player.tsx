@@ -115,6 +115,14 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
   };
 }
 
+/** Ouvre une adresse dans le navigateur du système (application) ou un nouvel onglet (web). */
+async function openExternal(url: string) {
+  if (isTauri) {
+    const { openUrl } = await import("@tauri-apps/plugin-opener");
+    await openUrl(url).catch((e) => console.warn(`[lecteur] ouverture impossible : ${e}`));
+  } else window.open(url, "_blank", "noopener");
+}
+
 /** Le contenu en cours est-il purement audio (radio, podcast…) ? */
 function isAudioOnly() {
   const k = usePlayer.getState().media?.item.kind;
@@ -195,7 +203,7 @@ export function Player() {
   // Moteur de lecture.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !info || info.kind === "youtube") return;
+    if (!video || !info || info.kind === "youtube" || info.kind === "webpage") return;
     setEngineError(null);
     // Erreurs d'un moteur déjà remplacé : ignorées.
     let alive = true;
@@ -569,17 +577,30 @@ export function Player() {
         />
       </div>
 
+      {info?.kind === "webpage" && (
+        <div className="youtube-wrap">
+          <div className="player-center">
+            <Icon name="globe" size={small ? 24 : 40} />
+            {!small && <span>Cette chaîne diffuse son direct sur son propre site.</span>}
+            <button className="btn btn-primary" onClick={() => openExternal(info.url)}>
+              Ouvrir le direct sur le site de la chaîne
+            </button>
+          </div>
+        </div>
+      )}
       {info?.kind === "youtube" && (
         <div className="youtube-wrap">
           {info.url.includes("/embed/") ? (
             <iframe src={info.url} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          ) : info.url.includes("/embed?u=") ? (
+            <iframe src={info.url} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
           ) : (
             <div className="player-center">
               <Icon name="live" size={40} />
-              <span>Ce direct est diffusé sur YouTube.</span>
-              <a className="btn btn-primary" href={info.url} target="_blank" rel="noreferrer">
-                Ouvrir sur YouTube
-              </a>
+              <span>Ce direct est diffusé sur une plateforme vidéo.</span>
+              <button className="btn btn-primary" onClick={() => openExternal(info.url)}>
+                Ouvrir le direct
+              </button>
             </div>
           )}
         </div>
@@ -605,7 +626,7 @@ export function Player() {
         </div>
       )}
 
-      {!shownError && info?.kind !== "youtube" && !isAudio && (loading || !clock.ready) && !blocked && (
+      {!shownError && info?.kind !== "youtube" && info?.kind !== "webpage" && !isAudio && (loading || !clock.ready) && !blocked && (
         <div className="player-center">
           <div className="spinner" />
           {!small && <span>{info?.timeshift ? "Préparation du direct…" : "Connexion…"}</span>}
@@ -654,6 +675,11 @@ export function Player() {
             </span>
           )}
         </div>
+        {channel && (info?.kind === "youtube" || info?.kind === "webpage") && !small && (
+          <button className="btn btn-ghost" onClick={() => openExternal(channel.url)} title="Ouvrir le direct officiel dans le navigateur">
+            <Icon name="globe" size={16} /> Ouvrir dans le navigateur
+          </button>
+        )}
         {catchup ? (
           <span className="badge">REPLAY</span>
         ) : isLiveStream && atLive ? (
