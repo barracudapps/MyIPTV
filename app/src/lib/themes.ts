@@ -71,6 +71,16 @@ const dark: ThemeColors = {
 export const BUILTIN_THEMES: Theme[] = [
   { id: "nuit", name: "Nuit", builtin: true, colors: dark, radius: 12, font: "system", fontScale: 1, layout: baseLayout },
   {
+    id: "epure",
+    name: "Épuré",
+    builtin: true,
+    colors: { bg: "#111214", surface: "#16171a", surface2: "#1d1f23", border: "#26282d", text: "#e8e8ea", textDim: "#8b8d94", accent: "#e8e8ea", accentText: "#111214", live: "#ef4444", danger: "#f87171" },
+    radius: 8,
+    font: "system",
+    fontScale: 1,
+    layout: { ...baseLayout, density: "compact", logoSize: 32, showProgress: false },
+  },
+  {
     id: "clair",
     name: "Clair",
     builtin: true,

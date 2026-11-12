@@ -12,6 +12,7 @@ import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { fmtRuntime, openItem, VodCard } from "./VodView";
 import { Dropdown } from "./Dropdown";
+import { translateLabel } from "../lib/i18n";
 
 function Stars({ value, onChange }: { value: number; onChange(v: number): void }) {
   const [hover, setHover] = useState(0);
@@ -58,12 +59,14 @@ export function DetailView() {
   const [error, setError] = useState<string | null>(null);
   const [season, setSeason] = useState(0);
   const [trailer, setTrailer] = useState(false);
+  const [posterBroken, setPosterBroken] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setDetail(null);
     setError(null);
     setSeason(0);
+    setPosterBroken(false);
     getBackend()
       .then((b) => b.vodDetail(id, metaKeys()))
       .then((d) => {
@@ -136,7 +139,9 @@ export function DetailView() {
         {detail && item && (
           <div className="detail-body">
             <div className="detail-top">
-              <div className={`detail-poster shape-${meta.shape}`}>{item.poster ? <img src={item.poster} alt="" /> : <Icon name={meta.icon} size={48} />}</div>
+              <div className={`detail-poster shape-${meta.shape}`}>
+                {item.poster && !posterBroken ? <img src={item.poster} alt="" onError={() => setPosterBroken(true)} /> : <Icon name={meta.icon} size={48} />}
+              </div>
               <div className="detail-info">
                 <span className="eyebrow">{meta.label}</span>
                 <h1>{item.title}</h1>
@@ -197,9 +202,10 @@ export function DetailView() {
                 </div>
                 {item.genres && item.genres.length > 0 && (
                   <div className="chips wrap">
-                    {item.genres.map((g) => (
+                    {/* Étiquettes identiques une fois traduites (« 50s », « 1950's ») : une seule. */}
+                    {item.genres.filter((g, i, all) => all.findIndex((x) => translateLabel(x, profile.languages[0]) === translateLabel(g, profile.languages[0])) === i).map((g) => (
                       <button key={g} className="chip" onClick={() => (useUi.setState({ view: `vod:${item.kind ?? "movie"}`, vodFilter: { genre: g }, detailId: null }))}>
-                        {g}
+                        {translateLabel(g, profile.languages[0])}
                       </button>
                     ))}
                   </div>

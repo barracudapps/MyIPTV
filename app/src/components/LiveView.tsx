@@ -9,10 +9,10 @@ import { current, fmtTime, normalize, nowSec } from "../lib/util";
 import type { Channel, Programme } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { fun } from "../lib/fun";
-import { LangBadge, LangBar, langMatch } from "./Filters";
+import { FilterTabs, LangBadge, LangSelect, langMatch } from "./Filters";
 import { CatchupBrowser, ReplayBadge } from "./Catchup";
 import { Dropdown } from "./Dropdown";
-import { countryFlag, countryName, countryOrLang, langFlag } from "../lib/languages";
+import { countryFlag, countryName, countryOrLang } from "../lib/languages";
 import { historyProgress, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
 
@@ -114,15 +114,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             <Icon name="search" size={18} />
             <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={`Filtrer ${base.length} chaînes…`} aria-label="Filtrer les chaînes" />
           </div>
-          <button className={`icon-btn ${view === "list" ? "active" : ""}`} title="Liste" onClick={() => setChannelView("list")}>
-            <Icon name="list" />
-          </button>
-          <button className={`icon-btn ${view === "grid" ? "active" : ""}`} title="Mosaïque" onClick={() => setChannelView("grid")}>
-            <Icon name="grid" />
-          </button>
-        </div>
-        <LangBar available={languages} />
-        <div className="chips filters-row">
+          <LangSelect available={languages} />
           {countries.length > 1 && (
             <Dropdown<string>
               ariaLabel="Pays"
@@ -145,10 +137,17 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             ]}
           />
           {replayCount > 0 && (
-            <button className={`chip replay-chip ${replayOnly ? "active" : ""}`} onClick={() => setReplayOnly(!replayOnly)} title="Chaînes dont on peut revoir les émissions passées">
-              <Icon name="replay" size={14} /> Avec replay <span>{replayCount}</span>
+            <button className={`dd-button ${replayOnly ? "active" : ""}`} aria-pressed={replayOnly} onClick={() => setReplayOnly(!replayOnly)} title="Seulement les chaînes dont on peut revoir les émissions passées">
+              <Icon name="replay" size={15} /> Replay
             </button>
           )}
+          <div className="spacer" />
+          <button className={`icon-btn ${view === "list" ? "active" : ""}`} title="Liste" onClick={() => setChannelView("list")}>
+            <Icon name="list" />
+          </button>
+          <button className={`icon-btn ${view === "grid" ? "active" : ""}`} title="Mosaïque" onClick={() => setChannelView("grid")}>
+            <Icon name="grid" />
+          </button>
         </div>
         {scope === "favorites" && (
           <>
@@ -157,16 +156,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
           </>
         )}
         {layout.showGroups && groups.length > 1 && (
-          <div className="chips" role="tablist" aria-label="Catégories">
-            <button className={`chip ${group === ALL ? "active" : ""}`} onClick={() => setGroup(ALL)}>
-              Toutes <span>{base.length}</span>
-            </button>
-            {groups.slice(0, 60).map(([g, n]) => (
-              <button key={g} className={`chip ${group === g ? "active" : ""}`} onClick={() => setGroup(g)} title={g}>
-                <GroupLabel name={g} /> <span>{n}</span>
-              </button>
-            ))}
-          </div>
+          <FilterTabs items={groups.slice(0, 60).map(([g, n]) => ({ name: g, count: n, ...groupLabel(g) }))} value={group === ALL ? undefined : group} onChange={(g) => setGroup(g ?? ALL)} allLabel="Toutes" />
         )}
         {recent.length > 0 && (
           <div className="recent">
@@ -405,14 +395,9 @@ function ProgrammeCard({ p, label }: { p: Programme; label: string }) {
   );
 }
 
-/** Groupe « FR | Info » affiché « 🇫🇷 Info ». */
-function GroupLabel({ name }: { name: string }) {
+/** Groupe « FR | Info » : drapeau et libellé « Info ». */
+function groupLabel(name: string): { label: string; language?: string } {
   const m = name.match(/^\s*[[(|]?\s*([A-Za-z]{2,3})\s*[\]):|\-]\s*(.+)$/);
   const code = m ? countryOrLang(m[1]) : undefined;
-  if (!m || !code) return <>{name}</>;
-  return (
-    <>
-      <span className="flag">{langFlag(code)}</span> {m[2]}
-    </>
-  );
+  return m && code ? { label: m[2], language: code } : { label: name };
 }

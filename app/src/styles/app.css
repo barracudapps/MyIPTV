@@ -630,3 +630,30 @@ html.disco body { animation: disco 1.2s linear infinite; }
 .player-title { flex: 1 1 auto; min-width: 0; }
 .dd-option { background: none; border: 0; height: auto; }
 .season-picker { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+
+/* =================================================================== Menu : en-tête et pied figés
+   Seule la liste des sections défile ; logo, heure, date et profil restent visibles. */
+.nav { overflow: hidden; }
+.nav-brand, .nav-foot { flex: none; }
+.nav-items { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; padding-right: 2px; }
+.nav-foot { margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.clock { display: flex; flex-direction: column; gap: 2px; padding: 0 12px 4px; line-height: 1.1; }
+.clock span { font-size: 1.5em; font-weight: 750; font-variant-numeric: tabular-nums; }
+.clock small { font-size: .78em; font-weight: 500; color: var(--text-dim); text-transform: capitalize; }
+.profile-btn { color: var(--text); }
+[data-nav="top"] .clock, [data-nav="bottom"] .clock { flex-direction: row; align-items: baseline; gap: 8px; }
+[data-nav="top"] .nav-items, [data-nav="bottom"] .nav-items { overflow-y: hidden; overflow-x: auto; }
+[data-nav="top"] .nav-foot, [data-nav="bottom"] .nav-foot { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* =================================================================== Filtres simplifiés
+   Une ligne d'outils (menus légers) + une ligne d'onglets texte. */
+.toolbar { flex-wrap: wrap; row-gap: 8px; }
+.toolbar .search-field { flex: 1 1 220px; }
+.dd-button { background: transparent; border-color: var(--border); font-weight: 550; }
+.dd-button:not(.active) .dd-value { color: var(--text); }
+.filter-tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--border); margin: 2px 0 12px; }
+.filter-tabs::-webkit-scrollbar { display: none; }
+.filter-tabs button { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 9px; color: var(--text-dim); font-weight: 600; font-size: .9em; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.filter-tabs button:hover { color: var(--text); }
+.filter-tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+.filter-tabs small { font-size: .78em; font-weight: 500; opacity: .7; }

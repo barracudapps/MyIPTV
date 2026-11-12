@@ -57,7 +57,12 @@ export function Nav() {
         ))}
       </div>
       <div className="nav-foot">
-        {showClock && <span className="clock">{fmtTime(now)}</span>}
+        {showClock && (
+          <div className="clock">
+            <span>{fmtTime(now)}</span>
+            <small>{new Date(now * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</small>
+          </div>
+        )}
         <button className="nav-item profile-btn" onClick={switchProfile} title="Changer de profil">
           <span className="avatar small" style={{ background: profile.color }}>
             {profile.avatar}

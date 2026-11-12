@@ -14,6 +14,7 @@ import type { Channel, Programme, SearchField, VodFacets, VodKind, VodPage } fro
 import { ChannelLogo } from "./ChannelLogo";
 import { Icon } from "./Icon";
 import { VodCard } from "./VodView";
+import { translateLabel } from "../lib/i18n";
 
 type Field = SearchField | "channel" | "programme";
 
@@ -209,7 +210,7 @@ function Browse() {
             <div className="browse-tiles">
               {list.map((c) => (
                 <button key={c.name} className="browse-tile" onClick={() => open(s.kind, useGenres ? { genre: c.name } : { category: c.name })}>
-                  <strong>{c.name}</strong>
+                  <strong>{translateLabel(c.label ?? c.name, profile.languages[0])}</strong>
                   <span>{c.count}</span>
                 </button>
               ))}

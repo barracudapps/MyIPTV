@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
 import { useActiveProfile } from "../store/settings";
 import { useUi } from "../store/ui";
 import { langFlag, langName } from "../lib/languages";
-import { normalize } from "../lib/util";
 import type { Facet } from "../types";
-import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { Dropdown } from "./Dropdown";
+import { translateLabel } from "../lib/i18n";
+
+/** Langue d'affichage des catégories : première langue favorite du profil. */
+function useDisplayLang() {
+  return useActiveProfile()?.languages[0];
+}
 
 /** Drapeaux de langue posés sur une vignette (affiche, logo). */
 export function LangBadge({ langs, max = 2 }: { langs?: string[]; max?: number }) {
@@ -21,7 +24,7 @@ export function LangBadge({ langs, max = 2 }: { langs?: string[]; max?: number }
   );
 }
 
-/** Traduit le filtre rapide de langue en paramètres de requête. */
+/** Traduit le filtre de langue en paramètres de requête. */
 export function langQuery(filter: string, prefs: string[]) {
   if (filter === "all" || (filter === "mine" && !prefs.length)) return {};
   if (filter === "mine") return { anyLanguages: prefs, includeUnknownLanguage: true };
@@ -35,176 +38,72 @@ export function langMatch(filter: string, prefs: string[], langs: string[] | und
 }
 
 /**
- * Filtre rapide de langue : « Mes langues » (défaut), « Toutes », chacune des langues
- * favorites, puis les autres langues présentes dans un menu.
+ * Filtre de langue en un seul menu : « Toutes », « Mes langues », puis les langues
+ * favorites et les autres langues présentes, avec leur nombre de contenus.
  */
-export function LangBar({ available }: { available?: Facet[] }) {
+export function LangSelect({ available }: { available?: Facet[] }) {
   const profile = useActiveProfile()!;
   const value = useUi((s) => s.langFilter);
-  const set = (v: string) => useUi.setState({ langFilter: v });
   const prefs = profile.languages;
-  const others = (available ?? []).filter((f) => !prefs.includes(f.name));
   const count = (code: string) => available?.find((f) => f.name === code)?.count;
+  const others = (available ?? []).filter((f) => !prefs.includes(f.name));
   return (
-    <div className="lang-bar" role="radiogroup" aria-label="Langue">
-      {prefs.length > 0 && (
-        <button role="radio" aria-checked={value === "mine"} className={value === "mine" ? "active" : ""} onClick={() => set("mine")} title="Contenus dans mes langues favorites (et ceux dont la langue est inconnue)">
-          <Icon name="heart" size={14} filled={value === "mine"} /> Mes langues
-        </button>
-      )}
-      <button role="radio" aria-checked={value === "all"} className={value === "all" ? "active" : ""} onClick={() => set("all")}>
-        <Icon name="globe" size={14} /> Toutes
-      </button>
-      {prefs.map((l) => (
-        <button key={l} role="radio" aria-checked={value === l} className={value === l ? "active" : ""} onClick={() => set(l)} title={langName(l)}>
-          <span className="flag">{langFlag(l)}</span> {langName(l)}
-          {count(l) != null && <small>{count(l)}</small>}
-        </button>
-      ))}
-      {others.length > 0 && (
-        <Dropdown<string>
-          ariaLabel="Autre langue"
-          placeholder="Autre langue"
-          icon="globe"
-          value={others.some((o) => o.name === value) ? value : ""}
-          active={others.some((o) => o.name === value)}
-          onChange={set}
-          options={others.map((o) => ({ value: o.name, label: langName(o.name), prefix: langFlag(o.name), hint: String(o.count) }))}
-        />
-      )}
-    </div>
+    <Dropdown<string>
+      ariaLabel="Langue"
+      icon="globe"
+      value={value}
+      active={value !== "all"}
+      onChange={(v) => useUi.setState({ langFilter: v })}
+      options={[
+        { value: "all", label: "Toutes les langues" },
+        ...(prefs.length ? [{ value: "mine", label: "Mes langues", prefix: <Icon name="heart" size={13} /> }] : []),
+        ...prefs.map((l) => ({ value: l, label: langName(l), prefix: langFlag(l), hint: count(l) != null ? String(count(l)) : undefined })),
+        ...others.map((o) => ({ value: o.name, label: langName(o.name), prefix: langFlag(o.name), hint: String(o.count) })),
+      ]}
+    />
   );
 }
 
-/** Libellé d'une catégorie avec son drapeau. */
-export function CategoryLabel({ f }: { f: Facet }) {
+/** Menu des catégories (recherche intégrée), langues favorites en tête, libellés nettoyés. */
+export function CategorySelect({ categories, value, onChange, langFilter }: { categories: Facet[]; value?: string; onChange(c?: string): void; langFilter: string }) {
+  const profile = useActiveProfile()!;
+  const lang = useDisplayLang();
+  const visible = categories.filter((c) => c.name === value || langMatch(langFilter, profile.languages, c.language ? [c.language] : undefined));
+  if (visible.length < 2) return null;
   return (
-    <>
-      {f.language && <span className="flag">{langFlag(f.language)}</span>} {f.label}
-    </>
+    <Dropdown<string>
+      ariaLabel="Catégorie"
+      icon="grid"
+      value={value ?? ""}
+      active={!!value}
+      onChange={(v) => onChange(v || undefined)}
+      options={[
+        { value: "", label: "Toutes les catégories" },
+        ...visible.map((c) => ({ value: c.name, label: translateLabel(c.label, lang), prefix: c.language ? langFlag(c.language) : undefined, hint: String(c.count) })),
+      ]}
+    />
   );
 }
 
 /**
- * Catégories ergonomiques : les plus pertinentes en puces (langues favorites d'abord,
- * libellés nettoyés), et toutes les autres dans un panneau avec recherche, groupées par langue.
+ * Onglets discrets (genres, groupes de chaînes) : une seule ligne défilante,
+ * l'onglet actif souligné. Plus léger qu'une rangée de pilules.
  */
-export function CategoryBar({
-  categories,
-  genres,
-  category,
-  genre,
-  onCategory,
-  onGenre,
-  langFilter,
-}: {
-  categories: Facet[];
-  genres: Facet[];
-  category?: string;
-  genre?: string;
-  onCategory(c?: string): void;
-  onGenre(g?: string): void;
-  langFilter: string;
-}) {
-  const profile = useActiveProfile()!;
-  const [open, setOpen] = useState(false);
-  const visibleCats = useMemo(() => categories.filter((c) => langMatch(langFilter, profile.languages, c.language ? [c.language] : undefined)), [categories, langFilter, profile.languages]);
-  const top = visibleCats.slice(0, 14);
-  const selectedCat = categories.find((c) => c.name === category);
-
+export function FilterTabs({ items, value, onChange, allLabel }: { items: Facet[]; value?: string; onChange(v?: string): void; allLabel: string }) {
+  const lang = useDisplayLang();
+  if (!items.length) return null;
   return (
-    <div className="category-bar">
-      {genres.length > 0 && (
-        <div className="chips" aria-label="Genres">
-          <button className={`chip ${!genre ? "active" : ""}`} onClick={() => onGenre(undefined)}>
-            Tous genres
-          </button>
-          {genres.slice(0, 24).map((g) => (
-            <button key={g.name} className={`chip ${genre === g.name ? "active" : ""}`} onClick={() => onGenre(genre === g.name ? undefined : g.name)}>
-              {g.label} <span>{g.count}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {visibleCats.length > 1 && (
-        <div className="chips" aria-label="Catégories">
-          <button className={`chip ${!category ? "active" : ""}`} onClick={() => onCategory(undefined)}>
-            Toutes catégories
-          </button>
-          {selectedCat && !top.includes(selectedCat) && (
-            <button className="chip active" onClick={() => onCategory(undefined)}>
-              <CategoryLabel f={selectedCat} /> <Icon name="close" size={12} />
-            </button>
-          )}
-          {top.map((c) => (
-            <button key={c.name} className={`chip ${category === c.name ? "active" : ""}`} onClick={() => onCategory(category === c.name ? undefined : c.name)} title={c.name}>
-              <CategoryLabel f={c} /> <span>{c.count}</span>
-            </button>
-          ))}
-          {visibleCats.length > top.length && (
-            <button className="chip more" onClick={() => setOpen(true)}>
-              <Icon name="grid" size={14} /> Toutes les catégories ({visibleCats.length})
-            </button>
-          )}
-        </div>
-      )}
-      {open && (
-        <CategoryPicker
-          categories={visibleCats}
-          current={category}
-          onPick={(c) => {
-            onCategory(c);
-            setOpen(false);
-          }}
-          onClose={() => setOpen(false)}
-        />
-      )}
+    <div className="filter-tabs" role="tablist">
+      <button role="tab" aria-selected={!value} className={!value ? "active" : ""} onClick={() => onChange(undefined)}>
+        {allLabel}
+      </button>
+      {items.map((f) => (
+        <button key={f.name} role="tab" aria-selected={value === f.name} className={value === f.name ? "active" : ""} onClick={() => onChange(value === f.name ? undefined : f.name)} title={f.name}>
+          {f.language && <span className="flag">{langFlag(f.language)}</span>}
+          {translateLabel(f.label, lang)}
+          <small>{f.count}</small>
+        </button>
+      ))}
     </div>
-  );
-}
-
-function CategoryPicker({ categories, current, onPick, onClose }: { categories: Facet[]; current?: string; onPick(c?: string): void; onClose(): void }) {
-  const profile = useActiveProfile()!;
-  const [q, setQ] = useState("");
-  const groups = useMemo(() => {
-    const n = normalize(q.trim());
-    const filtered = categories.filter((c) => !n || normalize(c.label).includes(n) || normalize(c.name).includes(n));
-    const by = new Map<string, Facet[]>();
-    for (const c of filtered) {
-      const k = c.language ?? "";
-      by.set(k, [...(by.get(k) ?? []), c]);
-    }
-    const rank = (l: string) => {
-      const i = profile.languages.indexOf(l);
-      return l === "" ? 999 : i < 0 ? 100 : i;
-    };
-    return [...by.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1].length - a[1].length);
-  }, [categories, q, profile.languages]);
-
-  return (
-    <Modal title="Toutes les catégories" onClose={onClose} wide>
-      <div className="search-field">
-        <Icon name="search" size={18} />
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une catégorie" />
-      </div>
-      <div className="category-groups">
-        {groups.map(([lang, list]) => (
-          <section key={lang || "none"}>
-            <h3>{lang ? `${langFlag(lang)} ${langName(lang)}` : "Autres"}</h3>
-            <div className="browse-tiles">
-              {list
-                .sort((a, b) => a.label.localeCompare(b.label, "fr"))
-                .map((c) => (
-                  <button key={c.name} className={`browse-tile ${current === c.name ? "active" : ""}`} onClick={() => onPick(c.name)} title={c.name}>
-                    <strong>{c.label}</strong>
-                    <span>{c.count}</span>
-                  </button>
-                ))}
-            </div>
-          </section>
-        ))}
-        {!groups.length && <p className="dim">Aucune catégorie ne correspond.</p>}
-      </div>
-    </Modal>
   );
 }

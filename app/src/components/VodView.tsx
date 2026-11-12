@@ -9,7 +9,7 @@ import { fmtDuration } from "../lib/util";
 import type { HistoryEntry } from "../lib/parental";
 import type { SearchField, VodFacets, VodItem, VodKind, VodSort } from "../types";
 import { Icon } from "./Icon";
-import { CategoryBar, LangBadge, LangBar, langQuery } from "./Filters";
+import { CategorySelect, FilterTabs, LangBadge, LangSelect, langQuery } from "./Filters";
 import { Dropdown } from "./Dropdown";
 import { countryFlag, countryName } from "../lib/languages";
 
@@ -248,6 +248,8 @@ export function VodView({ kind }: { kind: VodKind }) {
             ]}
           />
         )}
+        <LangSelect available={facets?.languages} />
+        {facets && facets.genres.length > 0 && <CategorySelect categories={facets.categories} value={category} onChange={setCategory} langFilter={langFilter} />}
         <Dropdown<VodSort>
           ariaLabel="Tri"
           label="Tri :"
@@ -263,18 +265,12 @@ export function VodView({ kind }: { kind: VodKind }) {
         />
       </div>
 
-      <LangBar available={facets?.languages} />
-      {facets && (
-        <CategoryBar
-          categories={facets.categories}
-          genres={facets.genres}
-          category={category}
-          genre={genre}
-          onCategory={setCategory}
-          onGenre={setGenre}
-          langFilter={langFilter}
-        />
-      )}
+      {/* Genres en onglets ; sans genres (listes IPTV), les catégories prennent leur place. */}
+      {facets && facets.genres.length > 0 ? (
+        <FilterTabs items={facets.genres.slice(0, 30)} value={genre} onChange={setGenre} allLabel="Tous les genres" />
+      ) : facets ? (
+        <FilterTabs items={facets.categories.slice(0, 40)} value={category} onChange={setCategory} allLabel="Toutes les catégories" />
+      ) : null}
 
       {!filtered && (
         <>
