@@ -5,7 +5,7 @@ import { useUi } from "../store/ui";
 import { LANGUAGES, langFlag, langName } from "../lib/languages";
 import { ACHIEVEMENTS, playSound, say, celebrate } from "../lib/fun";
 import { Range, Segmented, Toggle } from "./ThemeEditor";
-import { MascotFigure } from "./Mascot";
+import { MASCOTS, MascotFigure, type MascotKind } from "./Mascot";
 import { NAV_ITEMS } from "./Nav";
 import { Icon } from "./Icon";
 import { Dropdown } from "./Dropdown";
@@ -105,16 +105,33 @@ function FunSettings() {
   const profile = useActiveProfile()!;
   const unlocked = useSettings((s) => s.achievements[profile.id] ?? {});
   const stats = useSettings((s) => s.stats[profile.id]);
-  const colors = ["#6d5dfc", "#22c3ee", "#f97316", "#22c55e", "#e11d48", "#eab308", "#64748b"];
+  const colors = ["#6d5dfc", "#22c3ee", "#f97316", "#22c55e", "#e11d48", "#eab308", "#64748b", "#ec4899", "#14b8a6", "#8b5a2b", "#1f2937", "#a3e635"];
+  const kind = f.mascotKind ?? "zapi";
+  const pickKind = (k: MascotKind) => {
+    // Nom par défaut d'un personnage : on prend celui du nouveau ; un nom personnalisé est gardé.
+    const isDefaultName = MASCOTS.some((m) => m.name === f.mascotName);
+    set({ mascotKind: k, ...(isDefaultName ? { mascotName: MASCOTS.find((m) => m.kind === k)!.name } : {}) });
+  };
   return (
     <div className="settings-section">
       <h2>Fun</h2>
       <div className="card mascot-card">
-        <MascotFigure mood="happy" color={f.mascotColor} size={96} />
+        <MascotFigure mood="happy" color={f.mascotColor} kind={kind} size={96} />
         <div className="grow">
           <Toggle label="Mascotte" hint="Un petit compagnon qui salue, donne des astuces et réagit à ce que vous regardez. Double-clic dessus pour le masquer jusqu'au prochain lancement." checked={f.mascot} onChange={(v) => set({ mascot: v })} />
           {f.mascot && (
             <>
+              <div className="field">
+                Personnage
+                <div className="mascot-picker" role="radiogroup" aria-label="Personnage">
+                  {MASCOTS.map((m) => (
+                    <button key={m.kind} role="radio" aria-checked={kind === m.kind} className={`mascot-option ${kind === m.kind ? "active" : ""}`} title={m.desc} onClick={() => pickKind(m.kind)}>
+                      <MascotFigure mood="idle" color={f.mascotColor} kind={m.kind} size={52} />
+                      <span>{m.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <label className="field">
                 Son nom
                 <input value={f.mascotName} maxLength={20} onChange={(e) => set({ mascotName: e.target.value })} />

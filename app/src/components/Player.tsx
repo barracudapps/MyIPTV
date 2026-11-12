@@ -144,6 +144,7 @@ export function Player() {
   const autoNext = useSettings((s) => s.playback.autoNext);
   const mascotOn = useSettings((s) => s.fun.mascot);
   const mascotColor = useSettings((s) => s.fun.mascotColor);
+  const mascotKind = useSettings((s) => s.fun.mascotKind);
   const programmes = useLibrary((s) => (channel ? s.programmes[channel.id] : undefined));
   const ensureProgrammes = useLibrary((s) => s.ensureProgrammes);
 
@@ -645,7 +646,7 @@ export function Player() {
 
       {isAudio && (
         <div className="audio-visual">
-          {media!.item.poster ? <img src={media!.item.poster} alt="" /> : mascotOn ? <MascotFigure mood={clock.playing ? "dance" : "idle"} color={mascotColor} size={small ? 60 : 120} /> : <Icon name={sectionOf(media!.item.kind).icon} size={64} />}
+          {media!.item.poster ? <img src={media!.item.poster} alt="" /> : mascotOn ? <MascotFigure mood={clock.playing ? "dance" : "idle"} color={mascotColor} kind={mascotKind} size={small ? 60 : 120} /> : <Icon name={sectionOf(media!.item.kind).icon} size={64} />}
           {!small && (
             <div>
               <strong>{media!.item.title}</strong>

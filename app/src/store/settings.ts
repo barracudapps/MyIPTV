@@ -43,6 +43,8 @@ export interface FunSettings {
   mascot: boolean;
   mascotName: string;
   mascotColor: string;
+  /** Personnage choisi ; absent des réglages enregistrés avant son ajout. */
+  mascotKind?: import("../components/Mascot").MascotKind;
   chattiness: Chattiness;
   sounds: boolean;
   soundVolume: number;
@@ -58,6 +60,7 @@ export const DEFAULT_FUN: FunSettings = {
   mascot: true,
   mascotName: "Zapi",
   mascotColor: "#6d5dfc",
+  mascotKind: "zapi",
   chattiness: "normal",
   sounds: false,
   soundVolume: 0.4,
