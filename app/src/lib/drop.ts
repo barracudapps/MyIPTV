@@ -1,8 +1,11 @@
 import { useRef, useState, type DragEvent } from "react";
+import { contentHash } from "./sourceKey";
 
 export interface PlaylistFile {
   name: string;
   content: string;
+  /** Empreinte du contenu, calculée une fois à la lecture. */
+  hash: string;
 }
 
 export interface DroppedPlaylists {
@@ -30,7 +33,7 @@ export async function readPlaylistFiles(list: Iterable<File>): Promise<{ files: 
       continue;
     }
     const content = await f.text().catch(() => "");
-    if (content && looksLikePlaylist(f.name, content)) files.push({ name: f.name, content });
+    if (content && looksLikePlaylist(f.name, content)) files.push({ name: f.name, content, hash: contentHash(content) });
     else ignored.push(f.name);
   }
   return { files, ignored };

@@ -58,20 +58,6 @@ export function parsePayload(text: string): SharePayload {
   return p;
 }
 
-/** Même abonnement ou même liste, quel que soit l'identifiant local. */
-export function sourceKey(s: Source): string {
-  switch (s.kind) {
-    case "m3uUrl":
-      return `m3u:${s.url.trim()}`;
-    case "xtream":
-      return `xtream:${s.server.trim().replace(/\/+$/, "").toLowerCase()}|${s.username}`;
-    case "jellyfin":
-      return `jellyfin:${s.server.trim().replace(/\/+$/, "").toLowerCase()}|${s.userId}`;
-    default:
-      return `${s.kind}:${s.id}`;
-  }
-}
-
 export interface ApplyResult {
   sources: number;
   profiles: number;
@@ -87,12 +73,8 @@ export function applyPayload(p: SharePayload, choice: Omit<ShareChoice, "sourceI
   const patch: Partial<ReturnType<typeof useSettings.getState>> = {};
 
   if (choice.sources && p.sources?.length) {
-    const known = new Set(s.sources.map(sourceKey));
-    const ids = new Set(s.sources.map((x) => x.id));
-    const added = p.sources.filter((x) => !known.has(sourceKey(x)) && !ids.has(x.id)).map((x) => ({ ...x, addedAt: Date.now() }));
-    // addSource range aussi le contenu des fichiers importés hors du stockage local.
-    for (const x of added) s.addSource(x);
-    result.sources = added.length;
+    // addSource écarte les doublons et range le contenu des fichiers hors du stockage local.
+    for (const x of p.sources) if (s.addSource({ ...x, addedAt: Date.now() })) result.sources++;
   }
   if (choice.meta && p.meta) {
     patch.meta = { ...s.meta, tmdb: p.meta.tmdb || s.meta.tmdb, omdb: p.meta.omdb || s.meta.omdb };

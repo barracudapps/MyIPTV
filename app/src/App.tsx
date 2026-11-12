@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
-import { useActiveProfile, useSettings, themeFor } from "./store/settings";
+import { removeDuplicateSources, useActiveProfile, useSettings, themeFor } from "./store/settings";
 import { useLibrary } from "./store/library";
 import { usePlayer } from "./store/player";
 import { useUi } from "./store/ui";
@@ -27,6 +27,8 @@ const SourcesView = lazy(() => import("./components/SourcesView").then((m) => ({
 const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
 const RecordingsView = lazy(() => import("./components/RecordingsView").then((m) => ({ default: m.RecordingsView })));
 
+let startupDedupeDone = false;
+
 export default function App() {
   const profile = useActiveProfile();
   const custom = useSettings((s) => s.customThemes);
@@ -41,6 +43,16 @@ export default function App() {
   }, [sourcesKey]);
 
   useEffect(preloadEngines, []);
+
+  // Doublons de sources créés par d'anciennes versions : retirés une fois au démarrage.
+  useEffect(() => {
+    if (startupDedupeDone) return;
+    startupDedupeDone = true;
+    removeDuplicateSources().then((names) => {
+      if (!names.length) return;
+      useUi.getState().toast(names.length === 1 ? `Source en double retirée : « ${names[0]} ».` : `${names.length} sources en double retirées.`, "info");
+    });
+  }, []);
 
   useEffect(() => {
     let warned = false;

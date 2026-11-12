@@ -10,6 +10,7 @@ import { LEGAL_TEST_LIST, SUSPICIOUS_TEST_LIST } from "../lib/testLists";
 import type { RiskReport, Source, SourceKind } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { findDuplicate, normalizeUrl, sourceKey } from "../lib/sourceKey";
 import { readPlaylistFiles, useDropZone, type DroppedPlaylists, type PlaylistFile } from "../lib/drop";
 
 type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin" | "test";
@@ -195,7 +196,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   const [files, setFiles] = useState<PlaylistFile[]>(initial?.files ?? []);
   const [ignored, setIgnored] = useState<string[]>(initial?.ignored ?? []);
   const addFiles = (more: PlaylistFile[], skipped: string[]) => {
-    setFiles((cur) => [...cur, ...more.filter((f) => !cur.some((c) => c.name === f.name && c.content.length === f.content.length))]);
+    setFiles((cur) => [...cur, ...more.filter((f, i) => !cur.some((c) => c.hash === f.hash) && more.findIndex((m) => m.hash === f.hash) === i)]);
     setIgnored(skipped);
   };
   const drop = useDropZone((d) => {
@@ -223,7 +224,11 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   const testMode = useSettings((s) => s.testMode);
 
   const commit = (source: Source) => {
-    useSettings.getState().addSource(source);
+    if (!useSettings.getState().addSource(source)) {
+      const dup = findDuplicate(source, useSettings.getState().sources);
+      toast(dup ? `Déjà dans vos sources : « ${dup.name} ».` : "Cette source est déjà ajoutée.", "info");
+      return onClose();
+    }
     useLibrary.getState().loadAll();
     toast(`« ${source.name} » ajoutée.`, "success");
     onClose();
@@ -282,11 +287,12 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   };
 
   const finishBatch = (list: Source[], keepOpen: boolean) => {
-    for (const src of list) useSettings.getState().addSource(src);
-    if (list.length) {
+    const added = list.filter((src) => useSettings.getState().addSource(src));
+    const skipped = list.length - added.length;
+    if (added.length) {
       useLibrary.getState().loadAll();
-      toast(list.length === 1 ? `« ${list[0].name} » ajoutée.` : `${list.length} sources ajoutées.`, "success");
-    }
+      toast((added.length === 1 ? `« ${added[0].name} » ajoutée.` : `${added.length} sources ajoutées.`) + (skipped ? ` ${skipped} déjà présente${skipped > 1 ? "s" : ""}, ignorée${skipped > 1 ? "s" : ""}.` : ""), "success");
+    } else if (skipped) toast("Ces sources sont déjà ajoutées.", "info");
     setBatch(null);
     if (!keepOpen) onClose();
   };
@@ -301,6 +307,9 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
       enabled: true,
       addedAt: Date.now(),
     } as Source;
+    // Inutile de télécharger et d'analyser une source déjà présente.
+    const dup = findDuplicate(source, useSettings.getState().sources);
+    if (dup) return setError(`Cette source est déjà ajoutée : « ${dup.name} ».`);
     if (trusted) return commit(source);
     setBusy(true);
     setError(null);
@@ -333,15 +342,20 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     );
   }
 
-  const links = [...new Set(url.split(/[\s,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\/\S+$/i.test(u)))];
-  const knownUrls = new Set(useSettings.getState().sources.flatMap((x) => (x.kind === "m3uUrl" ? [x.url] : [])));
-  const newLinks = links.filter((u) => !knownUrls.has(u));
+  // Liens comparés une fois normalisés : même liste malgré la casse, une barre finale ou l'ordre des paramètres.
+  const links = [...new Map(url.split(/[\s,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\/\S+$/i.test(u)).map((u) => [normalizeUrl(u), u])).values()];
+  const knownKeys = new Set(useSettings.getState().sources.map(sourceKey));
+  const newLinks = links.filter((u) => !knownKeys.has(`m3u:${normalizeUrl(u)}`));
+  const newFiles = files.filter((f) => !knownKeys.has(`file:${f.hash}`));
   // « iptv-org.github.io · lu » : le site seul ne distingue pas plusieurs listes d'un même hébergeur.
   const hostOf = (u: string) => {
     try {
       const parsed = new URL(u);
       const file = decodeURIComponent(parsed.pathname.split("/").pop() ?? "").replace(/\.(m3u8?|txt)$/i, "");
-      return file && !/^(get|playlist|index|list)(\.php)?$/i.test(file) ? `${parsed.hostname} · ${file}` : parsed.hostname;
+      if (file && !/^(get|playlist|index|list)(\.php)?$/i.test(file)) return `${parsed.hostname} · ${file}`;
+      // Lien générique (get.php?username=…) : le compte distingue deux listes d'un même serveur.
+      const account = parsed.searchParams.get("username") ?? parsed.searchParams.get("user");
+      return account ? `${parsed.hostname} · ${account}` : parsed.hostname;
     } catch {
       return u;
     }
@@ -424,7 +438,8 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
               submitMany(newLinks.map((u, i) => ({ ...base, kind: "m3uUrl", url: u, id: uid(), name: numbered(hostOf(u), i, newLinks.length) }) as Source));
             } else if (tab === "file") {
               if (!files.length) return setError("Choisissez au moins un fichier.");
-              submitMany(files.map((f, i) => ({ ...base, kind: "m3uText", content: f.content, id: uid(), name: numbered(f.name.replace(/\.m3u8?$/i, ""), i, files.length) }) as Source));
+              if (!newFiles.length) return setError(files.length > 1 ? "Ces fichiers sont déjà dans vos sources." : "Ce fichier est déjà dans vos sources.");
+              submitMany(newFiles.map((f, i) => ({ ...base, kind: "m3uText", content: f.content, id: uid(), name: numbered(f.name.replace(/\.m3u8?$/i, ""), i, newFiles.length) }) as Source));
             }
             else submit({ kind: "xtream", ...xt, server: xt.server.trim() }, xt.server.replace(/^https?:\/\//, ""));
           }}
@@ -468,10 +483,14 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
               {files.length > 0 && (
                 <ul className="file-list">
                   {files.map((f) => (
-                    <li key={f.name + f.content.length}>
+                    <li key={f.hash}>
                       <Icon name="list" size={16} />
                       <span>{f.name}</span>
-                      <span className="dim small">{(f.content.match(/#EXTINF/g)?.length ?? 0).toLocaleString("fr-FR")} entrées</span>
+                      {knownKeys.has(`file:${f.hash}`) ? (
+                        <span className="small warn-text">déjà ajouté</span>
+                      ) : (
+                        <span className="dim small">{(f.content.match(/#EXTINF/g)?.length ?? 0).toLocaleString("fr-FR")} entrées</span>
+                      )}
                       <button type="button" className="icon-btn" title={`Retirer ${f.name}`} onClick={() => setFiles((cur) => cur.filter((x) => x !== f))}>
                         <Icon name="close" size={16} />
                       </button>
@@ -544,7 +563,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           <div className="actions">
             <button className="btn btn-primary" type="submit" disabled={busy}>
               {busy ? <div className="spinner small" /> : <Icon name="check" />}{" "}
-              {progress && progress.total > 1 ? `Vérification ${progress.done}/${progress.total}…` : (tab === "url" && newLinks.length > 1) || (tab === "file" && files.length > 1) ? `Vérifier et ajouter (${tab === "url" ? newLinks.length : files.length})` : "Vérifier et ajouter"}
+              {progress && progress.total > 1 ? `Vérification ${progress.done}/${progress.total}…` : (tab === "url" && newLinks.length > 1) || (tab === "file" && newFiles.length > 1) ? `Vérifier et ajouter (${tab === "url" ? newLinks.length : newFiles.length})` : "Vérifier et ajouter"}
             </button>
           </div>
         </form>

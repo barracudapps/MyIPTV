@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { deletePlaylist, putPlaylist } from "../lib/playlists";
+import { deletePlaylist, getPlaylist, putPlaylist } from "../lib/playlists";
+import { contentHash, findDuplicate, sourceKey, uniqueName } from "../lib/sourceKey";
 import { BUILTIN_THEMES, type Theme } from "../lib/themes";
 import { DEFAULT_CHILD_RULES, DEFAULT_PLAYER_PREFS, type HistoryEntry, type PlayerPrefs, type Profile, type ProfileKind } from "../lib/parental";
 import { builtinSources, deviceLanguage } from "../lib/languages";
@@ -120,7 +121,8 @@ interface SettingsState {
   saveTheme(t: Theme): void;
   removeTheme(id: string): void;
 
-  addSource(s: Source): void;
+  /** Ajoute la source ; faux si elle existe déjà (même liste, compte ou fichier). */
+  addSource(s: Source): boolean;
   updateSource(id: string, patch: Partial<Source>): void;
   removeSource(id: string): void;
 
@@ -176,6 +178,51 @@ const safeLocalStorage: Storage = {
     }
   },
 };
+
+/**
+ * Retire les sources en double (même liste, compte ou fichier). Les fichiers dont
+ * l'empreinte manque sont relus pour la calculer. Renvoie les noms retirés.
+ */
+let dedupeRun: Promise<string[]> | null = null;
+
+export function removeDuplicateSources(): Promise<string[]> {
+  // Un seul nettoyage à la fois : un second appel concurrent attend le premier.
+  dedupeRun ??= dedupeSources().finally(() => (dedupeRun = null));
+  return dedupeRun;
+}
+
+async function dedupeSources(): Promise<string[]> {
+  const { sources } = useSettings.getState();
+  const hashes = new Map<string, string>();
+  await Promise.all(
+    sources.map(async (x) => {
+      if (x.kind !== "m3uText" || x.contentHash) return;
+      const content = x.content || (await getPlaylist(x.id).catch(() => undefined));
+      if (content) hashes.set(x.id, contentHash(content));
+    }),
+  );
+  const withHashes = sources.map((x) => (hashes.has(x.id) ? ({ ...x, contentHash: hashes.get(x.id) } as Source) : x));
+  const seen = new Set<string>();
+  const kept: Source[] = [];
+  const removed: Source[] = [];
+  for (const x of withHashes) {
+    const key = sourceKey({ ...x, ...(x.kind === "m3uText" ? { content: "" } : {}) } as Source);
+    if (key && seen.has(key)) removed.push(x);
+    else {
+      if (key) seen.add(key);
+      kept.push(x);
+    }
+  }
+  if (!removed.length && !hashes.size) return [];
+  useSettings.setState({ sources: kept });
+  for (const x of removed) if (x.kind === "m3uText") deletePlaylist(x.id).catch(() => undefined);
+  if (removed.length) {
+    console.info(`[réglages] ${removed.length} source(s) en double retirée(s) : ${removed.map((x) => x.name).join(", ")}`);
+    const backend = await import("../platform").then((m) => m.getBackend());
+    await Promise.all(removed.map((x) => backend.removeSource(x.id, true).catch(() => undefined)));
+  }
+  return removed.map((x) => x.name);
+}
 
 function storePlaylist(id: string, content: string) {
   putPlaylist(id, content)
@@ -262,10 +309,14 @@ export const useSettings = create<SettingsState>()(
           })),
 
         addSource(src) {
-          // Une seconde validation du même import ne doit pas créer un doublon.
-          if (get().sources.some((x) => x.id === src.id)) return;
-          set((s) => ({ sources: [...s.sources, src] }));
-          if (src.kind === "m3uText" && src.content) storePlaylist(src.id, src.content);
+          const sources = get().sources;
+          // Même identifiant (double validation) ou même liste, compte ou fichier : rien n'est ajouté.
+          if (sources.some((x) => x.id === src.id) || findDuplicate(src, sources)) return false;
+          const added = { ...src, name: uniqueName(src.name, sources) } as Source;
+          if (added.kind === "m3uText" && added.content) added.contentHash = contentHash(added.content);
+          set((s) => ({ sources: [...s.sources, added] }));
+          if (added.kind === "m3uText" && added.content) storePlaylist(added.id, added.content);
+          return true;
         },
         updateSource: (id, patch) => set((s) => ({ sources: s.sources.map((x) => (x.id === id ? ({ ...x, ...patch } as Source) : x)) })),
         removeSource(id) {
@@ -310,7 +361,8 @@ export const useSettings = create<SettingsState>()(
       // Le contenu des fichiers importés n'est retiré qu'une fois copié dans IndexedDB.
       partialize: (s) => ({ ...s, sources: s.sources.map((x) => (x.kind === "m3uText" && x.contentStored ? { ...x, content: "" } : x)) }),
       onRehydrateStorage: () => (state) => {
-        for (const x of state?.sources ?? []) if (x.kind === "m3uText" && x.content && !x.contentStored) storePlaylist(x.id, x.content);
+        if (!state) return;
+        for (const x of state.sources) if (x.kind === "m3uText" && x.content && !x.contentStored) storePlaylist(x.id, x.content);
       },
       migrate(persisted, version) {
         const s = persisted as Record<string, any>;

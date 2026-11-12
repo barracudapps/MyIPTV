@@ -36,7 +36,7 @@ export interface Programme {
 
 export type SourceKind =
   | { kind: "m3uUrl"; url: string }
-  | { kind: "m3uText"; content: string; /** Contenu rangé dans IndexedDB : il n'est plus copié dans les réglages. */ contentStored?: boolean }
+  | { kind: "m3uText"; content: string; /** Contenu rangé dans IndexedDB : il n'est plus copié dans les réglages. */ contentStored?: boolean; /** Empreinte du contenu, pour reconnaître un fichier déjà importé. */ contentHash?: string }
   | { kind: "xtream"; server: string; username: string; password: string; output?: string }
   | { kind: "archive"; collection: string; mediatype: string; content: VodKind; rows?: number }
   | { kind: "radioBrowser"; countries: string[] }
