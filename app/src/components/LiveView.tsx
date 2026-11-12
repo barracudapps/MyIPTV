@@ -6,11 +6,11 @@ import { useActiveProfile, useSettings, themeFor } from "../store/settings";
 import { useUi } from "../store/ui";
 import { useNow, useVisibleChannels } from "../lib/hooks";
 import { current, fmtTime, normalize, nowSec } from "../lib/util";
-import { programmeAccess } from "../lib/parental";
 import type { Channel, Programme } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { fun } from "../lib/fun";
 import { LangBadge, LangBar, langMatch } from "./Filters";
+import { CatchupBrowser, ReplayBadge } from "./Catchup";
 import { countryOrLang, langFlag } from "../lib/languages";
 import { historyProgress, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
@@ -27,6 +27,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
   const setView = useUi((s) => s.setView);
   const [group, setGroup] = useState(ALL);
   const langFilter = useUi((s) => s.langFilter);
+  const [replayOnly, setReplayOnly] = useState(false);
   const [filter, setFilter] = useState("");
   const [view, setChannelView] = useState(layout.channelView);
   useEffect(() => setChannelView(layout.channelView), [layout.channelView]);
@@ -49,9 +50,11 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
       (c) =>
         (group === ALL || (c.group ?? "Sans catégorie").split(";").some((g) => g.trim() === group)) &&
         langMatch(langFilter, profile.languages, c.languages) &&
+        (!replayOnly || !!c.catchup) &&
         (!q || normalize(c.name).includes(q)),
     );
-  }, [base, group, filter, langFilter, profile.languages]);
+  }, [base, group, filter, langFilter, profile.languages, replayOnly]);
+  const replayCount = useMemo(() => base.filter((c) => c.catchup).length, [base]);
 
   // Langues présentes, les favorites en tête.
   const languages = useMemo(() => {
@@ -101,6 +104,13 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
           </button>
         </div>
         <LangBar available={languages} />
+        {replayCount > 0 && (
+          <div className="chips">
+            <button className={`chip replay-chip ${replayOnly ? "active" : ""}`} onClick={() => setReplayOnly(!replayOnly)} title="Chaînes dont on peut revoir les émissions passées">
+              <Icon name="replay" size={14} /> Avec replay <span>{replayCount}</span>
+            </button>
+          </div>
+        )}
         {scope === "favorites" && (
           <>
             <VodRow title="Ma liste" items={vodFavorites} />
@@ -261,7 +271,7 @@ function ChannelRow({ channel, list, showNowNext, showProgress }: { channel: Cha
           <span className="channel-name">
             {channel.name}
             {channel.adult && <Icon name="lock" size={14} />}
-            {channel.catchup && <span className="mini-badge" title="Replay disponible">REPLAY</span>}
+            <ReplayBadge channel={channel} />
           </span>
           {showNowNext && prog && (
             <span className="channel-prog">
@@ -290,7 +300,9 @@ function ChannelTile({ channel, list }: { channel: Channel; list: Channel[] }) {
           <ChannelLogo channel={channel} size={64} />
           <LangBadge langs={channel.languages} />
         </span>
-        <span className="channel-name">{channel.name}</span>
+        <span className="channel-name">
+          {channel.name} <ReplayBadge channel={channel} compact />
+        </span>
         {prog && <span className="tile-prog">{prog.title}</span>}
       </button>
       <FavButton channel={channel} fav={fav} />
@@ -303,12 +315,10 @@ function NowPanel() {
   const channel = usePlayer((s) => s.channel);
   const catchup = usePlayer((s) => s.catchup);
   const progs = useLibrary((s) => (channel ? s.programmes[channel.id] : undefined));
-  const profile = useActiveProfile()!;
   const now = useNow();
   if (!channel) return null;
   const idx = progs?.findIndex((p) => p.start <= now && p.stop > now) ?? -1;
   const nowProg = idx >= 0 ? progs![idx] : undefined;
-  const past = progs ? progs.filter((p) => p.stop <= now).slice(-6).reverse() : [];
   const upcoming = progs ? progs.filter((p) => p.start > now).slice(0, 5) : [];
 
   return (
@@ -333,23 +343,7 @@ function NowPanel() {
           </ul>
         </>
       )}
-      {channel.catchup && past.length > 0 && (
-        <>
-          <h3>Revoir</h3>
-          <ul className="prog-list">
-            {past.map((p) => {
-              const ok = programmeAccess(profile, channel, p).ok;
-              return (
-                <li key={p.start}>
-                  <button className="link" disabled={!ok} onClick={() => usePlayer.getState().playCatchup(channel, p)}>
-                    <Icon name="replay" size={16} /> <span className="time">{fmtTime(p.start)}</span> {p.title}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+      <CatchupBrowser channel={channel} />
     </div>
   );
 }

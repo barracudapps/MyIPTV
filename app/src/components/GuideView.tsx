@@ -12,6 +12,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { useRecordings } from "../store/recordings";
+import { ReplayBadge } from "./Catchup";
 
 const PX_PER_MIN = 4;
 const ROW_H = 64;
@@ -28,6 +29,7 @@ export function GuideView() {
   const now = useNow(30_000);
   const [dayOffset, setDayOffset] = useState(0);
   const [onlyWithGuide, setOnlyWithGuide] = useState(true);
+  const [replayOnly, setReplayOnly] = useState(false);
   const [selected, setSelected] = useState<{ ch: Channel; p: Programme } | null>(null);
   const recordings = useRecordings((s) => s.list);
   const recorded = useMemo(() => new Set(recordings.filter((r) => r.status !== "cancelled" && r.status !== "failed").map((r) => `${r.channel.id}@${r.start}`)), [recordings]);
@@ -42,8 +44,8 @@ export function GuideView() {
 
   // Sans guide, une chaîne n'apporte rien à la grille : masquée par défaut quand on la sait vide.
   const channels = useMemo(
-    () => (onlyWithGuide ? all.filter((c) => !programmes[c.id] || programmes[c.id].length > 0) : all),
-    [all, programmes, onlyWithGuide],
+    () => all.filter((c) => (!onlyWithGuide || !programmes[c.id] || programmes[c.id].length > 0) && (!replayOnly || !!c.catchup)),
+    [all, programmes, onlyWithGuide, replayOnly],
   );
 
   const v = useVirtualizer({ count: channels.length, getScrollElement: () => scrollRef.current, estimateSize: () => ROW_H, overscan: 6 });
@@ -83,12 +85,15 @@ export function GuideView() {
   return (
     <div className="guide">
       <div className="toolbar">
-        {[-3, -2, -1, 0, 1, 2].map((o) => (
+        {(replayOnly ? [-7, -6, -5, -4, -3, -2, -1, 0] : [-3, -2, -1, 0, 1, 2]).map((o) => (
           <button key={o} className={`chip ${dayOffset === o ? "active" : ""}`} onClick={() => setDayOffset(o)}>
             {o === 0 ? "Aujourd'hui" : o === -1 ? "Hier" : o === 1 ? "Demain" : fmtDay(nowSec() + o * 86400)}
           </button>
         ))}
         <div className="spacer" />
+        <button className={`chip replay-chip ${replayOnly ? "active" : ""}`} onClick={() => setReplayOnly(!replayOnly)}>
+          <Icon name="replay" size={14} /> Avec replay
+        </button>
         <label className="check">
           <input type="checkbox" checked={onlyWithGuide} onChange={(e) => setOnlyWithGuide(e.target.checked)} /> Chaînes avec programmes
         </label>
@@ -112,6 +117,7 @@ export function GuideView() {
                 <button className="guide-channel" style={{ width: CH_COL }} onClick={() => usePlayer.getState().play(ch, { zapList: channels })} title={`Regarder ${ch.name}`}>
                   <ChannelLogo channel={ch} size={36} />
                   <span>{ch.name}</span>
+                  <ReplayBadge channel={ch} compact />
                 </button>
                 <div className="guide-progs" style={{ left: CH_COL, width }}>
                   {progs.map((p) => {
@@ -121,7 +127,7 @@ export function GuideView() {
                     return (
                       <button
                         key={p.start}
-                        className={`guide-prog ${state}`}
+                        className={`guide-prog ${state} ${state === "past" && ch.catchup && p.start >= now - (ch.catchup?.days ?? 0) * 86400 ? "replayable" : ""}`}
                         style={{ left, width: Math.max(2, right - left - 2) }}
                         onClick={() => setSelected({ ch, p })}
                         title={`${fmtTime(p.start)} ${p.title}`}
