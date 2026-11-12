@@ -18,6 +18,7 @@ export interface Backend {
   vodSearch(text: string, field: SearchField, preferLanguages: string[], includeAdult: boolean, perKind: number): Promise<Partial<Record<VodKind, VodPage>>>;
   vodDetail(id: string, keys: MetaKeys): Promise<VodDetail>;
   person(name: string, tmdbId: number | undefined, keys: MetaKeys): Promise<PersonView>;
+  jellyfinLogin(server: string, username: string, password: string): Promise<{ server: string; userId: string; token: string; serverName?: string }>;
   recList(): Promise<Recording[]>;
   recSchedule(req: { channel: Channel; title: string; subtitle?: string; start: number; stop: number; profileId?: string }): Promise<Recording>;
   recCancel(id: string, deleteFile: boolean): Promise<void>;

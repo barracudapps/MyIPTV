@@ -40,7 +40,8 @@ export type SourceKind =
   | { kind: "archive"; collection: string; mediatype: string; content: VodKind; rows?: number }
   | { kind: "radioBrowser"; countries: string[] }
   | { kind: "podcasts"; countries: string[] }
-  | { kind: "librivox"; languages: string[] };
+  | { kind: "librivox"; languages: string[] }
+  | { kind: "jellyfin"; server: string; userId: string; token: string };
 
 export type Source = SourceKind & {
   id: string;

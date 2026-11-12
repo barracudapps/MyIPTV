@@ -24,6 +24,8 @@ pub struct AppState {
     /// Fichier en cours de conversion à la volée (flux et analyse ffprobe).
     pub remux: Mutex<Option<(String, Upstream, Probe)>>,
     pub recorder: std::sync::Arc<crate::recorder::Recorder>,
+    /// Source Jellyfin -> identifiant utilisateur (nécessaire aux requêtes de détail).
+    pub jellyfin_users: Mutex<HashMap<String, String>>,
 }
 
 impl AppState {
@@ -51,6 +53,7 @@ impl AppState {
             details: Mutex::new(HashMap::new()),
             session: Mutex::new(None),
             remux: Mutex::new(None),
+            jellyfin_users: Mutex::new(HashMap::new()),
         }
     }
 

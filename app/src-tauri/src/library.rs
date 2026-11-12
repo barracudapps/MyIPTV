@@ -51,6 +51,11 @@ async fn cached_json(st: &AppState, url: &str, bearer: Option<&str>) -> Res<serd
     Ok(v)
 }
 
+/// Identifiant utilisateur Jellyfin d'une source (conservé avec la source chargée).
+async fn jellyfin_user(st: &AppState, source_id: &str) -> Option<String> {
+    st.jellyfin_users.lock().await.get(source_id).cloned()
+}
+
 #[tauri::command]
 pub async fn vod_query(st: St<'_>, query: VodQuery) -> Res<VodPage> {
     let all = st.vod_all.read().await;
@@ -126,6 +131,13 @@ pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail
                 let label = if kind == Some(VodKind::Audiobook) { "Chapitres" } else { "Pistes" };
                 d.seasons = vec![Season { number: 1, name: label.into(), episodes: files }];
             }
+        }
+        VodRef::Jellyfin { server, token, id: jid } => {
+            let user_id = jellyfin_user(&st, &item.source_id).await.ok_or("Source Jellyfin introuvable")?;
+            let headers = crate::commands::jellyfin_headers(token);
+            let full = get_json(&st, &iptv_core::jellyfin::item_url(server, &user_id, jid), Some(headers.clone())).await.unwrap_or_default();
+            let eps = if kind == Some(VodKind::Series) { get_json(&st, &iptv_core::jellyfin::episodes_url(server, &user_id, jid), Some(headers)).await.ok() } else { None };
+            d = iptv_core::jellyfin::detail(item.clone(), &full, eps.as_ref(), server, token);
         }
         VodRef::None => match kind {
             Some(VodKind::Podcast) => {

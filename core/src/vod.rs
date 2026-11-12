@@ -37,6 +37,8 @@ pub enum VodRef {
     None,
     Xtream { server: String, username: String, password: String, id: u64, container: Option<String> },
     Archive { identifier: String },
+    /// Serveur Jellyfin / Emby de l'utilisateur.
+    Jellyfin { server: String, token: String, id: String },
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

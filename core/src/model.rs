@@ -97,6 +97,8 @@ pub enum SourceKind {
     Podcasts { #[serde(default)] countries: Vec<String> },
     /// Livres audio LibriVox dans les langues données.
     Librivox { #[serde(default)] languages: Vec<String> },
+    /// Serveur multimédia personnel Jellyfin ou Emby (jeton obtenu à la connexion).
+    Jellyfin { server: String, user_id: String, token: String },
 }
 
 fn default_rows() -> usize {

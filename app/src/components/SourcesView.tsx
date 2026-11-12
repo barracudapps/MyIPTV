@@ -9,7 +9,7 @@ import type { RiskReport, Source, SourceKind } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 
-type Tab = "catalog" | "url" | "file" | "xtream";
+type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin";
 
 export function SourcesView() {
   const sources = useSettings((s) => s.sources);
@@ -38,6 +38,8 @@ export function SourcesView() {
         return `Apple Podcasts · ${s.countries.join(", ").toUpperCase()}`;
       case "librivox":
         return `LibriVox · ${s.languages.join(", ")}`;
+      case "jellyfin":
+        return `Serveur multimédia · ${s.server}`;
     }
   };
 
@@ -166,6 +168,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
   const [url, setUrl] = useState("");
   const [content, setContent] = useState("");
   const [xt, setXt] = useState({ server: "", username: "", password: "" });
+  const [jf, setJf] = useState({ server: "", username: "", password: "" });
   const [epg, setEpg] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -219,6 +222,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
             ["url", "Lien M3U"],
             ["file", "Fichier M3U"],
             ["xtream", "Xtream Codes"],
+            ["jellyfin", "Jellyfin / Emby"],
           ] as [Tab, string][]
         ).map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
@@ -245,6 +249,16 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
           className="form"
           onSubmit={(e) => {
             e.preventDefault();
+            if (tab === "jellyfin") {
+              setBusy(true);
+              setError(null);
+              getBackend()
+                .then((b) => b.jellyfinLogin(jf.server.trim(), jf.username, jf.password))
+                .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, r.serverName ?? "Mon serveur multimédia", true))
+                .catch((err) => setError(errorMessage(err)))
+                .finally(() => setBusy(false));
+              return;
+            }
             if (tab === "url") submit({ kind: "m3uUrl", url: url.trim() }, new URL(url.trim()).hostname);
             else if (tab === "file") submit({ kind: "m3uText", content }, "Playlist importée");
             else submit({ kind: "xtream", ...xt, server: xt.server.trim() }, xt.server.replace(/^https?:\/\//, ""));
@@ -270,6 +284,28 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
                 onChange={async (e) => setContent((await e.target.files?.[0]?.text()) ?? "")}
               />
             </label>
+          )}
+          {tab === "jellyfin" && (
+            <>
+              <p className="dim small">
+                Jellyfin (gratuit et libre) ou Emby : votre serveur multimédia personnel, avec vos propres films et séries. Ils apparaissent dans Films et Séries
+                avec affiches, casting, saisons et reprise de lecture. Seul un jeton de connexion est conservé, jamais le mot de passe.
+              </p>
+              <label className="field">
+                Adresse du serveur
+                <input required value={jf.server} onChange={(e) => setJf({ ...jf, server: e.target.value })} placeholder="http://192.168.1.10:8096" />
+              </label>
+              <div className="row">
+                <label className="field">
+                  Utilisateur
+                  <input required value={jf.username} onChange={(e) => setJf({ ...jf, username: e.target.value })} autoComplete="username" />
+                </label>
+                <label className="field">
+                  Mot de passe
+                  <input type="password" value={jf.password} onChange={(e) => setJf({ ...jf, password: e.target.value })} autoComplete="current-password" />
+                </label>
+              </div>
+            </>
           )}
           {tab === "xtream" && (
             <>

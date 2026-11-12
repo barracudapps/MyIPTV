@@ -60,6 +60,7 @@ export async function createWebBackend(): Promise<Backend> {
       case "radioBrowser":
       case "podcasts":
       case "librivox":
+      case "jellyfin":
         return { channels: [], epgUrls: [] };
       case "xtream": {
         const { server, username, password } = source;
@@ -129,6 +130,9 @@ export async function createWebBackend(): Promise<Backend> {
     },
     async person(name) {
       return { name, items: [], credits: [] };
+    },
+    async jellyfinLogin() {
+      throw new Error("La connexion à un serveur Jellyfin n'est disponible que sur l'application de bureau ou Android pour le moment.");
     },
     // Enregistrement impossible depuis un navigateur ou une TV (pas d'accès disque).
     async recList() {

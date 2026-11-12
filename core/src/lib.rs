@@ -7,6 +7,7 @@
 
 pub mod catalogs;
 pub mod catchup;
+pub mod jellyfin;
 pub mod lang;
 pub mod m3u;
 pub mod model;

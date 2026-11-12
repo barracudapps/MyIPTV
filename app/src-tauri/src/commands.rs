@@ -100,6 +100,11 @@ async fn fetch_playlist(st: &AppState, src: &Source) -> Res<Playlist> {
             vod.extend(iptv_core::xtream::series_items(&acc, sid, &scats, &series));
             Ok(Playlist { channels: live_channels(&acc, sid, &cats, &streams), vod, epg_urls: vec![acc.xmltv_url()] })
         }
+        SourceKind::Jellyfin { server, user_id, token } => {
+            let headers = jellyfin_headers(token);
+            let j = get_json(st, &iptv_core::jellyfin::items_url(server, user_id, "Movie,Series"), Some(headers)).await.map_err(|e| format!("Serveur Jellyfin : {e}"))?;
+            Ok(Playlist { vod: iptv_core::jellyfin::items(&j, sid, server, token), ..Default::default() })
+        }
         SourceKind::Archive { collection, mediatype, content, rows } => {
             let j = get_json(st, &cat::archive_search_url(collection, mediatype, *rows), None).await?;
             let mut vod = cat::archive_items(&j, *content, sid);
@@ -181,6 +186,9 @@ pub async fn load_source(st: St<'_>, source: Source, force: bool) -> Res<SourceR
 
     let mut epg_urls = playlist.epg_urls.clone();
     epg_urls.extend(source.epg_urls.iter().cloned());
+    if let SourceKind::Jellyfin { user_id, .. } = &source.kind {
+        st.jellyfin_users.lock().await.insert(source.id.clone(), user_id.clone());
+    }
     let risk = iptv_core::analyze(&risk_input(&playlist));
     let vod_counts = counts(&playlist.vod);
     st.channels.write().await.insert(source.id.clone(), playlist.channels.clone());
@@ -194,6 +202,53 @@ pub async fn preview_source(st: St<'_>, source: Source) -> Res<SourceResult> {
     let p = fetch_playlist(&st, &source).await?;
     let risk = iptv_core::analyze(&risk_input(&p));
     Ok(SourceResult { risk, vod_counts: counts(&p.vod), epg_urls: p.epg_urls, channels: vec![], fetched_at: now() })
+}
+
+pub(crate) fn jellyfin_headers(token: &str) -> reqwest::header::HeaderMap {
+    let mut h = reqwest::header::HeaderMap::new();
+    if let Ok(v) = reqwest::header::HeaderValue::from_str(&iptv_core::jellyfin::auth_header("myiptv-desktop", Some(token))) {
+        h.insert(reqwest::header::AUTHORIZATION, v);
+    }
+    h
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JellyfinLogin {
+    pub server: String,
+    pub user_id: String,
+    pub token: String,
+    pub server_name: Option<String>,
+}
+
+/// Connexion à Jellyfin/Emby : seul le jeton est conservé, jamais le mot de passe.
+#[tauri::command]
+pub async fn jellyfin_login(st: St<'_>, server: String, username: String, password: String) -> Res<JellyfinLogin> {
+    let base = iptv_core::jellyfin::base(&server);
+    let r = st
+        .http
+        .post(format!("{base}/Users/AuthenticateByName"))
+        .header(reqwest::header::AUTHORIZATION, iptv_core::jellyfin::auth_header("myiptv-desktop", None))
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .body(serde_json::json!({ "Username": username, "Pw": password }).to_string())
+        .timeout(Duration::from_secs(20))
+        .send()
+        .await
+        .map_err(|e| format!("Serveur injoignable : {e}"))?;
+    if r.status() == reqwest::StatusCode::UNAUTHORIZED {
+        return Err("Identifiant ou mot de passe incorrect.".into());
+    }
+    if !r.status().is_success() {
+        return Err(format!("Le serveur a répondu {}", r.status()));
+    }
+    let bytes = r.bytes().await.map_err(|e| e.to_string())?;
+    let j: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| "Ce serveur ne semble pas être Jellyfin ou Emby.")?;
+    Ok(JellyfinLogin {
+        server: base,
+        user_id: j["User"]["Id"].as_str().ok_or("Réponse inattendue du serveur")?.to_string(),
+        token: j["AccessToken"].as_str().ok_or("Réponse inattendue du serveur")?.to_string(),
+        server_name: j["User"]["ServerName"].as_str().map(str::to_string),
+    })
 }
 
 /// L'analyse de risque porte sur les chaînes et sur les films/séries (catalogues VOD pirates).
