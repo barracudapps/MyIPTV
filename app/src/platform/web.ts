@@ -56,6 +56,11 @@ export async function createWebBackend(): Promise<Backend> {
         return w.parseM3u(await fetchText(source.url), source.id);
       case "m3uText":
         return w.parseM3u(source.content, source.id);
+      case "archive":
+      case "radioBrowser":
+      case "podcasts":
+      case "librivox":
+        return { channels: [], epgUrls: [] };
       case "xtream": {
         const { server, username, password } = source;
         const cats = await fetchText(w.xtreamApiUrl(server, username, password, "get_live_categories"));
@@ -74,11 +79,11 @@ export async function createWebBackend(): Promise<Backend> {
     async loadSource(source) {
       const pl = await fetchSource(source);
       loaded.set(source.id, pl.channels);
-      return { channels: pl.channels, epgUrls: [...pl.epgUrls, ...source.epgUrls], risk: w.analyzeRisk(pl.channels), fetchedAt: now() };
+      return { channels: pl.channels, vodCounts: {}, epgUrls: [...pl.epgUrls, ...source.epgUrls], risk: w.analyzeRisk(pl.channels), fetchedAt: now() };
     },
     async previewSource(source) {
       const pl = await fetchSource(source);
-      return { channels: [], epgUrls: pl.epgUrls, risk: w.analyzeRisk(pl.channels), fetchedAt: now() };
+      return { channels: [], vodCounts: {}, epgUrls: pl.epgUrls, risk: w.analyzeRisk(pl.channels), fetchedAt: now() };
     },
     async removeSource(id) {
       loaded.delete(id);
@@ -108,6 +113,22 @@ export async function createWebBackend(): Promise<Backend> {
     async searchProgrammes() {
       // Recherche dans le guide non disponible en version TV (mémoire limitée).
       return [];
+    },
+    // La bibliothèque (films, séries…) n'est pas encore portée sur la version TV/navigateur.
+    async vodQuery() {
+      return { total: 0, items: [] };
+    },
+    async vodFacets() {
+      return { total: 0, categories: [], genres: [], languages: [] };
+    },
+    async vodSearch() {
+      return {};
+    },
+    async vodDetail() {
+      throw new Error("Bibliothèque indisponible sur cette plateforme pour le moment.");
+    },
+    async person(name) {
+      return { name, items: [], credits: [] };
     },
     async play(req): Promise<PlayInfo> {
       return { url: req.url, kind: guessKind(req.url), timeshift: false };

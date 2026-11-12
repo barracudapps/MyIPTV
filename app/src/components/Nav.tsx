@@ -1,15 +1,19 @@
 import { useActiveProfile, useSettings, themeFor } from "../store/settings";
+import { useLibrary } from "../store/library";
+import { SECTIONS } from "../lib/sections";
+import { playSound } from "../lib/fun";
 import { unlockSettings, useUi, type View } from "../store/ui";
 import { useNow } from "../lib/hooks";
 import { fmtTime } from "../lib/util";
 import { switchProfile } from "./ProfilePicker";
 import { Icon } from "./Icon";
 
-const ITEMS: [View, string, string][] = [
+export const NAV_ITEMS: [View, string, string][] = [
+  ["search", "Recherche", "search"],
   ["live", "Direct", "live"],
   ["guide", "Guide", "guide"],
+  ...SECTIONS.map((s) => [`vod:${s.kind}`, s.label, s.icon] as [View, string, string]),
   ["favorites", "Favoris", "star"],
-  ["search", "Recherche", "search"],
   ["sources", "Sources", "sources"],
   ["settings", "Réglages", "settings"],
 ];
@@ -20,6 +24,8 @@ export function Nav() {
   const custom = useSettings((s) => s.customThemes);
   const showClock = themeFor(profile, custom).layout.showClock;
   const now = useNow(15_000);
+  const hidden = useSettings((s) => s.hiddenSections);
+  const counts = useLibrary((s) => s.vodCounts);
 
   const go = async (v: View) => {
     // Sources et réglages : protégés pour les enfants (et pour tous si l'option est active).
@@ -28,10 +34,11 @@ export function Nav() {
       useUi.getState().toast("Les sources se gèrent depuis un profil administrateur.", "info");
       return;
     }
-    useUi.getState().setView(v);
+    playSound("click");
+    useUi.setState({ view: v, detailId: null });
   };
 
-  const items = profile.kind === "child" ? ITEMS.filter(([v]) => v !== "sources") : ITEMS;
+  const items = NAV_ITEMS.filter(([v]) => !hidden.includes(v) && !(profile.kind === "child" && v === "sources"));
 
   return (
     <nav className="nav" aria-label="Navigation principale">
@@ -44,6 +51,7 @@ export function Nav() {
           <button key={v} className={`nav-item ${view === v ? "active" : ""}`} onClick={() => go(v)} aria-current={view === v ? "page" : undefined} title={label}>
             <Icon name={icon} />
             <span>{label}</span>
+            {v.startsWith("vod:") && counts[v.slice(4)] ? <small className="nav-count">{counts[v.slice(4)] > 999 ? `${Math.floor(counts[v.slice(4)] / 1000)}k` : counts[v.slice(4)]}</small> : null}
           </button>
         ))}
       </div>

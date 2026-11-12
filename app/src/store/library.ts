@@ -3,6 +3,7 @@ import { getBackend } from "../platform";
 import type { Channel, EpgStats, Programme } from "../types";
 import { errorMessage, nowSec } from "../lib/util";
 import { useSettings } from "./settings";
+import { filterEpgUrls } from "../lib/languages";
 
 interface LibraryState {
   channels: Channel[];
@@ -16,6 +17,10 @@ interface LibraryState {
   programmes: Record<string, Programme[]>;
   loadedRange: Record<string, [number, number]>;
   epgVersion: number;
+  /** Nombre de contenus par section (films, séries…). */
+  vodCounts: Record<string, number>;
+  /** Incrémenté à chaque rechargement : invalide les vues de la bibliothèque. */
+  libraryVersion: number;
 
   loadAll(force?: boolean): Promise<void>;
   loadEpg(force?: boolean): Promise<void>;
@@ -33,14 +38,20 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
   programmes: {},
   loadedRange: {},
   epgVersion: 0,
+  vodCounts: {},
+  libraryVersion: 0,
 
   async loadAll(force = false) {
     const backend = await getBackend();
-    const sources = useSettings.getState().sources.filter((s) => s.enabled);
+    const all_sources = useSettings.getState().sources;
+    const sources = all_sources.filter((s) => s.enabled);
     set({ loading: true });
+    // Sources désactivées : retirées de la mémoire du backend (leur cache est conservé).
+    await Promise.all(all_sources.filter((s) => !s.enabled).map((s) => backend.removeSource(s.id, false)));
     const errors: Record<string, string> = {};
     const all: Channel[] = [];
     const epgUrls: string[] = [];
+    const vodCounts: Record<string, number> = {};
     // Chargement en parallèle ; une source en échec n'empêche pas les autres.
     await Promise.all(
       sources.map(async (s) => {
@@ -48,6 +59,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
           const r = await backend.loadSource(s, force);
           all.push(...r.channels);
           epgUrls.push(...r.epgUrls);
+          for (const [k, n] of Object.entries(r.vodCounts ?? {})) vodCounts[k] = (vodCounts[k] ?? 0) + n;
         } catch (e) {
           errors[s.id] = errorMessage(e);
         }
@@ -55,7 +67,17 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     );
     const order = new Map(sources.map((s, i) => [s.id, i]));
     all.sort((a, b) => (order.get(a.sourceId)! - order.get(b.sourceId)!) || 0);
-    set({ channels: all, byId: new Map(all.map((c) => [c.id, c])), errors, loading: false, epgUrls: [...new Set(epgUrls)] });
+    // Guides limités aux pays des langues favorites de tous les profils.
+    const langs = [...new Set(useSettings.getState().profiles.flatMap((p) => p.languages))];
+    set((s) => ({
+      channels: all,
+      byId: new Map(all.map((c) => [c.id, c])),
+      errors,
+      loading: false,
+      vodCounts,
+      libraryVersion: s.libraryVersion + 1,
+      epgUrls: filterEpgUrls([...new Set(epgUrls)], langs),
+    }));
     await get().loadEpg(force);
   },
 

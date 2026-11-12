@@ -10,8 +10,9 @@ import { AppearanceSettings, Range, Segmented, Toggle } from "./ThemeEditor";
 import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { ExtraSettings } from "./ExtraSettings";
 
-type Section = "appearance" | "profiles" | "parental" | "playback" | "prevention" | "about";
+type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "prevention" | "about";
 
 export function SettingsView() {
   const profile = useActiveProfile()!;
@@ -19,9 +20,13 @@ export function SettingsView() {
   const [section, setSection] = useState<Section>("appearance");
   const sections: [Section, string, string, boolean][] = [
     ["appearance", "Apparence", "palette", true],
+    ["languages", "Langues", "globe", true],
     ["profiles", "Profils", "user", isAdmin],
     ["parental", "Contrôle parental", "shield", isAdmin],
     ["playback", "Lecture", "play", true],
+    ["meta", "Métadonnées", "info", isAdmin],
+    ["fun", "Fun & succès", "trophy", true],
+    ["menu", "Menu", "list", true],
     ["prevention", "Reconnaître une offre illégale", "alert", true],
     ["about", "À propos", "info", true],
   ];
@@ -42,6 +47,7 @@ export function SettingsView() {
         {section === "profiles" && isAdmin && <ProfilesSettings />}
         {section === "parental" && isAdmin && <ParentalSettings />}
         {section === "playback" && <PlaybackSettings />}
+        {(section === "languages" || section === "meta" || section === "fun" || section === "menu") && <ExtraSettings section={section} />}
         {section === "prevention" && <Prevention />}
         {section === "about" && <About />}
       </div>
@@ -185,7 +191,7 @@ function ParentalSettings() {
     if (!/^\d{4,8}$/.test(pin)) return toast("Le code doit comporter 4 à 8 chiffres.", "error");
     if (pin !== pin2) return toast("Les deux codes ne correspondent pas.", "error");
     if (parental.pinHash && !(await askPin("Code actuel", "Saisissez le code parental actuel."))) return;
-    set({ pinHash: await hashPin(pin) });
+    set({ pinHash: await hashPin(pin), pinIsDefault: false });
     setPin("");
     setPin2("");
     toast("Code parental enregistré.", "success");
@@ -198,17 +204,49 @@ function ParentalSettings() {
         <h3>
           <Icon name="lock" /> Code parental {parental.pinHash ? <span className="mini-badge ok">actif</span> : <span className="mini-badge warn">non défini</span>}
         </h3>
-        <p className="dim small">Il protège les chaînes adultes, la sortie des profils enfants et, si vous le souhaitez, les réglages.</p>
+        <p className="dim small">Il protège les contenus adultes, la sortie des profils enfants, les profils administrateurs et, si vous le souhaitez, les réglages.</p>
+        {parental.pinHash && parental.pinIsDefault && (
+          <p className="warn-text">
+            <Icon name="alert" size={16} /> Le code est encore celui par défaut : <strong>0000</strong>. Changez-le pour protéger réellement vos réglages.
+          </p>
+        )}
         <div className="row">
           <input type="password" inputMode="numeric" placeholder="Nouveau code" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} aria-label="Nouveau code" />
           <input type="password" inputMode="numeric" placeholder="Confirmer" value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ""))} aria-label="Confirmer le code" />
           <button className="btn btn-primary" onClick={savePin}>
             {parental.pinHash ? "Changer" : "Définir"}
           </button>
+          {parental.pinHash && (
+            <button
+              className="btn btn-danger"
+              onClick={async () => {
+                if (!(await askPin("Supprimer le code", "Saisissez le code actuel pour le supprimer."))) return;
+                set({ pinHash: undefined, pinIsDefault: false });
+                toast("Code parental supprimé : plus aucune protection par code.", "info");
+              }}
+            >
+              Supprimer le code
+            </button>
+          )}
         </div>
         <Toggle label="Protéger les réglages" hint="Sources, profils et contrôle parental demandent le code." checked={parental.protectSettings} onChange={(v) => set({ protectSettings: v })} />
         <Toggle label="Verrouiller les profils enfants" hint="Le code est demandé pour quitter un profil enfant." checked={parental.lockChildProfiles} onChange={(v) => set({ lockChildProfiles: v })} />
-        <Toggle label="Masquer les chaînes adultes aux profils standard" hint="Sinon, elles sont visibles mais verrouillées par le code." checked={parental.hideAdultForStandard} onChange={(v) => set({ hideAdultForStandard: v })} />
+      </div>
+      <div className="card">
+        <h3>
+          <Icon name="lock" /> Contenus pour adultes
+        </h3>
+        <Toggle
+          label="Autoriser les contenus pour adultes"
+          hint="Désactivé par défaut : ces chaînes et contenus sont alors totalement masqués. Activé, ils apparaissent verrouillés pour les profils adultes et le code est demandé une fois par session. Ils restent toujours invisibles pour les profils enfants. MyIPTV ne fournit aucun contenu de ce type : seules vos propres sources sont concernées."
+          checked={parental.adultEnabled}
+          onChange={async (v) => {
+            if (v && !(await askPin("Autoriser les contenus pour adultes", "Confirmez avec le code parental."))) return;
+            set({ adultEnabled: v });
+            useLibrary.getState().loadAll();
+          }}
+        />
+        {parental.adultEnabled && !parental.pinHash && <p className="warn-text">Aucun code n'est défini : les contenus pour adultes ne sont protégés par rien.</p>}
       </div>
       {children.length === 0 ? (
         <p className="dim">Créez un profil enfant (section Profils) pour régler la tolérance par âge, les listes blanche et noire.</p>

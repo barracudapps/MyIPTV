@@ -4,16 +4,20 @@ import { useActiveProfile, useSettings } from "../store/settings";
 import { channelVisible } from "./parental";
 import type { Channel } from "../types";
 import { nowSec } from "./util";
+import { sortByLanguage } from "./languages";
 
 /** Chaînes visibles pour le profil actif (contrôle parental appliqué). */
 export function useVisibleChannels(): Channel[] {
   const channels = useLibrary((s) => s.channels);
   const profile = useActiveProfile();
-  const hideAdult = useSettings((s) => s.parental.hideAdultForStandard);
+  const adultEnabled = useSettings((s) => s.parental.adultEnabled);
   return useMemo(() => {
     if (!profile) return [];
-    return channels.filter((c) => channelVisible(profile, c) && !(hideAdult && profile.kind === "standard" && c.adult));
-  }, [channels, profile, hideAdult]);
+    return sortByLanguage(
+      channels.filter((c) => channelVisible(profile, c, adultEnabled)),
+      profile.languages,
+    );
+  }, [channels, profile, adultEnabled]);
 }
 
 /** Horloge partagée, rafraîchie toutes les `ms`. */

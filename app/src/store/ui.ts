@@ -2,7 +2,9 @@ import { create } from "zustand";
 import { hashPin } from "../lib/parental";
 import { useSettings } from "./settings";
 
-export type View = "live" | "guide" | "favorites" | "search" | "sources" | "settings";
+import type { VodKind } from "../types";
+
+export type View = "live" | "guide" | "favorites" | "search" | "sources" | "settings" | `vod:${VodKind}`;
 
 interface PinRequest {
   title: string;
@@ -24,6 +26,13 @@ interface UiState {
   adultUnlocked: boolean;
   settingsUnlocked: boolean;
   searchQuery: string;
+  /** Fiche ouverte et personne affichée (par-dessus la vue courante). */
+  detailId: string | null;
+  person: { name: string; tmdbId?: number } | null;
+  /** Filtre transmis à une section (recherche « Voir tout », genre cliqué…). */
+  vodFilter: { text?: string; field?: string; genre?: string; category?: string } | null;
+  /** Filtre rapide de langue partagé par toutes les vues : « mine » (mes langues), « all » ou un code. */
+  langFilter: string;
   setView(v: View): void;
   setSearch(q: string): void;
   toast(text: string, tone?: Toast["tone"]): void;
@@ -37,6 +46,10 @@ export const useUi = create<UiState>()((set) => ({
   adultUnlocked: false,
   settingsUnlocked: false,
   searchQuery: "",
+  detailId: null,
+  person: null,
+  vodFilter: null,
+  langFilter: "mine",
   setView: (view) => set({ view }),
   setSearch: (searchQuery) => set({ searchQuery }),
   toast(text, tone = "info") {

@@ -22,10 +22,28 @@ export function SourcesView() {
   const [editing, setEditing] = useState<Source | null>(null);
 
   const count = (id: string) => channels.filter((c) => c.sourceId === id).length;
+  const describe = (s: Source) => {
+    switch (s.kind) {
+      case "xtream":
+        return `Xtream · ${s.server}`;
+      case "m3uUrl":
+        return s.url;
+      case "m3uText":
+        return "Fichier importé";
+      case "archive":
+        return "Internet Archive · domaine public / licences libres";
+      case "radioBrowser":
+        return `Radio Browser · ${s.countries.join(", ") || "monde"}`;
+      case "podcasts":
+        return `Apple Podcasts · ${s.countries.join(", ").toUpperCase()}`;
+      case "librivox":
+        return `LibriVox · ${s.languages.join(", ")}`;
+    }
+  };
 
   const remove = async (s: Source) => {
     useSettings.getState().removeSource(s.id);
-    await (await getBackend()).removeSource(s.id);
+    await (await getBackend()).removeSource(s.id, true);
     useLibrary.getState().loadAll();
   };
 
@@ -52,7 +70,7 @@ export function SourcesView() {
 
       {sources.length === 0 && (
         <div className="card notice">
-          <strong>Bienvenue !</strong> Commencez par le catalogue gratuit (chaînes publiques et gratuites du monde entier), ou ajoutez l'abonnement
+          <strong>Bienvenue !</strong> Les sources gratuites et légales intégrées peuvent être réactivées ici. Commencez par le catalogue gratuit (chaînes publiques et gratuites du monde entier), ou ajoutez l'abonnement
           de votre fournisseur.
         </div>
       )}
@@ -72,21 +90,26 @@ export function SourcesView() {
               <span />
             </label>
             <div className="source-info">
-              <strong>{s.name}</strong>
+              <strong>
+                {s.name} {s.builtin && <span className="mini-badge ok">gratuit et légal</span>}
+              </strong>
               <span className="dim">
-                {s.kind === "xtream" ? `Xtream · ${s.server}` : s.kind === "m3uUrl" ? s.url : "Fichier importé"}
-                {" · "}
-                {count(s.id)} chaînes
+                {describe(s)}
+                {count(s.id) > 0 && ` · ${count(s.id)} chaînes`}
                 {s.risk && s.risk !== "low" && <span className="mini-badge warn">import à risque confirmé</span>}
               </span>
               {errors[s.id] && <span className="error-text">{errors[s.id]}</span>}
             </div>
-            <button className="icon-btn" title="Modifier" onClick={() => setEditing(s)}>
-              <Icon name="settings" />
-            </button>
-            <button className="icon-btn" title="Supprimer" onClick={() => remove(s)}>
-              <Icon name="trash" />
-            </button>
+            {!s.builtin && (
+              <>
+                <button className="icon-btn" title="Modifier" onClick={() => setEditing(s)}>
+                  <Icon name="settings" />
+                </button>
+                <button className="icon-btn" title="Supprimer" onClick={() => remove(s)}>
+                  <Icon name="trash" />
+                </button>
+              </>
+            )}
           </li>
         ))}
       </ul>

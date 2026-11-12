@@ -30,6 +30,61 @@ export interface Profile {
   favorites: string[];
   recent: string[];
   child?: ChildRules;
+  /** Langues favorites, dans l'ordre de préférence (ISO 639-1). */
+  languages: string[];
+  /** Films, séries, podcasts… mis en favoris. */
+  vodFavorites: string[];
+  /** Note personnelle (1 à 5) par contenu. */
+  ratings: Record<string, number>;
+  /** Historique de visionnage / écoute, le plus récent d'abord. */
+  history: HistoryEntry[];
+  player: PlayerPrefs;
+}
+
+export interface HistoryEntry {
+  /** Contenu (film, série, podcast…). */
+  itemId: string;
+  kind?: string;
+  title: string;
+  poster?: string;
+  /** Épisode / piste en cours pour les contenus à épisodes. */
+  episodeId?: string;
+  episodeLabel?: string;
+  position: number;
+  duration: number;
+  finished: boolean;
+  updatedAt: number;
+}
+
+export type AspectMode = "contain" | "cover" | "fill" | "16:9" | "4:3" | "21:9";
+export type AudioMode = "normal" | "night" | "voice" | "boost";
+
+export interface PlayerPrefs {
+  aspect: AspectMode;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  audioMode: AudioMode;
+  /** Sélection automatique de l'audio et des sous-titres selon les langues favorites. */
+  autoTracks: boolean;
+  subtitlesByDefault: boolean;
+}
+
+export const DEFAULT_PLAYER_PREFS: PlayerPrefs = {
+  aspect: "contain",
+  brightness: 1,
+  contrast: 1,
+  saturation: 1,
+  audioMode: "normal",
+  autoTracks: true,
+  subtitlesByDefault: false,
+};
+
+export interface AdultContext {
+  /** Contenus adultes autorisés par l'administrateur. */
+  enabled: boolean;
+  /** Code parental saisi pendant la session. */
+  unlocked: boolean;
 }
 
 export const DEFAULT_CHILD_RULES = (age: number): ChildRules => ({
@@ -47,11 +102,18 @@ export type Access =
   | { ok: false; reason: "adult-pin" } // déblocable avec le code parental
   | { ok: false; reason: "blocked"; message: string };
 
+/** Accès à un contenu adulte : désactivé par défaut, jamais pour un enfant, sinon derrière le code. */
+export function adultAccess(p: Profile, adult: AdultContext): Access {
+  if (p.kind === "child") return { ok: false, reason: "blocked", message: "Contenu réservé aux adultes." };
+  if (!adult.enabled) return { ok: false, reason: "blocked", message: "Les contenus pour adultes sont désactivés (Réglages › Contrôle parental)." };
+  return adult.unlocked ? { ok: true } : { ok: false, reason: "adult-pin" };
+}
+
 /** Accès à une chaîne pour un profil. */
-export function channelAccess(p: Profile, ch: Channel, adultUnlocked: boolean): Access {
+export function channelAccess(p: Profile, ch: Channel, adult: AdultContext): Access {
+  if (ch.adult) return adultAccess(p, adult);
   if (p.kind === "child") {
     const r = p.child!;
-    if (ch.adult) return { ok: false, reason: "blocked", message: "Chaîne réservée aux adultes." };
     if (r.blacklist.includes(ch.id)) return { ok: false, reason: "blocked", message: "Chaîne bloquée par un parent." };
     if (r.whitelist.includes(ch.id)) return { ok: true };
     if (r.whitelistOnly) return { ok: false, reason: "blocked", message: "Seules les chaînes autorisées par un parent sont visibles." };
@@ -59,13 +121,13 @@ export function channelAccess(p: Profile, ch: Channel, adultUnlocked: boolean): 
       return { ok: false, reason: "blocked", message: "Catégorie bloquée par un parent." };
     return { ok: true };
   }
-  if (ch.adult && p.kind === "standard" && !adultUnlocked) return { ok: false, reason: "adult-pin" };
   return { ok: true };
 }
 
-/** Un profil enfant ne voit pas du tout les chaînes bloquées. */
-export function channelVisible(p: Profile, ch: Channel): boolean {
-  return p.kind !== "child" || channelAccess(p, ch, false).ok;
+/** Chaînes bloquées et contenus adultes non autorisés : masqués (le verrou ne concerne que l'adulte autorisé). */
+export function channelVisible(p: Profile, ch: Channel, adultEnabled: boolean): boolean {
+  if (ch.adult) return adultEnabled && p.kind !== "child";
+  return p.kind !== "child" || channelAccess(p, ch, { enabled: false, unlocked: false }).ok;
 }
 
 export function maxAge(p: Profile): number {

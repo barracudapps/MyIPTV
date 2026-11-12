@@ -9,6 +9,10 @@ import { current, fmtTime, normalize, nowSec } from "../lib/util";
 import { programmeAccess } from "../lib/parental";
 import type { Channel, Programme } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
+import { fun } from "../lib/fun";
+import { LangBadge, LangBar, langMatch } from "./Filters";
+import { countryOrLang, langFlag } from "../lib/languages";
+import { historyProgress, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
 
 const ALL = "__all__";
@@ -22,6 +26,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
   const hasSources = useSettings((s) => s.sources.length > 0);
   const setView = useUi((s) => s.setView);
   const [group, setGroup] = useState(ALL);
+  const langFilter = useUi((s) => s.langFilter);
   const [filter, setFilter] = useState("");
   const [view, setChannelView] = useState(layout.channelView);
   useEffect(() => setChannelView(layout.channelView), [layout.channelView]);
@@ -43,9 +48,23 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
     return base.filter(
       (c) =>
         (group === ALL || (c.group ?? "Sans catégorie").split(";").some((g) => g.trim() === group)) &&
+        langMatch(langFilter, profile.languages, c.languages) &&
         (!q || normalize(c.name).includes(q)),
     );
-  }, [base, group, filter]);
+  }, [base, group, filter, langFilter, profile.languages]);
+
+  // Langues présentes, les favorites en tête.
+  const languages = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of base) for (const l of c.languages ?? []) counts.set(l, (counts.get(l) ?? 0) + 1);
+    const rank = (l: string) => {
+      const i = profile.languages.indexOf(l);
+      return i < 0 ? 99 : i;
+    };
+    return [...counts.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1]).map(([name, count]) => ({ name, count, label: name }));
+  }, [base, profile.languages]);
+  const vodFavorites = useItemsByIds(scope === "favorites" ? profile.vodFavorites : []);
+  const historyItems = useItemsByIds(scope === "favorites" ? profile.history.map((h) => h.itemId).slice(0, 30) : []);
 
   const recent = useMemo(() => {
     if (scope !== "favorites") return [];
@@ -81,14 +100,21 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             <Icon name="grid" />
           </button>
         </div>
+        <LangBar available={languages} />
+        {scope === "favorites" && (
+          <>
+            <VodRow title="Ma liste" items={vodFavorites} />
+            <VodRow title="Historique" items={historyItems} progress={historyProgress(profile.history)} />
+          </>
+        )}
         {layout.showGroups && groups.length > 1 && (
           <div className="chips" role="tablist" aria-label="Catégories">
             <button className={`chip ${group === ALL ? "active" : ""}`} onClick={() => setGroup(ALL)}>
               Toutes <span>{base.length}</span>
             </button>
             {groups.slice(0, 60).map(([g, n]) => (
-              <button key={g} className={`chip ${group === g ? "active" : ""}`} onClick={() => setGroup(g)}>
-                {g} <span>{n}</span>
+              <button key={g} className={`chip ${group === g ? "active" : ""}`} onClick={() => setGroup(g)} title={g}>
+                <GroupLabel name={g} /> <span>{n}</span>
               </button>
             ))}
           </div>
@@ -111,7 +137,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             <div className="spinner" /> Chargement des chaînes…
           </div>
         ) : list.length === 0 ? (
-          <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆." : "Aucune chaîne ne correspond."}</div>
+          scope === "favorites" && (vodFavorites.length || historyItems.length) ? null : <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film." : "Aucune chaîne ne correspond."}</div>
         ) : (
           <ChannelCollection channels={list} mode={view} showNowNext={layout.showNowNext} showProgress={layout.showProgress} />
         )}
@@ -212,6 +238,8 @@ function FavButton({ channel, fav }: { channel: Channel; fav: boolean }) {
       onClick={(e) => {
         e.stopPropagation();
         useSettings.getState().toggleFavorite(channel.id);
+        const p = useSettings.getState().profiles.find((x) => x.id === useSettings.getState().activeProfileId);
+        fun.onFavorite(!fav, (p?.favorites.length ?? 0) + (p?.vodFavorites.length ?? 0));
       }}
     >
       <Icon name="star" size={18} filled={fav} />
@@ -225,7 +253,10 @@ function ChannelRow({ channel, list, showNowNext, showProgress }: { channel: Cha
   return (
     <div className={`channel-row ${playing ? "playing" : ""}`}>
       <button className="channel-main" onClick={() => usePlayer.getState().play(channel, { zapList: list })}>
-        <ChannelLogo channel={channel} size={logo} />
+        <span className="logo-wrap">
+          <ChannelLogo channel={channel} size={logo} />
+          <LangBadge langs={channel.languages} max={1} />
+        </span>
         <span className="channel-text">
           <span className="channel-name">
             {channel.name}
@@ -255,7 +286,10 @@ function ChannelTile({ channel, list }: { channel: Channel; list: Channel[] }) {
   return (
     <div className={`channel-tile ${playing ? "playing" : ""}`}>
       <button className="tile-main" onClick={() => usePlayer.getState().play(channel, { zapList: list })} title={prog ? `${channel.name} — ${prog.title}` : channel.name}>
-        <ChannelLogo channel={channel} size={64} />
+        <span className="logo-wrap">
+          <ChannelLogo channel={channel} size={64} />
+          <LangBadge langs={channel.languages} />
+        </span>
         <span className="channel-name">{channel.name}</span>
         {prog && <span className="tile-prog">{prog.title}</span>}
       </button>
@@ -335,5 +369,17 @@ function ProgrammeCard({ p, label }: { p: Programme; label: string }) {
       {p.subtitle && <p className="subtitle">{p.subtitle}</p>}
       {p.desc && <p className="desc">{p.desc}</p>}
     </div>
+  );
+}
+
+/** Groupe « FR | Info » affiché « 🇫🇷 Info ». */
+function GroupLabel({ name }: { name: string }) {
+  const m = name.match(/^\s*[[(|]?\s*([A-Za-z]{2,3})\s*[\]):|\-]\s*(.+)$/);
+  const code = m ? countryOrLang(m[1]) : undefined;
+  if (!m || !code) return <>{name}</>;
+  return (
+    <>
+      <span className="flag">{langFlag(code)}</span> {m[2]}
+    </>
   );
 }

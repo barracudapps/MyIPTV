@@ -18,6 +18,7 @@ export interface Channel {
   referrer?: string;
   catchup?: Catchup;
   adult?: boolean;
+  languages?: string[];
 }
 
 export interface Programme {
@@ -35,7 +36,11 @@ export interface Programme {
 export type SourceKind =
   | { kind: "m3uUrl"; url: string }
   | { kind: "m3uText"; content: string }
-  | { kind: "xtream"; server: string; username: string; password: string; output?: string };
+  | { kind: "xtream"; server: string; username: string; password: string; output?: string }
+  | { kind: "archive"; collection: string; mediatype: string; content: VodKind; rows?: number }
+  | { kind: "radioBrowser"; countries: string[] }
+  | { kind: "podcasts"; countries: string[] }
+  | { kind: "librivox"; languages: string[] };
 
 export type Source = SourceKind & {
   id: string;
@@ -45,6 +50,8 @@ export type Source = SourceKind & {
   addedAt: number;
   /** Niveau de risque constaté à l'import, conservé pour l'administrateur. */
   risk?: RiskLevel;
+  /** Source légale intégrée par défaut (désactivable, non modifiable). */
+  builtin?: boolean;
 };
 
 export type RiskLevel = "low" | "medium" | "high";
@@ -61,6 +68,7 @@ export interface RiskReport {
 
 export interface SourceResult {
   channels: Channel[];
+  vodCounts: Record<string, number>;
   epgUrls: string[];
   risk: RiskReport;
   fetchedAt: number;
@@ -87,4 +95,140 @@ export interface PlayRequest {
   referrer?: string;
   timeshift: boolean;
   windowMinutes: number;
+}
+
+// ------------------------------------------------------------------ Bibliothèque
+
+export type VodKind = "movie" | "series" | "show" | "music" | "radio" | "podcast" | "audiobook";
+
+export interface Episode {
+  id: string;
+  season: number;
+  episode: number;
+  title: string;
+  url: string;
+  duration?: number;
+  plot?: string;
+  still?: string;
+  airDate?: string;
+}
+
+export interface VodItem {
+  id: string;
+  sourceId: string;
+  kind?: VodKind;
+  title: string;
+  rawName: string;
+  year?: number;
+  url?: string;
+  poster?: string;
+  backdrop?: string;
+  category?: string;
+  genres?: string[];
+  languages?: string[];
+  rating?: number;
+  plot?: string;
+  cast?: string[];
+  directors?: string[];
+  duration?: number;
+  added?: number;
+  tmdbId?: number;
+  imdbId?: string;
+  trailer?: string;
+  userAgent?: string;
+  referrer?: string;
+  live?: boolean;
+  adult?: boolean;
+  episodes?: Episode[];
+}
+
+export interface Person {
+  name: string;
+  role?: string;
+  photo?: string;
+  tmdbId?: number;
+}
+
+export interface Season {
+  number: number;
+  name: string;
+  episodes: Episode[];
+}
+
+export interface VodDetail {
+  item: VodItem;
+  cast: Person[];
+  crew: Person[];
+  seasons: Season[];
+  imdbRating?: number;
+  imdbVotes?: string;
+  tmdbRating?: number;
+  tagline?: string;
+  countries: string[];
+  age?: number;
+}
+
+export type SearchField = "all" | "title" | "actor" | "director" | "genre" | "year" | "category" | "plot";
+export type VodSort = "default" | "added" | "rating" | "title" | "year";
+
+export interface VodQuery {
+  kind?: VodKind;
+  category?: string;
+  genre?: string;
+  language?: string;
+  anyLanguages?: string[];
+  includeUnknownLanguage?: boolean;
+  preferLanguages: string[];
+  text?: string;
+  field?: SearchField;
+  ids?: string[];
+  sort?: VodSort;
+  includeAdult?: boolean;
+  offset?: number;
+  limit?: number;
+}
+
+export interface VodPage {
+  total: number;
+  items: VodItem[];
+}
+
+export interface Facet {
+  name: string;
+  count: number;
+  label: string;
+  language?: string;
+}
+
+export interface VodFacets {
+  total: number;
+  categories: Facet[];
+  genres: Facet[];
+  languages: Facet[];
+}
+
+export interface MetaKeys {
+  tmdb?: string;
+  omdb?: string;
+  language?: string;
+}
+
+export interface Credit {
+  title: string;
+  year?: number;
+  kind: VodKind;
+  tmdbId: number;
+  role?: string;
+  poster?: string;
+  availableId?: string;
+}
+
+export interface PersonView {
+  name: string;
+  photo?: string;
+  biography?: string;
+  birthday?: string;
+  knownFor?: string;
+  items: VodItem[];
+  credits: Credit[];
 }
