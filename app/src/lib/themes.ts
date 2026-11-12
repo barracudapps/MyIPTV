@@ -29,6 +29,8 @@ export interface ThemeLayout {
   showProgress: boolean;
   showClock: boolean;
   showGroups: boolean;
+  /** Vitrine façon plateforme de streaming : bannière, rangées par genre, grandes affiches. */
+  showcase?: boolean;
 }
 
 export interface Theme {
@@ -41,7 +43,7 @@ export interface Theme {
   fontScale: number;
   layout: ThemeLayout;
   /** Effets visuels propres au thème (matières, mouvements), en plus des couleurs. */
-  fx?: "luxe";
+  fx?: "luxe" | "stream-red" | "stream-blue" | "stream-teal";
 }
 
 const baseLayout: ThemeLayout = {
@@ -255,6 +257,40 @@ export const BUILTIN_THEMES: Theme[] = [
     layout: { ...baseLayout, nav: "left", channelView: "grid", density: "comfortable", logoSize: 48 },
   },
   {
+    // Vitrines façon plateformes de streaming : grandes affiches, bannière, rangées par genre.
+    id: "rouge-cinema",
+    name: "Rouge cinéma",
+    builtin: true,
+    colors: { bg: "#141414", surface: "#181818", surface2: "#2a2a2a", border: "#303030", text: "#ffffff", textDim: "#b3b3b3", accent: "#e50914", accentText: "#ffffff", live: "#e50914", danger: "#e50914" },
+    radius: 4,
+    font: "system",
+    fontScale: 1,
+    fx: "stream-red",
+    layout: { ...baseLayout, nav: "top", channelView: "grid", logoSize: 48, showcase: true },
+  },
+  {
+    id: "nuit-etoilee",
+    name: "Nuit étoilée",
+    builtin: true,
+    colors: { bg: "#1a1d29", surface: "#252833", surface2: "#31343e", border: "#3b3e48", text: "#f9f9f9", textDim: "#cacaca", accent: "#0072d2", accentText: "#ffffff", live: "#e0234e", danger: "#e0234e" },
+    radius: 10,
+    font: "rounded",
+    fontScale: 1,
+    fx: "stream-blue",
+    layout: { ...baseLayout, nav: "rail", channelView: "grid", logoSize: 48, showcase: true },
+  },
+  {
+    id: "bleu-ocean",
+    name: "Bleu océan",
+    builtin: true,
+    colors: { bg: "#0f171e", surface: "#1b2530", surface2: "#252e39", border: "#2d3945", text: "#ffffff", textDim: "#8197a4", accent: "#1a98ff", accentText: "#ffffff", live: "#ff4d4d", danger: "#ff4d4d" },
+    radius: 6,
+    font: "system",
+    fontScale: 1,
+    fx: "stream-teal",
+    layout: { ...baseLayout, nav: "top", channelView: "grid", logoSize: 48, showcase: true },
+  },
+  {
     // Style « lecteur moderne » : barre d'icônes, gris neutres, cartes arrondies, accent bleu.
     id: "studio",
     name: "Studio",
@@ -300,6 +336,8 @@ export function applyTheme(t: Theme) {
   s.setProperty("--player-size", `${t.layout.playerSize}%`);
   document.documentElement.dataset.nav = t.layout.nav;
   document.documentElement.dataset.density = t.layout.density;
+  if (t.layout.showcase) document.documentElement.dataset.showcase = "on";
+  else delete document.documentElement.dataset.showcase;
   if (t.fx) document.documentElement.dataset.fx = t.fx;
   else delete document.documentElement.dataset.fx;
   document.documentElement.style.colorScheme = isLight(t.colors.bg) ? "light" : "dark";

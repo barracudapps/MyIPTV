@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
 import { usePlayer } from "../store/player";
-import { useActiveProfile, useSettings } from "../store/settings";
+import { themeFor, useActiveProfile, useSettings } from "../store/settings";
+import { Showcase } from "./Showcase";
 import { useUi } from "../store/ui";
 import { sectionOf } from "../lib/sections";
 import { fmtDuration } from "../lib/util";
@@ -187,6 +188,9 @@ export function VodView({ kind }: { kind: VodKind }) {
   const favorites = useItemsByIds(profile.vodFavorites, kind);
   const progress = useMemo(() => historyProgress(profile.history), [profile.history]);
   const filtered = !!(category || genre || text || country);
+  // Thèmes « vitrine » : bannière et rangées par genre pour les films, séries et émissions.
+  const customThemes = useSettings((s) => s.customThemes);
+  const showcase = !!themeFor(profile, customThemes).layout.showcase && (kind === "movie" || kind === "series" || kind === "show");
   // Contenus masqués par le filtre de langue : proposés plutôt qu'un écran vide.
   const hiddenByLanguage = facets && langFilter !== "all" ? Math.max(0, facets.total - total) : 0;
 
@@ -197,7 +201,8 @@ export function VodView({ kind }: { kind: VodKind }) {
   };
 
   return (
-    <div className="page vod-page">
+    <div className={`page vod-page ${showcase && !filtered ? "with-hero" : ""}`}>
+      {!filtered && showcase && facets && <Showcase part="hero" kind={kind} genres={facets.genres.map((g) => g.name)} />}
       <header className="page-head">
         <div>
           <h1>
@@ -273,12 +278,14 @@ export function VodView({ kind }: { kind: VodKind }) {
         <FilterTabs items={facets.categories.slice(0, 40)} value={category} onChange={setCategory} allLabel="Toutes les catégories" />
       ) : null}
 
+      {!filtered && showcase && facets && <Showcase part="rows" kind={kind} genres={facets.genres.map((g) => g.name)} />}
       {!filtered && (
         <>
           <VodRow title={kind === "radio" ? "Écoutées récemment" : "Reprendre"} items={resume} progress={progress} />
           <VodRow title="Ma liste" items={favorites} />
         </>
       )}
+      {!filtered && showcase && <h3 className="catalog-title">Tout le catalogue</h3>}
 
       {total === 0 && !busy && !loading ? (
         hiddenByLanguage > 0 && !filtered ? (
