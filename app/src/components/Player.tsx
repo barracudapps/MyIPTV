@@ -28,6 +28,8 @@ interface Clock {
   live: boolean;
   /** Heure murale (s) de la position de lecture. */
   wall: number;
+  /** Données vidéo disponibles (sinon : chargement ou mise en mémoire tampon). */
+  ready: boolean;
 }
 
 const MINI_W = 360;
@@ -47,6 +49,22 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
     let recovered = false;
     hls.on(Hls.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
+      // Playlist refusée ou absente : relancer ne sert à rien, on explique.
+      const code = d.response?.code ?? 0;
+      if (d.details.startsWith("manifest") || d.details.startsWith("level") || code >= 400) {
+        onFatal(
+          code === 0 && !isTauri && d.type === Hls.ErrorTypes.NETWORK_ERROR
+            ? "Cette chaîne n'autorise pas la lecture depuis un navigateur. Elle fonctionne dans l'application de bureau ou sur TV."
+            : code === 403 || code === 401
+            ? "Accès refusé par la chaîne (restriction géographique ou d'accès probable)."
+            : code === 404 || code === 410
+              ? "Flux introuvable : la chaîne a peut-être changé d'adresse."
+              : d.details === "manifestParsingError"
+                ? "Cette adresse ne renvoie pas un flux vidéo."
+                : "La chaîne ne répond pas.",
+        );
+        return;
+      }
       if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
         recovered = true;
         hls.recoverMediaError();
@@ -82,7 +100,8 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
   // Vider la vidéo à la destruction déclenche aussi un événement « error » : seul celui
   // de la source courante compte, et l'écouteur est retiré avec le moteur.
   const onError = () => {
-    if (video.getAttribute("src") === url) onFatal(`Format non pris en charge (erreur ${video.error?.code ?? "?"}).`);
+    if (video.getAttribute("src") !== url) return;
+    onFatal(video.error?.code === 4 ? "Flux illisible : l'adresse ne mène pas à une vidéo ou son format n'est pas pris en charge." : `Lecture impossible (erreur ${video.error?.code ?? "?"}).`);
   };
   video.addEventListener("error", onError);
   video.addEventListener("loadedmetadata", onTracks, { once: true });
@@ -94,6 +113,12 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       video.load();
     },
   };
+}
+
+/** Le contenu en cours est-il purement audio (radio, podcast…) ? */
+function isAudioOnly() {
+  const k = usePlayer.getState().media?.item.kind;
+  return k === "radio" || k === "music" || k === "podcast" || k === "audiobook";
 }
 
 type Panel = null | "audio" | "subtitles" | "quality" | "picture" | "sound" | "speed";
@@ -115,7 +140,7 @@ export function Player() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
-  const [clock, setClock] = useState<Clock>({ playing: false, t: 0, start: 0, end: 0, live: true, wall: nowSec() });
+  const [clock, setClock] = useState<Clock>({ playing: false, t: 0, start: 0, end: 0, live: true, wall: nowSec(), ready: false });
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [speed, setSpeed] = useState(1);
@@ -135,6 +160,7 @@ export function Player() {
   const triedRemux = useRef(false);
   useEffect(() => {
     triedRemux.current = false;
+    setEngineError(null);
   }, [channel?.id, media?.item.id, media?.episode?.id, catchup?.start]);
 
   const active = channel != null || media != null;
@@ -169,14 +195,16 @@ export function Player() {
   // Moteur de lecture.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !info) return;
+    if (!video || !info || info.kind === "youtube") return;
     setEngineError(null);
     // Erreurs d'un moteur déjà remplacé : ignorées.
     let alive = true;
+    let failed = false;
     // Échec d'un fichier (film, épisode, replay) : une tentative via ffmpeg avant d'afficher l'erreur.
     // Pas pour un direct : le format y est déjà détecté et l'analyse ffmpeg ferait attendre longtemps.
     const onFatal = (msg: string) => {
-      if (!alive) return;
+      if (!alive || failed) return;
+      failed = true;
       console.warn(`[lecteur] échec ${info.kind} : ${msg}`);
       const st = usePlayer.getState();
       const isFile = st.media != null || st.catchup != null;
@@ -222,6 +250,10 @@ export function Player() {
       if (resumeAt > 5) video.addEventListener("loadedmetadata", () => (video.currentTime = resumeAt), { once: true });
     }
     engineRef.current = engine;
+    // Chien de garde : aucune donnée après 25 s, la source ne répond pas (évite un chargement sans fin).
+    const watchdog = window.setTimeout(() => {
+      if (alive && video.readyState === 0 && !isAudioOnly()) onFatal("La chaîne ne répond pas (aucune donnée reçue).");
+    }, 25_000);
     video.playbackRate = 1;
     setSpeed(1);
     video.play().catch(() => {
@@ -232,6 +264,7 @@ export function Player() {
     });
     return () => {
       alive = false;
+      clearTimeout(watchdog);
       // La conversion peut avoir remplacé le moteur (déplacement, piste audio).
       engineRef.current?.destroy();
       engineRef.current = null;
@@ -252,7 +285,7 @@ export function Player() {
     if (!video) return;
     const tick = () => {
       if (info?.kind === "remux") {
-        setClock({ playing: !video.paused, t: remuxRef.current.offset + video.currentTime, start: 0, end: info.duration ?? 0, live: false, wall: nowSec() });
+        setClock({ playing: !video.paused, t: remuxRef.current.offset + video.currentTime, start: 0, end: info.duration ?? 0, live: false, wall: nowSec(), ready: video.readyState >= 2 });
         return;
       }
       const s = video.seekable;
@@ -260,15 +293,14 @@ export function Player() {
       const end = s.length ? s.end(s.length - 1) : video.duration || 0;
       const pd = engineRef.current?.playingDate?.();
       const wall = catchup ? catchup.start + video.currentTime : pd ? pd.getTime() / 1000 : nowSec() - Math.max(0, end - video.currentTime);
-      setClock({ playing: !video.paused, t: video.currentTime, start, end: Number.isFinite(end) ? end : 0, live: isLiveStream, wall });
+      setClock({ playing: !video.paused, t: video.currentTime, start, end: Number.isFinite(end) ? end : 0, live: isLiveStream, wall, ready: video.readyState >= 2 });
     };
     const id = setInterval(tick, 500);
-    video.addEventListener("play", tick);
-    video.addEventListener("pause", tick);
+    const events = ["play", "pause", "waiting", "playing", "canplay", "loadeddata"];
+    for (const ev of events) video.addEventListener(ev, tick);
     return () => {
       clearInterval(id);
-      video.removeEventListener("play", tick);
-      video.removeEventListener("pause", tick);
+      for (const ev of events) video.removeEventListener(ev, tick);
     };
   }, [info, catchup, isLiveStream]);
 
@@ -537,6 +569,22 @@ export function Player() {
         />
       </div>
 
+      {info?.kind === "youtube" && (
+        <div className="youtube-wrap">
+          {info.url.includes("/embed/") ? (
+            <iframe src={info.url} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          ) : (
+            <div className="player-center">
+              <Icon name="live" size={40} />
+              <span>Ce direct est diffusé sur YouTube.</span>
+              <a className="btn btn-primary" href={info.url} target="_blank" rel="noreferrer">
+                Ouvrir sur YouTube
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       {isAudio && (
         <div className="audio-visual">
           {media!.item.poster ? <img src={media!.item.poster} alt="" /> : mascotOn ? <MascotFigure mood={clock.playing ? "dance" : "idle"} color={mascotColor} size={small ? 60 : 120} /> : <Icon name={sectionOf(media!.item.kind).icon} size={64} />}
@@ -557,7 +605,7 @@ export function Player() {
         </div>
       )}
 
-      {!shownError && (loading || (!clock.playing && clock.t === 0)) && !blocked && (
+      {!shownError && info?.kind !== "youtube" && !isAudio && (loading || !clock.ready) && !blocked && (
         <div className="player-center">
           <div className="spinner" />
           {!small && <span>{info?.timeshift ? "Préparation du direct…" : "Connexion…"}</span>}

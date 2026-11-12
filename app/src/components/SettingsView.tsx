@@ -406,6 +406,12 @@ function PlaybackSettings() {
           onChange={(v) => useSettings.getState().setTestMode(v)}
         />
       )}
+      <Toggle
+        label="Chaînes non vérifiées des listes intégrées"
+        hint="Désactivé par défaut : les chaînes servies depuis une simple adresse IP sont le plus souvent des relais non officiels, sans garantie de légalité."
+        checked={!!pb.includeUnverified}
+        onChange={(v) => (set({ includeUnverified: v }), useLibrary.getState().loadAll())}
+      />
       <Toggle label="Reprendre la dernière chaîne au démarrage" checked={pb.resumeLastChannel} onChange={(v) => set({ resumeLastChannel: v })} />
       <Toggle label="Mini-lecteur automatique" hint="La vidéo continue en petit quand vous allez sur le guide, la recherche ou les réglages." checked={pb.autoMiniPlayer} onChange={(v) => set({ autoMiniPlayer: v })} />
       <h3>Raccourcis</h3>

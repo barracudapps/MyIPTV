@@ -18,6 +18,7 @@ pub mod util;
 pub mod vod;
 pub mod xmltv;
 pub mod xtream;
+pub mod youtube;
 
 #[cfg(feature = "wasm")]
 pub mod wasm;

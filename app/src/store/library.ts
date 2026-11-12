@@ -57,7 +57,10 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
       sources.map(async (s) => {
         try {
           const r = await backend.loadSource(s, force);
-          all.push(...r.channels);
+          // Listes intégrées : un flux servi depuis une adresse IP brute est le plus souvent un relais
+          // non officiel d'une chaîne ; écarté sauf choix contraire de l'utilisateur.
+          const keep = !s.builtin || useSettings.getState().playback.includeUnverified ? r.channels : r.channels.filter((c) => !/^https?:\/\/\d{1,3}(\.\d{1,3}){3}[:/]/.test(c.url));
+          all.push(...keep);
           epgUrls.push(...r.epgUrls);
           for (const [k, n] of Object.entries(r.vodCounts ?? {})) vodCounts[k] = (vodCounts[k] ?? 0) + n;
         } catch (e) {

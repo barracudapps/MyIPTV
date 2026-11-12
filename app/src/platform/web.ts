@@ -17,6 +17,8 @@ type Wasm = {
   programmes(channels: Channel[], from: number, to: number): Record<string, never>;
   catchupUrl(channel: Channel, start: number, stop: number, now: number): string | undefined;
   analyzeRisk(channels: Channel[]): SourceResult["risk"];
+  youtubeEmbed(url: string): string | undefined;
+  isYoutube(url: string): boolean;
 };
 
 const wasmModules = import.meta.glob("../wasm/iptv_core.js");
@@ -146,6 +148,9 @@ export async function createWebBackend(): Promise<Backend> {
       return null;
     },
     async play(req): Promise<PlayInfo> {
+      // Directs YouTube : lecteur intégré quand l'identifiant est dans l'adresse,
+      // sinon lien d'ouverture (la version web ne peut pas lire la page de la chaîne).
+      if (w.isYoutube(req.url)) return { url: w.youtubeEmbed(req.url) ?? req.url, kind: "youtube", timeshift: false };
       return { url: req.url, kind: guessKind(req.url), timeshift: false };
     },
     async stop() {},

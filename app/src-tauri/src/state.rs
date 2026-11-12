@@ -26,6 +26,8 @@ pub struct AppState {
     pub recorder: std::sync::Arc<crate::recorder::Recorder>,
     /// Source Jellyfin -> identifiant utilisateur (nécessaire aux requêtes de détail).
     pub jellyfin_users: Mutex<HashMap<String, String>>,
+    /// Lien de chaîne YouTube -> lecteur intégré.
+    pub youtube_cache: Mutex<HashMap<String, String>>,
 }
 
 impl AppState {
@@ -54,6 +56,7 @@ impl AppState {
             session: Mutex::new(None),
             remux: Mutex::new(None),
             jellyfin_users: Mutex::new(HashMap::new()),
+            youtube_cache: Mutex::new(HashMap::new()),
         }
     }
 

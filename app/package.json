@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "build:web": "npm run wasm && tsc --noEmit && vite build --mode web",
-    "wasm": "wasm-pack build ../core --target web --out-dir ../app/src/wasm --features wasm --release",
+    "build:web": "npm run wasm && tsc --noEmit && vite build --mode web --outDir dist-web",
+    "wasm": "cargo build -p iptv-core --features wasm --target wasm32-unknown-unknown --release --manifest-path ../core/Cargo.toml && wasm-bindgen --target web --out-dir src/wasm --out-name iptv_core ../target/wasm32-unknown-unknown/release/iptv_core.wasm",
     "typecheck": "tsc --noEmit",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "preview:web": "vite preview --outDir dist-web --port 4173"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.26",

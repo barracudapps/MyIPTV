@@ -28,6 +28,8 @@ export interface PlaybackSettings {
   autoMiniPlayer: boolean;
   /** Épisode suivant enchaîné automatiquement. */
   autoNext: boolean;
+  /** Sources intégrées : garder les flux servis depuis une simple adresse IP (souvent des relais non officiels). */
+  includeUnverified?: boolean;
 }
 
 export interface MetaSettings {

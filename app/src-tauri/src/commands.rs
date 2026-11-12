@@ -448,6 +448,12 @@ fn guess_kind(url: &str, content_type: Option<&str>) -> &'static str {
 pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     // Arrête la lecture précédente (supprime son enregistrement).
     st.session.lock().await.take();
+    // Direct officiel publié sur YouTube : lecteur intégré officiel.
+    if iptv_core::youtube::is_youtube(&req.url) {
+        st.session.lock().await.take();
+        let embed = youtube_embed(&st, &req.url).await.ok_or("Direct YouTube introuvable (la chaîne ne diffuse peut-être pas en ce moment).")?;
+        return Ok(PlayInfo::simple(embed, "youtube", false, None));
+    }
     // Épisode Internet Archive : le fichier vidéo est choisi au moment de la lecture.
     if let Some(identifier) = req.url.strip_prefix("archive:") {
         let meta = get_json(&st, &format!("https://archive.org/metadata/{identifier}"), None).await?;
@@ -493,6 +499,7 @@ pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     // L'extension de l'URL ment souvent : on regarde les premiers octets du flux.
     let kind = match sniff(&st, &up).await {
         Some(k @ ("hls" | "mpegts" | "native")) => k,
+        Some("html") => return Err("Cette adresse mène à une page web, pas à un flux vidéo.".into()),
         Some(_) if has_ffmpeg => return Ok(remux_session(&st, &up).await),
         Some(other) => {
             warning = Some(format!("format {other} non pris en charge sans ffmpeg"));
@@ -534,6 +541,8 @@ pub(crate) fn classify_head(head: &[u8], ct: &str, path: &str) -> &'static str {
     } else if head.len() > 1 && head[0] == 0xff && head[1] & 0xe0 == 0xe0 {
         // Trame MP3/AAC brute (radios).
         "native"
+    } else if trimmed.to_lowercase().starts_with("<!doctype html") || trimmed.to_lowercase().starts_with("<html") || ct.starts_with("text/html") {
+        "html"
     } else if head.starts_with(b"FLV") {
         "flv"
     } else if ct.starts_with("audio/") || ct.starts_with("video/mp4") {
@@ -541,6 +550,34 @@ pub(crate) fn classify_head(head: &[u8], ct: &str, path: &str) -> &'static str {
     } else {
         "inconnu"
     }
+}
+
+/// Lecteur intégré YouTube ; pour un lien par nom de chaîne, l'identifiant est lu une fois
+/// sur la page publique de la chaîne puis gardé en mémoire.
+async fn youtube_embed(st: &AppState, url: &str) -> Option<String> {
+    if let Some(e) = iptv_core::youtube::embed_from_url(url) {
+        return Some(e);
+    }
+    if let Some(e) = st.youtube_cache.lock().await.get(url) {
+        return Some(e.clone());
+    }
+    let page = st
+        .http
+        .get(url)
+        .header(reqwest::header::USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15")
+        // Évite la page de consentement aux cookies servie en Europe.
+        .header(reqwest::header::COOKIE, "SOCS=CAI")
+        .timeout(Duration::from_secs(15))
+        .send()
+        .await
+        .ok()?
+        .text()
+        .await
+        .ok()?;
+    let id = iptv_core::youtube::channel_id_from_page(&page)?;
+    let embed = format!("{}/live_stream?channel={id}&autoplay=1", iptv_core::youtube::EMBED);
+    st.youtube_cache.lock().await.insert(url.to_string(), embed.clone());
+    Some(embed)
 }
 
 async fn remux_session(st: &AppState, up: &Upstream) -> PlayInfo {
@@ -679,7 +716,8 @@ mod tests {
         assert_eq!(classify_head(&[0xff, 0xfb, 0x90, 0x00], "", "/radio"), "native");
         assert_eq!(classify_head(b"<?xml version=\"1.0\"?><MPD xmlns", "", "/m"), "dash");
         assert_eq!(classify_head(b"FLV\x01", "", "/f"), "flv");
-        assert_eq!(classify_head(b"<html>erreur</html>", "text/html", "/x"), "inconnu");
+        assert_eq!(classify_head(b"<html>erreur</html>", "text/html", "/x"), "html");
+        assert_eq!(classify_head(b"\x00\x01binary", "application/octet-stream", "/x"), "inconnu");
     }
 }
 

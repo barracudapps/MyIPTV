@@ -75,6 +75,16 @@ pub fn catchup_url(channel: JsValue, start: f64, stop: f64, now: f64) -> Result<
     Ok(crate::catchup::catchup_url(&ch, start as i64, stop as i64, now as i64))
 }
 
+#[wasm_bindgen(js_name = youtubeEmbed)]
+pub fn youtube_embed(url: &str) -> Option<String> {
+    crate::youtube::embed_from_url(url)
+}
+
+#[wasm_bindgen(js_name = isYoutube)]
+pub fn is_youtube(url: &str) -> bool {
+    crate::youtube::is_youtube(url)
+}
+
 #[wasm_bindgen(js_name = analyzeRisk)]
 pub fn analyze_risk(channels: JsValue) -> Result<JsValue, JsValue> {
     let channels: Vec<Channel> = serde_wasm_bindgen::from_value(channels)?;
