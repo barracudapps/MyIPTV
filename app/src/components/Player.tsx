@@ -55,6 +55,9 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
         hls.startLoad();
       } else onFatal(d.details === "manifestLoadError" ? "La source ne répond pas." : `Lecture impossible (${d.details}).`);
     });
+    hls.on(Hls.Events.ERROR, (_e, d) => {
+      if (!d.fatal) console.info(`[lecteur] hls non bloquant : ${d.details}`);
+    });
     for (const ev of [Hls.Events.MANIFEST_PARSED, Hls.Events.AUDIO_TRACKS_UPDATED, Hls.Events.SUBTITLE_TRACKS_UPDATED, Hls.Events.LEVEL_SWITCHED, Hls.Events.AUDIO_TRACK_SWITCHED, Hls.Events.SUBTITLE_TRACK_SWITCH])
       hls.on(ev, onTracks);
     hls.loadSource(url);
@@ -76,9 +79,17 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
     };
   }
   video.src = url;
+  // Vider la vidéo à la destruction déclenche aussi un événement « error » : seul celui
+  // de la source courante compte, et l'écouteur est retiré avec le moteur.
+  const onError = () => {
+    if (video.getAttribute("src") === url) onFatal(`Format non pris en charge (erreur ${video.error?.code ?? "?"}).`);
+  };
+  video.addEventListener("error", onError);
   video.addEventListener("loadedmetadata", onTracks, { once: true });
   return {
     destroy: () => {
+      video.removeEventListener("error", onError);
+      video.removeEventListener("loadedmetadata", onTracks);
       video.removeAttribute("src");
       video.load();
     },
@@ -160,9 +171,16 @@ export function Player() {
     const video = videoRef.current;
     if (!video || !info) return;
     setEngineError(null);
-    // Échec du flux direct (format mal annoncé, DASH…) : une tentative via ffmpeg avant d'afficher l'erreur.
+    // Erreurs d'un moteur déjà remplacé : ignorées.
+    let alive = true;
+    // Échec d'un fichier (film, épisode, replay) : une tentative via ffmpeg avant d'afficher l'erreur.
+    // Pas pour un direct : le format y est déjà détecté et l'analyse ffmpeg ferait attendre longtemps.
     const onFatal = (msg: string) => {
-      if (!triedRemux.current && info.kind !== "remux" && !info.timeshift) {
+      if (!alive) return;
+      console.warn(`[lecteur] échec ${info.kind} : ${msg}`);
+      const st = usePlayer.getState();
+      const isFile = st.media != null || st.catchup != null;
+      if (isFile && !triedRemux.current && info.kind !== "remux" && !info.timeshift) {
         triedRemux.current = true;
         usePlayer.getState().retry(true);
       } else setEngineError(msg);
@@ -196,10 +214,11 @@ export function Player() {
       remuxRef.current = { offset: resumeAt > 5 ? resumeAt : 0, audio };
       setRemuxAudio(audio);
       engine = attach(video, `${info.url}?start=${remuxRef.current.offset}&audio=${audio}`, info.remuxFormat === "mpegts" ? "mpegts" : "native", { timeshift: false, live: info.duration == null }, onFatal, onTracks);
+      console.info(`[lecteur] conversion ${info.remuxFormat} depuis ${remuxRef.current.offset}s`);
     } else {
+      console.info(`[lecteur] ${info.kind}${info.timeshift ? " (timeshift)" : ""} ${info.url.slice(0, 120)}`);
       engine = attach(video, info.url, info.kind, { timeshift: info.timeshift, live: isLiveStream }, onFatal, onTracks);
       // Lecteur natif : l'erreur arrive par l'élément vidéo.
-      if (info.kind === "native") video.addEventListener("error", () => onFatal("Format non pris en charge."), { once: true });
       if (resumeAt > 5) video.addEventListener("loadedmetadata", () => (video.currentTime = resumeAt), { once: true });
     }
     engineRef.current = engine;
@@ -212,6 +231,7 @@ export function Player() {
       video.play().catch(() => undefined);
     });
     return () => {
+      alive = false;
       // La conversion peut avoir remplacé le moteur (déplacement, piste audio).
       engineRef.current?.destroy();
       engineRef.current = null;

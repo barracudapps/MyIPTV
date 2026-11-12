@@ -154,7 +154,11 @@ async fn remux(State(st): State<Arc<AppState>>, Path(sid): Path<String>, Query(q
         chunk
     });
     let mut r = Response::new(Body::from_stream(stream));
-    let ct = if probe.remux_format() == "mpegts" { "video/mp2t" } else { "video/mp4" };
+    let ct = match probe.remux_format() {
+        "mpegts" => "video/mp2t",
+        "mp3" => "audio/mpeg",
+        _ => "video/mp4",
+    };
     r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static(ct));
     r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     cors(r)

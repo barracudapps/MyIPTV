@@ -100,7 +100,7 @@ export interface PlayInfo {
   /** Conversion à la volée : durée totale et pistes audio du fichier d'origine. */
   duration?: number;
   audioTracks?: StreamTrack[];
-  remuxFormat?: "mpegts" | "mp4";
+  remuxFormat?: "mpegts" | "mp4" | "mp3";
 }
 
 export interface PlayRequest {

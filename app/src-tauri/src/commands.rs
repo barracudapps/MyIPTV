@@ -567,6 +567,12 @@ async fn start_remux(st: &AppState, up: &Upstream, p: crate::transcode::Probe) -
     info
 }
 
+/// Journal de l'interface (erreurs, avertissements, événements du lecteur).
+#[tauri::command]
+pub fn log_frontend(level: String, message: String) {
+    eprintln!("[interface:{level}] {message}");
+}
+
 #[tauri::command]
 pub async fn stop_playback(st: St<'_>) -> Res<()> {
     st.session.lock().await.take();

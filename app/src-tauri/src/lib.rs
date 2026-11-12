@@ -53,6 +53,7 @@ pub fn run() {
             library::vod_detail,
             library::person,
             commands::jellyfin_login,
+            commands::log_frontend,
             commands::rec_list,
             commands::rec_schedule,
             commands::rec_cancel,

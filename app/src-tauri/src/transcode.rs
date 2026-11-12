@@ -53,6 +53,10 @@ impl Probe {
     /// MPEG-TS pour H.264/HEVC (lu par mpegts.js sans requêtes par plages, que WebKit
     /// exige pour un MP4) ; MP4 fragmenté pour VP9/AV1, que le MPEG-TS ne transporte pas.
     pub fn remux_format(&self) -> &'static str {
+        // Audio seul (podcast, musique, radio) : MP3, lu directement par la webview.
+        if self.video_codec.is_none() && !self.audio.is_empty() {
+            return "mp3";
+        }
         match self.video_codec.as_deref() {
             Some("vp9") | Some("vp8") | Some("av1") => "mp4",
             _ => "mpegts",
@@ -136,6 +140,13 @@ pub fn remux_args(up: &Upstream, p: &Probe, start: f64, audio: usize) -> Vec<Str
         a.extend(["-ss".into(), format!("{start:.3}")]);
     }
     a.extend(["-i".into(), up.url.clone()]);
+    if p.remux_format() == "mp3" {
+        let copy = p.audio.get(audio).is_some_and(|t| t.codec == "mp3");
+        a.extend(["-map".into(), format!("0:a:{audio}"), "-vn".into(), "-sn".into(), "-dn".into()]);
+        a.extend(if copy { vec!["-c:a".to_string(), "copy".into()] } else { ["-c:a", "libmp3lame", "-b:a", "192k"].map(String::from).to_vec() });
+        a.extend(["-f", "mp3", "pipe:1"].map(String::from));
+        return a;
+    }
     a.extend(["-map".into(), "0:v:0?".into(), "-map".into(), format!("0:a:{audio}?"), "-sn".into(), "-dn".into()]);
     match p.video_codec.as_deref() {
         Some(c) if WEB_VIDEO.contains(&c) => {
@@ -221,6 +232,9 @@ mod tests {
         assert!(a.ends_with("-f mpegts -muxdelay 0 -muxpreload 0 pipe:1"), "HEVC : MPEG-TS");
         assert!(a.contains("-c:a copy"), "la piste 1 est déjà en AAC");
         assert!(remux_args(&up, &mkv(), 0.0, 0).join(" ").contains("-c:a aac"));
+        let audio_only = parse_probe(&json!({ "format": { "format_name": "ogg" }, "streams": [ { "codec_type": "audio", "codec_name": "vorbis" } ] }));
+        assert_eq!(audio_only.remux_format(), "mp3");
+        assert!(remux_args(&up, &audio_only, 0.0, 0).join(" ").ends_with("-c:a libmp3lame -b:a 192k -f mp3 pipe:1"));
         assert!(a.contains("Referer: http://r"));
     }
 }
