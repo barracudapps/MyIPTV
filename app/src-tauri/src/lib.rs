@@ -5,6 +5,7 @@ mod cast;
 mod server;
 mod share;
 mod state;
+mod stats;
 mod timeshift;
 mod transcode;
 
@@ -40,6 +41,7 @@ pub fn run() {
             app.manage(state);
             app.manage(Arc::new(share::ShareState::default()));
             app.manage(Arc::new(cast::CastState::default()));
+            app.manage(stats::StatsState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -67,6 +69,7 @@ pub fn run() {
             commands::rec_info,
             commands::probe_stream,
             share::share_start,
+            stats::sys_stats,
             cast::cast_discover,
             cast::cast_start,
             cast::cast_control,

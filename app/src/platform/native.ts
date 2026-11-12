@@ -35,6 +35,7 @@ export function createNativeBackend(): Backend {
       status: () => invoke("share_status"),
       stop: () => invoke("share_stop"),
     },
+    sysStats: () => invoke("sys_stats"),
     cast: {
       discover: () => invoke("cast_discover"),
       start: (device, media) => invoke("cast_start", { device, media }),

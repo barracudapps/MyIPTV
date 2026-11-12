@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+### Ajouté
+- Diffusion vers un autre écran du réseau : Chromecast et Google TV, téléviseurs DLNA, AirPlay et diffusion du navigateur quand ils sont disponibles.
+- Thèmes vitrine façon plateformes de streaming (Rouge cinéma, Nuit étoilée, Bleu océan) : bannière à la une, rangées par genre, grandes affiches.
+- Dispositions de l'écran Direct : Immersif (plein écran et bande de chaînes), Programme TV (guide en écran principal), Magazine (scène et rangées par catégorie), réglables dans l'éditeur de thème.
+- Mode Hacker : images par seconde, images perdues, tampon, débit, codecs, processeur et mémoire par-dessus le lecteur (Ctrl+Maj+H).
+
 ## [0.4.0] - 2026-11-12
 
 ### Ajouté

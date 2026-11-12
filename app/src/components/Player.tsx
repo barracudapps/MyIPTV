@@ -1,6 +1,7 @@
 import { displayName } from "../lib/variants";
 import { scrobble } from "../lib/trakt";
 import { CastBar, CastDialog } from "./CastDialog";
+import { HackerOverlay } from "./HackerOverlay";
 import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type HlsType from "hls.js";
@@ -22,7 +23,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { MascotFigure } from "./Mascot";
 import { useRecordings } from "../store/recordings";
 
-type Engine = { destroy(): void; hls?: HlsType; playingDate?: () => Date | null };
+type Engine = { destroy(): void; hls?: HlsType; playingDate?: () => Date | null; kind?: string; stats?: () => { speedKBps?: number; decodedFrames?: number; droppedFrames?: number } };
 
 interface Clock {
   playing: boolean;
@@ -86,7 +87,7 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       hls.on(ev, onTracks);
     hls.loadSource(url);
     hls.attachMedia(video);
-    return { hls, destroy: () => hls.destroy(), playingDate: () => hls.playingDate };
+    return { hls, kind: "hls.js", destroy: () => hls.destroy(), playingDate: () => hls.playingDate };
   }
   if (kind === "mpegts" && mpegts?.getFeatureList().mseLivePlayback) {
     const p = mpegts.createPlayer({ type: "mpegts", isLive: opts.live, url }, { enableStashBuffer: !opts.live, lazyLoad: false, liveBufferLatencyChasing: false });
@@ -94,6 +95,11 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
     p.attachMediaElement(video);
     p.load();
     return {
+      kind: "mpegts.js",
+      stats: () => {
+        const i = p.statisticsInfo as { speed?: number; decodedFrames?: number; droppedFrames?: number } | undefined;
+        return { speedKBps: i?.speed, decodedFrames: i?.decodedFrames, droppedFrames: i?.droppedFrames };
+      },
       destroy: () => {
         p.pause();
         p.unload();
@@ -147,6 +153,7 @@ export function Player() {
   const prefsTimeshift = useSettings((s) => s.playback.timeshift);
   const source = usePlayer((s) => s.source);
   const [castOpen, setCastOpen] = useState(false);
+  const hacker = useSettings((s) => !!s.playback.hacker);
   const sources = useSettings((s) => s.sources);
   const sourceNames = useMemo(() => new Map(sources.map((x) => [x.id, x.name])), [sources]);
   const autoNext = useSettings((s) => s.playback.autoNext);
@@ -717,6 +724,7 @@ export function Player() {
       )}
 
       {!small && <CastBar />}
+      {hacker && !small && <HackerOverlay video={videoRef.current} engine={engineRef} />}
       {castOpen && <CastDialog video={videoRef.current} onClose={() => setCastOpen(false)} />}
 
       {nextIn != null && (

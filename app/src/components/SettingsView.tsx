@@ -420,6 +420,12 @@ function PlaybackSettings() {
         checked={!!pb.includeUnverified}
         onChange={(v) => (set({ includeUnverified: v }), useLibrary.getState().loadAll())}
       />
+      <Toggle
+        label="Mode Hacker"
+        hint="Affiche par-dessus le lecteur les mesures techniques : images par seconde, images perdues, tampon, débit réel et estimé, codecs, processeur et mémoire. Raccourci : Ctrl+Maj+H."
+        checked={!!pb.hacker}
+        onChange={(v) => set({ hacker: v })}
+      />
       <Toggle label="Reprendre la dernière chaîne au démarrage" checked={pb.resumeLastChannel} onChange={(v) => set({ resumeLastChannel: v })} />
       <Toggle label="Mini-lecteur automatique" hint="La vidéo continue en petit quand vous allez sur le guide, la recherche ou les réglages." checked={pb.autoMiniPlayer} onChange={(v) => set({ autoMiniPlayer: v })} />
       <TraktCard />
@@ -430,6 +436,7 @@ function PlaybackSettings() {
         <li><kbd>Page ↑</kbd> / <kbd>Page ↓</kbd> ou CH+ / CH− : chaîne précédente / suivante</li>
         <li>En plein écran : <kbd>←</kbd> <kbd>→</kbd> ±10 s, <kbd>↑</kbd> <kbd>↓</kbd> zapper</li>
         <li><kbd>/</kbd> rechercher · <kbd>Échap</kbd> ou Retour : revenir</li>
+        <li><kbd>Ctrl</kbd> + <kbd>Maj</kbd> + <kbd>H</kbd> mode Hacker (mesures techniques)</li>
       </ul>
     </div>
   );

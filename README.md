@@ -65,7 +65,9 @@ cd app && npm run typecheck
 - Recherche globale dans les chaînes et les programmes, avec mini-lecteur flottant.
 - Profils (administrateur, standard, enfant), thèmes prédéfinis et écrans personnalisables (couleurs, police, disposition, densité), import/export, animations désactivables.
 - Partage en réseau local de la configuration et des comptes vers un autre appareil (chiffré par un code).
-- Indicateur des traitements en cours.
+- Indicateur des traitements en cours, mode Hacker (mesures techniques de lecture et du système).
+- Diffusion vers un téléviseur ou un Chromecast du réseau (DLNA, Cast, AirPlay).
+- Dispositions de l'écran Direct (classique, immersive, programme TV, magazine) et vitrine des films façon plateforme de streaming.
 - Synchronisation Trakt par profil : lecture signalée en direct, contenus vus et reprise de lecture importés (application Trakt de l'utilisateur, connexion par code).
 - Contrôle parental : code PIN, chaînes adultes verrouillées, profils enfants filtrés par âge avec tolérance réglable, listes blanche et noire, catégories bloquées.
 - Partage en réseau local : sources, comptes, profils, thèmes et réglages copiés d'un appareil à l'autre avec une adresse et un code (chiffré, valable 10 minutes) ; envoi depuis le bureau ou Android, réception partout.

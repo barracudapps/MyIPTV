@@ -48,6 +48,20 @@ export default function App() {
 
   useEffect(preloadEngines, []);
 
+  // Mode Hacker : Ctrl (ou Cmd) + Maj + H.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        const on = !useSettings.getState().playback.hacker;
+        useSettings.getState().setPlayback({ hacker: on });
+        useUi.getState().toast(on ? "Mode Hacker activé." : "Mode Hacker désactivé.", "info");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Trakt : historique importé une fois la bibliothèque chargée, au plus toutes les 6 heures.
   const libraryVersion = useLibrary((s) => s.libraryVersion);
   const traktProfile = profile?.trakt ? profile.id : null;

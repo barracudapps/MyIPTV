@@ -32,6 +32,8 @@ export interface PlaybackSettings {
   autoNext: boolean;
   /** Sources intégrées : garder les flux servis depuis une simple adresse IP (souvent des relais non officiels). */
   includeUnverified?: boolean;
+  /** Mode « Hacker » : mesures techniques par-dessus le lecteur. */
+  hacker?: boolean;
 }
 
 export interface MetaSettings {

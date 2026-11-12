@@ -2,6 +2,15 @@ import type { RecInfo, Recording } from "../types";
 import type { VodItem } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
+export interface SysStats {
+  processCpu: number;
+  systemCpu: number;
+  cores: number;
+  processMemory: number;
+  totalMemory: number;
+  usedMemory: number;
+}
+
 export interface CastDevice {
   id: string;
   name: string;
@@ -89,6 +98,8 @@ export interface Backend {
     stop(): Promise<void>;
     status(): Promise<CastStatus>;
   };
+  /** Processeur et mémoire de l'application (mode Hacker) : appareils natifs seulement. */
+  sysStats?(): Promise<SysStats>;
   /** Récupère et déchiffre la configuration partagée par un autre appareil. */
   shareFetch(address: string, code: string): Promise<string>;
   /** Test rapide d'un flux : répond-il, et en combien de temps ? */
