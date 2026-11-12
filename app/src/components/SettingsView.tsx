@@ -45,7 +45,7 @@ export function SettingsView() {
           ))}
         {!isAdmin && <p className="dim small">Les profils et le contrôle parental se gèrent depuis un profil administrateur.</p>}
       </nav>
-      <div className="settings-content">
+      <div className="settings-content" key={section}>
         {section === "appearance" && <AppearanceSettings />}
         {section === "profiles" && isAdmin && <ProfilesSettings />}
         {section === "parental" && isAdmin && <ParentalSettings />}

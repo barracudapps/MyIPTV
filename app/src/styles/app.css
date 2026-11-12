@@ -717,3 +717,58 @@ html.disco body { animation: disco 1.2s linear infinite; }
   [data-nav="rail"] .nav-foot { align-items: center; width: 100%; }
   [data-nav="rail"] .nav-foot .clock { text-align: center; font-size: .85em; }
 }
+
+/* Animations d'interface : transform et opacité seulement (fluides sur TV). */
+:root { --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-in: cubic-bezier(.4, 0, 1, 1); }
+@keyframes view-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@keyframes dialog-out { to { opacity: 0; transform: translateY(8px) scale(.98); } }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(28px); } }
+@keyframes sheet-out { to { opacity: 0; transform: translateY(18px); } }
+@keyframes panel-in { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-14px) scale(.96); } }
+@keyframes item-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* Changement d'écran et de section des réglages. */
+.main > * { animation: view-in .26s var(--ease-out); }
+.settings-content { animation: view-in .22s var(--ease-out); }
+.settings-content > .settings-section > * { animation: item-in .3s var(--ease-out) backwards; }
+.settings-content > .settings-section > :nth-child(2) { animation-delay: .03s; }
+.settings-content > .settings-section > :nth-child(3) { animation-delay: .06s; }
+.settings-content > .settings-section > :nth-child(4) { animation-delay: .09s; }
+.settings-content > .settings-section > :nth-child(5) { animation-delay: .12s; }
+.settings-content > .settings-section > :nth-child(n+6) { animation-delay: .15s; }
+
+/* Fenêtres et fiches : entrée et sortie. */
+.modal-backdrop, .detail-backdrop { animation: fade-in .2s ease-out; }
+.modal { animation: dialog-in .24s var(--ease-out); }
+.detail { animation: sheet-in .3s var(--ease-out); }
+.modal-backdrop.closing, .detail-backdrop.closing { animation: fade-out .16s var(--ease-in) forwards; }
+.modal-backdrop.closing .modal { animation: dialog-out .16s var(--ease-in) forwards; }
+.detail-backdrop.closing .detail { animation: sheet-out .16s var(--ease-in) forwards; }
+
+/* Menus, panneaux du lecteur, notifications. */
+.dd-menu { animation: panel-in .18s var(--ease-out); transform-origin: top left; }
+.player-panel { animation: panel-in .2s var(--ease-out); transform-origin: bottom right; }
+.panel-body { animation: fade-in .18s ease-out; }
+.toast { animation: toast-in .28s var(--ease-out); }
+.mascot-bubble { animation: pop .25s var(--ease-out); }
+
+/* Retours visuels au survol et à la sélection. */
+.nav-item, .tab, .chip, .btn, .theme-swatch, .settings-nav button, .panel-tabs button { transition: background-color .18s, color .18s, border-color .18s, transform .12s, box-shadow .18s; }
+.btn:active:not(:disabled), .chip:active, .nav-item:active { transform: scale(.97); }
+.nav-item svg { transition: transform .2s var(--ease-out); }
+.nav-item.active svg { transform: scale(1.1); }
+.theme-swatch:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+.switch span::after { transition: transform .22s var(--ease-out), background .2s; }
+
+/* Coupées par le réglage de l'app ou par le système (le chargement et la mascotte restent animés).
+   Sélecteurs développés : les navigateurs des TV anciennes ignorent :is(). */
+html[data-motion="off"] .main > *, html[data-motion="off"] .settings-content, html[data-motion="off"] .settings-content > .settings-section > *, html[data-motion="off"] .modal, html[data-motion="off"] .detail, html[data-motion="off"] .modal-backdrop, html[data-motion="off"] .detail-backdrop, html[data-motion="off"] .dd-menu, html[data-motion="off"] .player-panel, html[data-motion="off"] .panel-body, html[data-motion="off"] .toast { animation: none !important; }
+html[data-motion="off"] .nav-item, html[data-motion="off"] .nav-item svg, html[data-motion="off"] .tab, html[data-motion="off"] .chip, html[data-motion="off"] .btn, html[data-motion="off"] .theme-swatch, html[data-motion="off"] .settings-nav button, html[data-motion="off"] .panel-tabs button { transition: none !important; transform: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .main > *, .settings-content, .settings-content > .settings-section > *, .modal, .detail, .modal-backdrop, .detail-backdrop, .dd-menu, .player-panel, .panel-body, .toast { animation: none !important; }
+  .nav-item, .nav-item svg, .tab, .chip, .btn, .theme-swatch, .settings-nav button, .panel-tabs button { transition: none !important; transform: none !important; }
+}

@@ -7,6 +7,7 @@ import { fun } from "../lib/fun";
 import { sectionOf } from "../lib/sections";
 import { langFlag, langName } from "../lib/languages";
 import { errorMessage, fmtDuration } from "../lib/util";
+import { useExit } from "../lib/motion";
 import type { Episode, Person, PersonView as PersonData, VodDetail } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
@@ -52,6 +53,8 @@ export function TrailerDialog({ youtubeKey, title, onClose }: { youtubeKey: stri
   );
 }
 
+const closeDetail = () => useUi.setState({ detailId: null });
+
 export function DetailView() {
   const id = useUi((s) => s.detailId);
   const profile = useActiveProfile();
@@ -82,8 +85,8 @@ export function DetailView() {
   const history = profile?.history.find((h) => h.itemId === id);
   const queue = useMemo(() => detail?.seasons.flatMap((s) => s.episodes) ?? [], [detail]);
 
+  const [closing, close] = useExit(closeDetail);
   if (!id || !profile) return null;
-  const close = () => useUi.setState({ detailId: null });
   const meta = sectionOf(detail?.item.kind);
   const item = detail?.item;
   const fav = profile.vodFavorites.includes(id);
@@ -119,7 +122,7 @@ export function DetailView() {
   };
 
   return (
-    <div className="detail-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
+    <div className={`detail-backdrop ${closing ? "closing" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="detail" role="dialog" aria-modal="true" aria-label={item?.title ?? "Fiche"} data-modal>
         <header className="detail-hero" style={item?.backdrop ? { backgroundImage: `url(${item.backdrop})` } : undefined}>
           <button className="icon-btn detail-close" onClick={close} title="Fermer">

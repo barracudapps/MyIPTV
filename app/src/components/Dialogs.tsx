@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { checkPin, useUi } from "../store/ui";
 import { Icon } from "./Icon";
+import { useExit } from "../lib/motion";
 
 export function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose?: () => void; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [closing, close] = useExit(onClose);
   useEffect(() => {
     const first = ref.current?.querySelector<HTMLElement>("input, button, select, textarea");
     first?.focus();
   }, []);
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className={`modal-backdrop ${closing ? "closing" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className={`modal ${wide ? "modal-wide" : ""}`} role="dialog" aria-modal="true" aria-label={title} data-modal ref={ref}>
         <header>
           <h2>{title}</h2>
           {onClose && (
-            <button className="icon-btn" onClick={onClose} title="Fermer">
+            <button className="icon-btn" onClick={close} title="Fermer">
               <Icon name="close" />
             </button>
           )}

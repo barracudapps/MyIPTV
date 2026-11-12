@@ -54,6 +54,8 @@ export interface FunSettings {
   achievements: boolean;
   surprise: boolean;
   easterEggs: boolean;
+  /** Animations de l'interface ; absent des réglages enregistrés avant son ajout (= activées). */
+  animations?: boolean;
 }
 
 export const DEFAULT_FUN: FunSettings = {
@@ -70,6 +72,7 @@ export const DEFAULT_FUN: FunSettings = {
   achievements: true,
   surprise: true,
   easterEggs: true,
+  animations: true,
 };
 
 export interface ProfileStats {

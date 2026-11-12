@@ -41,6 +41,9 @@ export default function App() {
 
   useEffect(preloadEngines, []);
 
+  const animations = useSettings((s) => s.fun.animations !== false);
+  useEffect(() => void (document.documentElement.dataset.motion = animations ? "on" : "off"), [animations]);
+
   // Reprise de la dernière chaîne du profil.
   const resumed = useRef<string | null>(null);
   const channelsLoaded = useLibrary((s) => s.channels.length > 0);

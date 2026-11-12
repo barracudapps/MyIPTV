@@ -13,6 +13,7 @@ export function AppearanceSettings() {
   const active = themeFor(profile, custom);
   const [draft, setDraft] = useState<Theme | null>(null);
   const [io, setIo] = useState(false);
+  const animations = useSettings((s) => s.fun.animations !== false);
 
   const pick = (t: Theme) => useSettings.getState().updateProfile(profile.id, { themeId: t.id });
 
@@ -49,6 +50,12 @@ export function AppearanceSettings() {
           <Icon name="upload" /> Importer / exporter
         </button>
       </div>
+      <Toggle
+        label="Animations"
+        hint="Ouverture des menus, fenêtres et écrans. À couper sur une TV peu puissante ; le réglage « réduire les animations » du système est toujours respecté."
+        checked={animations}
+        onChange={(v) => useSettings.getState().setFun({ animations: v })}
+      />
       {draft && <Editor initial={draft} onClose={() => setDraft(null)} />}
       {io && <ThemeIO active={active} onClose={() => setIo(false)} />}
     </div>
