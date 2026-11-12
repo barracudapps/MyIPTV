@@ -255,7 +255,8 @@ const DENSITY_ROW: Record<Density, number> = { compact: 44, comfortable: 60, tv:
 export function applyTheme(t: Theme) {
   const s = document.documentElement.style;
   for (const [k, v] of Object.entries(t.colors)) {
-    s.setProperty(`--${k.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase())}`, v);
+    // surface2 -> --surface-2 : chiffres et majuscules séparés comme dans la feuille de style.
+    s.setProperty(`--${k.replace(/[A-Z]|\d+/g, (c) => "-" + c.toLowerCase())}`, v);
   }
   s.setProperty("--radius", `${t.radius}px`);
   s.setProperty("--font", FONTS[t.font]);

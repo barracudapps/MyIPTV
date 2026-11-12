@@ -678,7 +678,7 @@ html.disco body { animation: disco 1.2s linear infinite; }
 
 /* Choix de la mascotte */
 .mascot-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
-.mascot-option { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: .85em; }
+.mascot-option { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: .85em; }
 .mascot-option.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
 .mascot-option .mascot-svg { filter: none; }
 .mascot-svg .clapper { transform-origin: 8px 23px; }
