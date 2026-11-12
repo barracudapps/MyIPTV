@@ -1,3 +1,4 @@
+import { withContent } from "./playlists";
 import type { Profile } from "./parental";
 import type { Theme } from "./themes";
 import type { Source } from "../types";
@@ -33,7 +34,7 @@ export function shareableSources(sources: Source[]): Source[] {
   return sources.filter((s) => !s.builtin);
 }
 
-export function buildPayload(choice: ShareChoice): SharePayload {
+export async function buildPayload(choice: ShareChoice): Promise<SharePayload> {
   const s = useSettings.getState();
   const ids = new Set(choice.sourceIds);
   const { adultEnabled: _adult, ...parental } = s.parental;
@@ -42,7 +43,7 @@ export function buildPayload(choice: ShareChoice): SharePayload {
     app: "MyIPTV",
     version: 1,
     createdAt: Date.now(),
-    sources: ids.size ? s.sources.filter((x) => ids.has(x.id)) : undefined,
+    sources: ids.size ? await Promise.all(s.sources.filter((x) => ids.has(x.id)).map((x) => withContent(x).then(({ ...y }) => (y.kind === "m3uText" ? { ...y, contentStored: false } : y)))) : undefined,
     meta: choice.meta && hasKeys ? s.meta : undefined,
     // L'historique de visionnage reste sur l'appareil d'origine.
     profiles: choice.profiles ? s.profiles.map((p) => ({ ...p, history: [] })) : undefined,
@@ -89,7 +90,8 @@ export function applyPayload(p: SharePayload, choice: Omit<ShareChoice, "sourceI
     const known = new Set(s.sources.map(sourceKey));
     const ids = new Set(s.sources.map((x) => x.id));
     const added = p.sources.filter((x) => !known.has(sourceKey(x)) && !ids.has(x.id)).map((x) => ({ ...x, addedAt: Date.now() }));
-    if (added.length) patch.sources = [...s.sources, ...added];
+    // addSource range aussi le contenu des fichiers importés hors du stockage local.
+    for (const x of added) s.addSource(x);
     result.sources = added.length;
   }
   if (choice.meta && p.meta) {

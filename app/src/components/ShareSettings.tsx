@@ -66,7 +66,7 @@ function SendCard({ backend }: { backend: Backend }) {
     if (withCredentials && !(await askPin("Partager des comptes", "Les identifiants des comptes sélectionnés seront transmis à l'appareil qui saisira le code."))) return;
     setBusy(true);
     try {
-      const payload = buildPayload({ sourceIds: [...picked], meta: withMeta, profiles: withProfiles, themes: withThemes, settings: withSettings });
+      const payload = await buildPayload({ sourceIds: [...picked], meta: withMeta, profiles: withProfiles, themes: withThemes, settings: withSettings });
       setStatus(null);
       setInfo(await backend.share!.start(JSON.stringify(payload)));
     } catch (e) {

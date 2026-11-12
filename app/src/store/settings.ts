@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { deletePlaylist, putPlaylist } from "../lib/playlists";
 import { BUILTIN_THEMES, type Theme } from "../lib/themes";
 import { DEFAULT_CHILD_RULES, DEFAULT_PLAYER_PREFS, type HistoryEntry, type PlayerPrefs, type Profile, type ProfileKind } from "../lib/parental";
 import { builtinSources, deviceLanguage } from "../lib/languages";
@@ -154,6 +155,34 @@ function withDefaults(p: Partial<Profile> & Pick<Profile, "id" | "name" | "kind"
   };
 }
 
+/**
+ * Stockage local qui ne lève pas d'erreur quand il est plein : l'action en cours
+ * (ajout de source, réglage…) aboutit, et l'interface prévient l'utilisateur.
+ */
+const safeLocalStorage: Storage = {
+  get length() {
+    return localStorage.length;
+  },
+  key: (i) => localStorage.key(i),
+  getItem: (k) => localStorage.getItem(k),
+  removeItem: (k) => localStorage.removeItem(k),
+  clear: () => localStorage.clear(),
+  setItem(k, v) {
+    try {
+      localStorage.setItem(k, v);
+    } catch (e) {
+      console.error(`[réglages] enregistrement impossible (${(v.length / 1e6).toFixed(1)} Mo) : ${e}`);
+      window.dispatchEvent(new CustomEvent("myiptv-storage-full"));
+    }
+  },
+};
+
+function storePlaylist(id: string, content: string) {
+  putPlaylist(id, content)
+    .then(() => useSettings.getState().updateSource(id, { contentStored: true }))
+    .catch((e) => console.error(`[réglages] fichier importé non rangé : ${e}`));
+}
+
 export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => {
@@ -232,9 +261,17 @@ export const useSettings = create<SettingsState>()(
             profiles: s.profiles.map((p) => (p.themeId === id ? { ...p, themeId: "nuit" } : p)),
           })),
 
-        addSource: (src) => set((s) => ({ sources: [...s.sources, src] })),
+        addSource(src) {
+          // Une seconde validation du même import ne doit pas créer un doublon.
+          if (get().sources.some((x) => x.id === src.id)) return;
+          set((s) => ({ sources: [...s.sources, src] }));
+          if (src.kind === "m3uText" && src.content) storePlaylist(src.id, src.content);
+        },
         updateSource: (id, patch) => set((s) => ({ sources: s.sources.map((x) => (x.id === id ? ({ ...x, ...patch } as Source) : x)) })),
-        removeSource: (id) => set((s) => ({ sources: s.sources.filter((x) => x.id !== id) })),
+        removeSource(id) {
+          set((s) => ({ sources: s.sources.filter((x) => x.id !== id) }));
+          deletePlaylist(id).catch(() => undefined);
+        },
 
         setParental: (patch) => set((s) => ({ parental: { ...s.parental, ...patch } })),
         setPlayback: (patch) => set((s) => ({ playback: { ...s.playback, ...patch } })),
@@ -269,7 +306,12 @@ export const useSettings = create<SettingsState>()(
     {
       name: "myiptv-settings",
       version: 2,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => safeLocalStorage),
+      // Le contenu des fichiers importés n'est retiré qu'une fois copié dans IndexedDB.
+      partialize: (s) => ({ ...s, sources: s.sources.map((x) => (x.kind === "m3uText" && x.contentStored ? { ...x, content: "" } : x)) }),
+      onRehydrateStorage: () => (state) => {
+        for (const x of state?.sources ?? []) if (x.kind === "m3uText" && x.content && !x.contentStored) storePlaylist(x.id, x.content);
+      },
       migrate(persisted, version) {
         const s = persisted as Record<string, any>;
         if (version < 2) {

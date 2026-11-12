@@ -41,6 +41,17 @@ export default function App() {
 
   useEffect(preloadEngines, []);
 
+  useEffect(() => {
+    let warned = false;
+    const onFull = () => {
+      if (warned) return;
+      warned = true;
+      useUi.getState().toast("Stockage plein : vos derniers réglages n'ont pas pu être enregistrés.", "error");
+    };
+    window.addEventListener("myiptv-storage-full", onFull);
+    return () => window.removeEventListener("myiptv-storage-full", onFull);
+  }, []);
+
   const animations = useSettings((s) => s.fun.animations !== false);
   useEffect(() => void (document.documentElement.dataset.motion = animations ? "on" : "off"), [animations]);
 

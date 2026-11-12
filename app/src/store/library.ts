@@ -1,3 +1,4 @@
+import { withContent } from "../lib/playlists";
 import { create } from "zustand";
 import { getBackend } from "../platform";
 import type { Channel, EpgStats, Programme } from "../types";
@@ -56,7 +57,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     await Promise.all(
       sources.map(async (s) => {
         try {
-          const r = await backend.loadSource(s, force);
+          const r = await backend.loadSource(await withContent(s), force);
           // Listes intégrées : un flux servi depuis une adresse IP brute est le plus souvent un relais
           // non officiel d'une chaîne ; écarté sauf choix contraire de l'utilisateur.
           const keep = !s.builtin || useSettings.getState().playback.includeUnverified ? r.channels : r.channels.filter((c) => !/^https?:\/\/\d{1,3}(\.\d{1,3}){3}[:/]/.test(c.url));
