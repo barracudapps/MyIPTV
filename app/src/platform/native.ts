@@ -29,6 +29,12 @@ export function createNativeBackend(): Backend {
     recSchedule: (req) => invoke("rec_schedule", { req }),
     recCancel: (id, deleteFile) => invoke("rec_cancel", { id, deleteFile }),
     recInfo: () => invoke("rec_info"),
+    share: {
+      start: (payload) => invoke("share_start", { payload }),
+      status: () => invoke("share_status"),
+      stop: () => invoke("share_stop"),
+    },
+    shareFetch: (address, code) => invoke("share_fetch", { address, code }),
     play: (req) => invoke("play", { req }),
     stop: () => invoke("stop_playback"),
   };

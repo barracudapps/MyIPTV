@@ -687,3 +687,14 @@ html.disco body { animation: disco 1.2s linear infinite; }
 .risk-lists { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 .badge-danger { background: var(--danger); color: #fff; }
 .badge-warn { background: #f59e0b; color: #1a1204; }
+
+/* Partage en réseau */
+.share-pick { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 10px; margin: 0 0 12px; display: grid; gap: 6px; }
+.share-pick legend { font-weight: 700; padding: 0 6px; }
+.share-pick .check { display: flex; }
+.share-pick .check span:nth-child(2) { flex: 1; }
+.share-code { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline; margin: 12px 0; }
+.share-code dt { color: var(--text-dim); font-weight: 600; }
+.share-code dd { margin: 0; font-size: 1.6em; font-weight: 800; font-variant-numeric: tabular-nums; grid-column: 2; }
+.share-code dd.small { font-size: .9em; font-weight: 500; }
+.share-code .code { letter-spacing: .12em; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); }

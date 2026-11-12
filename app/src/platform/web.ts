@@ -19,7 +19,11 @@ type Wasm = {
   analyzeRisk(channels: Channel[]): SourceResult["risk"];
   youtubeEmbed(url: string): string | undefined;
   isYoutube(url: string): boolean;
+  shareId(code: string): string;
+  shareOpen(code: string, data: Uint8Array): string;
 };
+
+const SHARE_PORT = 47820;
 
 const wasmModules = import.meta.glob("../wasm/iptv_core.js");
 
@@ -151,6 +155,22 @@ export async function createWebBackend(): Promise<Backend> {
       throw new Error("L'enregistrement n'est disponible que sur l'application de bureau ou Android.");
     },
     async recCancel() {},
+    async shareFetch(address, code) {
+      let base = address.trim().replace(/\/+$/, "");
+      if (!/^https?:\/\//.test(base)) base = `http://${base}`;
+      if (!/:\d+$/.test(base)) base += `:${SHARE_PORT}`;
+      const r = await fetch(`${base}/myiptv-share/${w.shareId(code)}`, { cache: "no-store" }).catch(() => {
+        throw new Error(
+          location.protocol === "https:"
+            ? "Le navigateur bloque l'accès aux appareils du réseau depuis une page sécurisée : utilisez l'application ou la version TV."
+            : "Appareil injoignable : vérifiez l'adresse et que les deux appareils sont sur le même réseau.",
+        );
+      });
+      if (r.status === 404) throw new Error("Code incorrect.");
+      if (r.status === 410) throw new Error("Ce partage est terminé ou a expiré.");
+      if (!r.ok) throw new Error(`L'appareil a répondu ${r.status}.`);
+      return w.shareOpen(code, new Uint8Array(await r.arrayBuffer()));
+    },
     async recInfo() {
       return null;
     },

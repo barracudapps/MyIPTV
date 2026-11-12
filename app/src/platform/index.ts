@@ -1,6 +1,20 @@
 import type { RecInfo, Recording } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
+export interface ShareInfo {
+  code: string;
+  addresses: string[];
+  port: number;
+  expiresAt: number;
+}
+
+export interface ShareStatus {
+  active: boolean;
+  downloads: number;
+  expiresAt: number;
+  closedReason?: string | null;
+}
+
 /** Services fournis par la plateforme : natif (Tauri + Rust) ou web/TV (WASM). */
 export interface Backend {
   readonly name: "native" | "web";
@@ -23,6 +37,14 @@ export interface Backend {
   recSchedule(req: { channel: Channel; title: string; subtitle?: string; start: number; stop: number; profileId?: string }): Promise<Recording>;
   recCancel(id: string, deleteFile: boolean): Promise<void>;
   recInfo(): Promise<RecInfo | null>;
+  /** Ouverture d'un partage réseau : appareils natifs seulement (bureau, Android). */
+  share?: {
+    start(payload: string): Promise<ShareInfo>;
+    status(): Promise<ShareStatus>;
+    stop(): Promise<void>;
+  };
+  /** Récupère et déchiffre la configuration partagée par un autre appareil. */
+  shareFetch(address: string, code: string): Promise<string>;
   play(req: PlayRequest): Promise<PlayInfo>;
   stop(): Promise<void>;
 }

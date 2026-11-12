@@ -90,3 +90,14 @@ pub fn analyze_risk(channels: JsValue) -> Result<JsValue, JsValue> {
     let channels: Vec<Channel> = serde_wasm_bindgen::from_value(channels)?;
     to_js(&crate::risk::analyze(&channels))
 }
+
+#[wasm_bindgen(js_name = shareId)]
+pub fn share_id(code: &str) -> String {
+    crate::share::share_id(code)
+}
+
+#[wasm_bindgen(js_name = shareOpen)]
+pub fn share_open(code: &str, data: &[u8]) -> Result<String, JsValue> {
+    let plain = crate::share::open(code, data).map_err(err)?;
+    String::from_utf8(plain).map_err(err)
+}

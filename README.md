@@ -63,6 +63,7 @@ cd app && npm run typecheck
 - Recherche globale dans les chaînes et les programmes, avec mini-lecteur flottant.
 - Profils (administrateur, standard, enfant), thèmes prédéfinis et écrans personnalisables (couleurs, police, disposition, densité), import/export.
 - Contrôle parental : code PIN, chaînes adultes verrouillées, profils enfants filtrés par âge avec tolérance réglable, listes blanche et noire, catégories bloquées.
+- Partage en réseau local : sources, comptes, profils, thèmes et réglages copiés d'un appareil à l'autre avec une adresse et un code (chiffré, valable 10 minutes) ; envoi depuis le bureau ou Android, réception partout.
 - Navigation à la télécommande : flèches et OK, Retour (ferme l'élément ouvert, puis quitte l'application sur Android TV), CH+/CH−, lecture/pause, avance et retour rapides (30 s), stop. Touches multimédia déclarées sur Tizen, Retour webOS et Android pris en charge.
 
 ## Versionnage

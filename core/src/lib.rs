@@ -13,6 +13,7 @@ pub mod m3u;
 pub mod model;
 pub mod parental;
 pub mod risk;
+pub mod share;
 pub mod tmdb;
 pub mod util;
 pub mod vod;

@@ -12,8 +12,9 @@ import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { ExtraSettings } from "./ExtraSettings";
+import { ShareSettings } from "./ShareSettings";
 
-type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "prevention" | "about";
+type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "share" | "prevention" | "about";
 
 export function SettingsView() {
   const profile = useActiveProfile()!;
@@ -28,6 +29,7 @@ export function SettingsView() {
     ["meta", "Métadonnées", "info", isAdmin],
     ["fun", "Fun & succès", "trophy", true],
     ["menu", "Menu", "list", true],
+    ["share", "Partage en réseau", "upload", isAdmin],
     ["prevention", "Reconnaître une offre illégale", "alert", true],
     ["about", "À propos", "info", true],
   ];
@@ -49,6 +51,7 @@ export function SettingsView() {
         {section === "parental" && isAdmin && <ParentalSettings />}
         {section === "playback" && <PlaybackSettings />}
         {(section === "languages" || section === "meta" || section === "fun" || section === "menu") && <ExtraSettings section={section} />}
+        {section === "share" && isAdmin && <ShareSettings />}
         {section === "prevention" && <Prevention />}
         {section === "about" && <About />}
       </div>

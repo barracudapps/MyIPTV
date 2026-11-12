@@ -2,6 +2,7 @@ mod commands;
 mod library;
 mod recorder;
 mod server;
+mod share;
 mod state;
 mod timeshift;
 mod transcode;
@@ -36,6 +37,7 @@ pub fn run() {
                 }
             });
             app.manage(state);
+            app.manage(Arc::new(share::ShareState::default()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -60,6 +62,10 @@ pub fn run() {
             commands::rec_schedule,
             commands::rec_cancel,
             commands::rec_info,
+            share::share_start,
+            share::share_status,
+            share::share_stop,
+            share::share_fetch,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de MyIPTV");
