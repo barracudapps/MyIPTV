@@ -6,3 +6,4 @@ app/src/wasm/
 .DS_Store
 app/src-tauri/gen/
 app/dist-web/
+tv/build/

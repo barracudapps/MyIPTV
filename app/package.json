@@ -10,7 +10,8 @@
     "wasm": "cargo build -p iptv-core --features wasm --target wasm32-unknown-unknown --release --manifest-path ../core/Cargo.toml && wasm-bindgen --target web --out-dir src/wasm --out-name iptv_core ../target/wasm32-unknown-unknown/release/iptv_core.wasm",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "preview:web": "vite preview --outDir dist-web --port 4173"
+    "preview:web": "vite preview --outDir dist-web --port 4173",
+    "package:tv": "node ../scripts/package-tv.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.26",
