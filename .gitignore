@@ -4,3 +4,4 @@ dist/
 core/pkg/
 app/src/wasm/
 .DS_Store
+app/src-tauri/gen/
