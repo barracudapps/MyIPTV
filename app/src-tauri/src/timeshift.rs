@@ -205,8 +205,14 @@ impl Recorder {
             }
             // Au premier passage on ne garde que les ~3 derniers segments (point de direct).
             let skip = if last_seq.is_none() { pl.segments.len().saturating_sub(3) } else { 0 };
+            // Le dernier segment de la playlist se termine au bord du direct : l'heure de début
+            // de chaque segment s'en déduit, y compris pour ceux téléchargés en rafale.
+            let fetched_at = now_ms();
+            let mut remaining_ms: i64 = pl.segments.iter().skip(skip).map(|s| (s.duration * 1000.0) as i64).sum();
             let mut new_count = 0;
             for seg in pl.segments.iter().skip(skip) {
+                let wall = fetched_at - remaining_ms;
+                remaining_ms -= (seg.duration * 1000.0) as i64;
                 if let Some(l) = last_seq {
                     // Remise à zéro de la séquence côté serveur : on accepte avec discontinuité.
                     if seg.seq <= l && l - seg.seq < 1000 {
@@ -216,7 +222,6 @@ impl Recorder {
                         self.mark_discontinuity();
                     }
                 }
-                let wall = now_ms();
                 let bytes = self.download(&seg.uri).await?;
                 if seg.discontinuity {
                     self.mark_discontinuity();
@@ -648,5 +653,30 @@ mod tests {
         for d in produced {
             assert!((d - 4.0).abs() < 0.05, "durée {d}");
         }
+    }
+}
+
+#[cfg(test)]
+mod live_tests {
+    use super::*;
+
+    /// Test réseau : `STREAM_URL=… cargo test -p myiptv live_ -- --ignored --nocapture`
+    #[tokio::test]
+    #[ignore]
+    async fn live_records_real_stream() {
+        let url = std::env::var("STREAM_URL").expect("STREAM_URL");
+        let root = std::env::temp_dir().join("myiptv-live-test");
+        let sess = Session::start(reqwest::Client::new(), Upstream { url, user_agent: None, referrer: None }, root, 300.0, "http://127.0.0.1:1".into()).unwrap();
+        sess.wait_ready(Duration::from_secs(30)).await.expect("premier segment");
+        tokio::time::sleep(Duration::from_secs(15)).await;
+        let pl = sess.playlist();
+        println!("{pl}");
+        let segs: Vec<_> = pl.lines().filter(|l| !l.starts_with('#') && !l.is_empty()).collect();
+        assert!(segs.len() >= 2, "au moins deux segments enregistrés");
+        for s in &segs {
+            let len = std::fs::metadata(sess.dir.join(s)).unwrap().len();
+            assert!(len > 1000, "segment {s} vide");
+        }
+        assert!(sess.buffered_secs() > 5.0);
     }
 }
