@@ -1672,7 +1672,7 @@ checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
 
 [[package]]
 name = "iptv-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "flate2",
@@ -2039,10 +2039,11 @@ dependencies = [
 
 [[package]]
 name = "myiptv"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "axum",
  "bytes",
+ "chrono",
  "futures-util",
  "iptv-core",
  "log",
@@ -2052,6 +2053,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tokio",
+ "tokio-util",
  "url",
 ]
 
