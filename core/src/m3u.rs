@@ -63,6 +63,7 @@ pub fn parse_m3u(text: &str, source_id: &str) -> Playlist {
     let mut group_override: Option<String> = None;
     let mut ua: Option<String> = None;
     let mut referrer: Option<String> = None;
+    let mut vod_entries = Vec::new();
 
     for raw in text.lines() {
         let line = raw.trim().trim_start_matches('\u{feff}');
@@ -141,15 +142,20 @@ pub fn parse_m3u(text: &str, source_id: &str) -> Playlist {
                 ch.name = ch.tvg_id.clone().unwrap_or_else(|| url.to_string());
             }
             ch.adult = crate::parental::is_adult(&ch.name, ch.group.as_deref());
+            ch.languages = crate::lang::detect(&ch.name, ch.group.as_deref(), ch.language.as_deref(), ch.country.as_deref());
             ch.catchup = catchup_from_attrs(&pending_attrs, header_catchup.as_ref());
             ch.id = format!("{}:{}", source_id, stable_key(&[ch.tvg_id.as_deref().unwrap_or(""), &ch.name, &ch.url]));
-            pl.channels.push(ch);
+            match crate::vod::classify_m3u(&ch) {
+                Some(kind) => vod_entries.push((kind, ch)),
+                None => pl.channels.push(ch),
+            }
             group_override = None;
             ua = None;
             referrer = None;
         }
     }
     dedupe_ids(&mut pl.channels);
+    pl.vod = crate::vod::from_m3u_entries(vod_entries, source_id);
     pl
 }
 

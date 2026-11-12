@@ -28,6 +28,9 @@ pub struct Channel {
     pub referrer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub catchup: Option<Catchup>,
+    /// Langues détectées (ISO 639-1), la plus probable d'abord.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub languages: Vec<String>,
     /// Chaîne explicitement destinée aux adultes (nom, groupe ou indicateur de la source).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub adult: bool,
@@ -50,6 +53,9 @@ pub enum Catchup {
 #[serde(rename_all = "camelCase")]
 pub struct Playlist {
     pub channels: Vec<Channel>,
+    /// Films, épisodes, musique et radios trouvés dans la source.
+    #[serde(default)]
+    pub vod: Vec<crate::vod::VodItem>,
     /// URLs de guide annoncées dans l'en-tête (`url-tvg`, `x-tvg-url`).
     pub epg_urls: Vec<String>,
 }
@@ -83,6 +89,18 @@ pub enum SourceKind {
     M3uUrl { url: String },
     M3uText { content: String },
     Xtream { server: String, username: String, password: String, #[serde(default)] output: Option<String> },
+    /// Collection Internet Archive (domaine public / licences libres).
+    Archive { collection: String, mediatype: String, content: crate::vod::VodKind, #[serde(default = "default_rows")] rows: usize },
+    /// Annuaire Radio Browser, filtré par pays.
+    RadioBrowser { #[serde(default)] countries: Vec<String> },
+    /// Classement Apple Podcasts des pays donnés.
+    Podcasts { #[serde(default)] countries: Vec<String> },
+    /// Livres audio LibriVox dans les langues données.
+    Librivox { #[serde(default)] languages: Vec<String> },
+}
+
+fn default_rows() -> usize {
+    1000
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
