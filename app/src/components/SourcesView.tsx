@@ -181,13 +181,16 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
   const [tab, setTab] = useState<Tab>("catalog");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [content, setContent] = useState("");
+  const [files, setFiles] = useState<{ name: string; content: string }[]>([]);
   const [xt, setXt] = useState({ server: "", username: "", password: "" });
   const [jf, setJf] = useState({ server: "", username: "", password: "" });
   const [epg, setEpg] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingRisk, setPendingRisk] = useState<{ source: Source; report: RiskReport } | null>(null);
+  /** Sources suspectes en attente de la double confirmation, présentées une par une. */
+  const [riskQueue, setRiskQueue] = useState<{ source: Source; report: RiskReport }[]>([]);
+  const [failures, setFailures] = useState<string[]>([]);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const toast = useUi((s) => s.toast);
   const testMode = useSettings((s) => s.testMode);
 
@@ -196,6 +199,66 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
     useLibrary.getState().loadAll();
     toast(`« ${source.name} » ajoutée.`, "success");
     onClose();
+  };
+
+  /**
+   * Plusieurs listes d'un coup : chacune est téléchargée et analysée ; les sûres sont
+   * ajoutées, les suspectes passent chacune par l'avertissement, les échecs sont listés.
+   */
+  const submitMany = async (sources: Source[]) => {
+    setBusy(true);
+    setError(null);
+    setFailures([]);
+    setProgress({ done: 0, total: sources.length });
+    const backend = await getBackend();
+    const added: Source[] = [];
+    const risky: { source: Source; report: RiskReport }[] = [];
+    const failed: string[] = [];
+    const retry: string[] = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < sources.length) {
+        const source = sources[next++];
+        const label = source.kind === "m3uUrl" ? source.url : source.name;
+        try {
+          const preview = await backend.previewSource(source);
+          if (preview.risk.total === 0) {
+            failed.push(`${label} : aucune chaîne trouvée.`);
+            if (source.kind === "m3uUrl") retry.push(source.url);
+          }
+          else if (preview.risk.level === "low") added.push(source);
+          else risky.push({ source: { ...source, risk: preview.risk.level }, report: preview.risk });
+        } catch (e) {
+          failed.push(`${label} : ${errorMessage(e)}`);
+          if (source.kind === "m3uUrl") retry.push(source.url);
+        }
+        setProgress((p) => p && { ...p, done: p.done + 1 });
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    for (const src of added) useSettings.getState().addSource(src);
+    if (added.length) {
+      useLibrary.getState().loadAll();
+      toast(added.length === 1 ? `« ${added[0].name} » ajoutée.` : `${added.length} sources ajoutées.`, "success");
+    }
+    setBusy(false);
+    setProgress(null);
+    setFailures(failed);
+    setRiskQueue(risky);
+    // Seuls les liens en échec restent dans le champ, à corriger ou relancer.
+    if (sources.some((x) => x.kind === "m3uUrl")) setUrl(retry.join("\n"));
+    if (!failed.length && !risky.length) onClose();
+  };
+
+  const nextRisk = (confirmed: boolean) => {
+    const [head, ...rest] = riskQueue;
+    if (confirmed && head) {
+      useSettings.getState().addSource(head.source);
+      useLibrary.getState().loadAll();
+      toast(`« ${head.source.name} » ajoutée.`, "success");
+    }
+    setRiskQueue(rest);
+    if (!rest.length && !failures.length) onClose();
   };
 
   /** Télécharge et analyse la source avant de l'enregistrer. */
@@ -215,7 +278,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
       const preview = await (await getBackend()).previewSource(source);
       if (preview.risk.total === 0) throw new Error("Aucune chaîne trouvée dans cette source.");
       if (preview.risk.level === "low") commit(source);
-      else setPendingRisk({ source: { ...source, risk: preview.risk.level }, report: preview.risk });
+      else setRiskQueue([{ source: { ...source, risk: preview.risk.level }, report: preview.risk }]);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -225,9 +288,25 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
 
   const addCatalog = (e: CatalogEntry) => submit({ kind: "m3uUrl", url: e.url }, `Gratuit · ${e.name}`, true);
 
-  if (pendingRisk) {
-    return <RiskDialog report={pendingRisk.report} onCancel={() => setPendingRisk(null)} onConfirm={() => commit(pendingRisk.source)} />;
+  if (riskQueue.length) {
+    return <RiskDialog key={riskQueue[0].source.id} report={riskQueue[0].report} onCancel={() => nextRisk(false)} onConfirm={() => nextRisk(true)} />;
   }
+
+  const links = [...new Set(url.split(/[\s,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\/\S+$/i.test(u)))];
+  const knownUrls = new Set(useSettings.getState().sources.flatMap((x) => (x.kind === "m3uUrl" ? [x.url] : [])));
+  const newLinks = links.filter((u) => !knownUrls.has(u));
+  // « iptv-org.github.io · lu » : le site seul ne distingue pas plusieurs listes d'un même hébergeur.
+  const hostOf = (u: string) => {
+    try {
+      const parsed = new URL(u);
+      const file = decodeURIComponent(parsed.pathname.split("/").pop() ?? "").replace(/\.(m3u8?|txt)$/i, "");
+      return file && !/^(get|playlist|index|list)(\.php)?$/i.test(file) ? `${parsed.hostname} · ${file}` : parsed.hostname;
+    } catch {
+      return u;
+    }
+  };
+  const base = { epgUrls: epg.split(/\s+/).filter(Boolean), enabled: true, addedAt: Date.now() };
+  const numbered = (fallback: string, i: number, n: number) => (name.trim() ? (n > 1 ? `${name.trim()} ${i + 1}` : name.trim()) : fallback);
 
   return (
     <Modal title="Ajouter une source" onClose={onClose} wide>
@@ -292,8 +371,13 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
                 .finally(() => setBusy(false));
               return;
             }
-            if (tab === "url") submit({ kind: "m3uUrl", url: url.trim() }, new URL(url.trim()).hostname);
-            else if (tab === "file") submit({ kind: "m3uText", content }, "Playlist importée");
+            if (tab === "url") {
+              if (!newLinks.length) return setError(links.length ? "Ces listes sont déjà dans vos sources." : "Saisissez au moins une adresse http(s)://.");
+              submitMany(newLinks.map((u, i) => ({ ...base, kind: "m3uUrl", url: u, id: uid(), name: numbered(hostOf(u), i, newLinks.length) }) as Source));
+            } else if (tab === "file") {
+              if (!files.length) return setError("Choisissez au moins un fichier.");
+              submitMany(files.map((f, i) => ({ ...base, kind: "m3uText", content: f.content, id: uid(), name: numbered(f.name.replace(/\.m3u8?$/i, ""), i, files.length) }) as Source));
+            }
             else submit({ kind: "xtream", ...xt, server: xt.server.trim() }, xt.server.replace(/^https?:\/\//, ""));
           }}
         >
@@ -303,18 +387,26 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
           </label>
           {tab === "url" && (
             <label className="field">
-              Adresse de la playlist
-              <input required type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…/playlist.m3u" />
+              Adresses des playlists (une par ligne)
+              <textarea required rows={4} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={"https://…/playlist.m3u\nhttps://…/autre-liste.m3u8"} />
+              {links.length > 0 && (
+                <span className="dim small">
+                  {links.length} lien{links.length > 1 ? "s" : ""}
+                  {links.length > newLinks.length ? ` · ${links.length - newLinks.length} déjà ajouté${links.length - newLinks.length > 1 ? "s" : ""}, ignoré${links.length - newLinks.length > 1 ? "s" : ""}` : ""}
+                  {newLinks.length > 1 ? " · chacun devient une source séparée" : ""}
+                </span>
+              )}
             </label>
           )}
           {tab === "file" && (
             <label className="field">
-              Fichier .m3u / .m3u8
+              Fichiers .m3u / .m3u8 (un ou plusieurs)
               <input
                 required
                 type="file"
+                multiple
                 accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"
-                onChange={async (e) => setContent((await e.target.files?.[0]?.text()) ?? "")}
+                onChange={async (e) => setFiles(await Promise.all([...(e.target.files ?? [])].map(async (f) => ({ name: f.name, content: await f.text() }))))}
               />
             </label>
           )}
@@ -367,9 +459,20 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
             d'une offre illégale.
           </p>
           {error && <p className="error-text">{error}</p>}
+          {failures.length > 0 && (
+            <div className="error-text">
+              <strong>{failures.length === 1 ? "Une liste n'a pas pu être ajoutée :" : `${failures.length} listes n'ont pas pu être ajoutées :`}</strong>
+              <ul className="small">
+                {failures.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="actions">
             <button className="btn btn-primary" type="submit" disabled={busy}>
-              {busy ? <div className="spinner small" /> : <Icon name="check" />} Vérifier et ajouter
+              {busy ? <div className="spinner small" /> : <Icon name="check" />}{" "}
+              {progress && progress.total > 1 ? `Vérification ${progress.done}/${progress.total}…` : (tab === "url" && newLinks.length > 1) || (tab === "file" && files.length > 1) ? `Vérifier et ajouter (${tab === "url" ? newLinks.length : files.length})` : "Vérifier et ajouter"}
             </button>
           </div>
         </form>
