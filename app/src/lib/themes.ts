@@ -40,6 +40,8 @@ export interface Theme {
   font: FontFamily;
   fontScale: number;
   layout: ThemeLayout;
+  /** Effets visuels propres au thème (matières, mouvements), en plus des couleurs. */
+  fx?: "luxe";
 }
 
 const baseLayout: ThemeLayout = {
@@ -241,6 +243,18 @@ export const BUILTIN_THEMES: Theme[] = [
     layout: { ...baseLayout, nav: "top", density: "tv", channelView: "grid", playerPosition: "top", playerSize: 60, logoSize: 72 },
   },
   {
+    // Maison de luxe : noir profond, or brossé, titres Didot, mouvements lents et feutrés.
+    id: "maison",
+    name: "Maison",
+    builtin: true,
+    colors: { bg: "#0a0907", surface: "#12100c", surface2: "#1b1812", border: "#2c261b", text: "#f2ebdd", textDim: "#a39781", accent: "#c9a45c", accentText: "#140f06", live: "#b4232c", danger: "#b4232c" },
+    radius: 4,
+    font: "system",
+    fontScale: 1,
+    fx: "luxe",
+    layout: { ...baseLayout, nav: "left", channelView: "grid", density: "comfortable", logoSize: 48 },
+  },
+  {
     // Style « lecteur moderne » : barre d'icônes, gris neutres, cartes arrondies, accent bleu.
     id: "studio",
     name: "Studio",
@@ -286,6 +300,8 @@ export function applyTheme(t: Theme) {
   s.setProperty("--player-size", `${t.layout.playerSize}%`);
   document.documentElement.dataset.nav = t.layout.nav;
   document.documentElement.dataset.density = t.layout.density;
+  if (t.fx) document.documentElement.dataset.fx = t.fx;
+  else delete document.documentElement.dataset.fx;
   document.documentElement.style.colorScheme = isLight(t.colors.bg) ? "light" : "dark";
 }
 
