@@ -92,6 +92,21 @@ fn series_key(raw: &str) -> Option<(String, String)> {
     None
 }
 
+/// Date contenue dans un titre d'épisode (« February 8, 1955 », « 8 février 1955 », « 1955-02-08 »).
+fn title_date(title: &str) -> Option<(u16, u8, u8)> {
+    const MONTHS: &[&[&str]] = &[
+        &["january", "jan", "janvier"], &["february", "feb", "février", "fevrier"], &["march", "mar", "mars"], &["april", "apr", "avril"],
+        &["may", "mai"], &["june", "jun", "juin"], &["july", "jul", "juillet"], &["august", "aug", "août", "aout"],
+        &["september", "sep", "sept", "septembre"], &["october", "oct", "octobre"], &["november", "nov", "novembre"], &["december", "dec", "décembre", "decembre"],
+    ];
+    let lower = title.to_lowercase();
+    let words: Vec<&str> = lower.split(|c: char| !c.is_alphanumeric() && c != 'é' && c != 'û').filter(|w| !w.is_empty()).collect();
+    let year = words.iter().filter_map(|w| w.parse::<u16>().ok()).find(|y| (1900..=2100).contains(y))?;
+    let month = words.iter().find_map(|w| MONTHS.iter().position(|m| m.contains(w)))? as u8 + 1;
+    let day = words.iter().filter_map(|w| w.parse::<u8>().ok()).find(|d| (1..=31).contains(d)).unwrap_or(1);
+    Some((year, month, day))
+}
+
 /// Regroupe en séries les épisodes publiés séparément (au moins deux par série).
 /// Les épisodes pointent vers `archive:<identifiant>`, résolu au moment de la lecture.
 pub fn group_series(items: Vec<VodItem>, source_id: &str) -> Vec<VodItem> {
@@ -109,7 +124,12 @@ pub fn group_series(items: Vec<VodItem>, source_id: &str) -> Vec<VodItem> {
             rest.extend(eps.into_iter().map(|(_, i)| VodItem { title: i.raw_name.clone(), ..i }));
             continue;
         }
-        eps.sort_by(|a, b| a.0.cmp(&b.0));
+        // Épisodes datés (« February 8, 1955 ») : ordre chronologique ; sinon ordre du titre.
+        if eps.iter().all(|(t, _)| title_date(t).is_some()) {
+            eps.sort_by_key(|(t, _)| title_date(t));
+        } else {
+            eps.sort_by(|a, b| a.0.cmp(&b.0));
+        }
         let first = &eps[0].1;
         let mut series = VodItem {
             id: format!("{source_id}:serie:{}", stable_key(&[&key])),
@@ -478,6 +498,9 @@ mod tests {
         assert!(out.iter().any(|i| i.title == "Lucy meets John Wayne" && i.kind == Some(VodKind::Show)));
         assert!(out.iter().any(|i| i.title == "Tales: one-off"), "une seule occurrence : reste une émission");
         assert!(archive_search_url("classic_tv", "movies", 10).contains("licenseurl"));
+        let dated = group_series(vec![mk("x", "Love of Life - February 8, 1955"), mk("y", "Love of Life - March 20, 1953")], "ia");
+        assert_eq!(dated[0].episodes.iter().map(|e| e.title.as_str()).collect::<Vec<_>>(), vec!["March 20, 1953", "February 8, 1955"]);
+        assert_eq!(title_date("8 février 1955"), Some((1955, 2, 8)));
     }
 
     #[test]

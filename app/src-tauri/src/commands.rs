@@ -41,7 +41,7 @@ struct CachedSource {
 const SOURCE_TTL: i64 = 24 * 3600;
 /// À incrémenter quand le traitement des sources change (regroupement, filtres, détection…) :
 /// le cache est alors renouvelé au lieu de resservir l'ancien résultat pendant 24 h.
-const SOURCE_CACHE_VERSION: &str = "5";
+const SOURCE_CACHE_VERSION: &str = "6";
 const EPG_TTL: u64 = 12 * 3600;
 
 async fn get_text(st: &AppState, url: &str) -> Res<String> {
