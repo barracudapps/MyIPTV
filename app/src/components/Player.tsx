@@ -120,6 +120,11 @@ export function Player() {
   const remuxRef = useRef({ offset: 0, audio: 0 });
   const [remuxAudio, setRemuxAudio] = useState(0);
   const isRemux = info?.kind === "remux";
+  /** Un seul repli automatique sur ffmpeg par contenu. */
+  const triedRemux = useRef(false);
+  useEffect(() => {
+    triedRemux.current = false;
+  }, [channel?.id, media?.item.id, media?.episode?.id, catchup?.start]);
 
   const active = channel != null || media != null;
   const isAudio = media != null && ["radio", "music", "podcast", "audiobook"].includes(media.item.kind ?? "");
@@ -155,6 +160,13 @@ export function Player() {
     const video = videoRef.current;
     if (!video || !info) return;
     setEngineError(null);
+    // Échec du flux direct (format mal annoncé, DASH…) : une tentative via ffmpeg avant d'afficher l'erreur.
+    const onFatal = (msg: string) => {
+      if (!triedRemux.current && info.kind !== "remux" && !info.timeshift) {
+        triedRemux.current = true;
+        usePlayer.getState().retry(true);
+      } else setEngineError(msg);
+    };
     setTracks(NO_TRACKS);
     setPanel(null);
     setNextIn(null);
@@ -183,9 +195,11 @@ export function Player() {
       const audio = p?.player.autoTracks && tracks.length ? [...tracks].sort((a, b) => rank(a.language) - rank(b.language))[0].index : 0;
       remuxRef.current = { offset: resumeAt > 5 ? resumeAt : 0, audio };
       setRemuxAudio(audio);
-      engine = attach(video, `${info.url}?start=${remuxRef.current.offset}&audio=${audio}`, info.remuxFormat === "mpegts" ? "mpegts" : "native", { timeshift: false, live: false }, setEngineError, onTracks);
+      engine = attach(video, `${info.url}?start=${remuxRef.current.offset}&audio=${audio}`, info.remuxFormat === "mpegts" ? "mpegts" : "native", { timeshift: false, live: info.duration == null }, onFatal, onTracks);
     } else {
-      engine = attach(video, info.url, info.kind, { timeshift: info.timeshift, live: isLiveStream }, setEngineError, onTracks);
+      engine = attach(video, info.url, info.kind, { timeshift: info.timeshift, live: isLiveStream }, onFatal, onTracks);
+      // Lecteur natif : l'erreur arrive par l'élément vidéo.
+      if (info.kind === "native") video.addEventListener("error", () => onFatal("Format non pris en charge."), { once: true });
       if (resumeAt > 5) video.addEventListener("loadedmetadata", () => (video.currentTime = resumeAt), { once: true });
     }
     engineRef.current = engine;
@@ -523,7 +537,7 @@ export function Player() {
         </div>
       )}
 
-      {(loading || (!clock.playing && !shownError && clock.t === 0)) && !blocked && (
+      {!shownError && (loading || (!clock.playing && clock.t === 0)) && !blocked && (
         <div className="player-center">
           <div className="spinner" />
           {!small && <span>{info?.timeshift ? "Préparation du direct…" : "Connexion…"}</span>}
@@ -542,7 +556,7 @@ export function Player() {
         <div className="player-center player-error">
           <Icon name="alert" size={small ? 22 : 40} />
           <span>{shownError}</span>
-          <button className="btn" onClick={retry}>
+          <button className="btn" onClick={() => retry(isRemux)}>
             Réessayer
           </button>
         </div>

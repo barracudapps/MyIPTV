@@ -109,6 +109,8 @@ export interface PlayRequest {
   windowMinutes: number;
   /** Film, épisode, piste : format analysé et converti si nécessaire. */
   media?: boolean;
+  /** Le lecteur a échoué sur le flux direct : passer par ffmpeg. */
+  forceRemux?: boolean;
 }
 
 // ------------------------------------------------------------------ Bibliothèque

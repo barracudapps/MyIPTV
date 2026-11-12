@@ -33,14 +33,15 @@ interface PlayerState {
   zapList: Channel[];
   token: number;
 
-  play(ch: Channel, opts?: { zapList?: Channel[] }): Promise<void>;
-  playCatchup(ch: Channel, prog: Programme): Promise<void>;
-  playMedia(item: VodItem, opts?: { episode?: Episode; queue?: Episode[]; resumeAt?: number; age?: number }): Promise<void>;
+  play(ch: Channel, opts?: { zapList?: Channel[]; forceRemux?: boolean }): Promise<void>;
+  playCatchup(ch: Channel, prog: Programme, forceRemux?: boolean): Promise<void>;
+  playMedia(item: VodItem, opts?: { episode?: Episode; queue?: Episode[]; resumeAt?: number; age?: number; forceRemux?: boolean }): Promise<void>;
   nextEpisode(): boolean;
   zap(delta: number): void;
   stop(): Promise<void>;
   setMode(m: PlayerMode): void;
-  retry(): void;
+  /** Relance ; `forceRemux` : passer par ffmpeg après un échec du flux direct. */
+  retry(forceRemux?: boolean): void;
 }
 
 function activeProfile(): Profile | undefined {
@@ -86,7 +87,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     const profile = activeProfile();
     if (!profile || !(await resolve(channelAccess(profile, ch, adultCtx()), ch.name))) return;
     const token = get().token + 1;
-    const zapping = get().channel != null && get().media == null;
+    const zapping = get().channel != null && get().media == null && get().channel?.id !== ch.id;
     set({
       channel: ch,
       media: null,
@@ -110,8 +111,9 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
         url: ch.url,
         userAgent: ch.userAgent,
         referrer: ch.referrer,
-        timeshift: settings.playback.timeshift && backend.diskTimeshift,
+        timeshift: settings.playback.timeshift && backend.diskTimeshift && !opts?.forceRemux,
         windowMinutes: settings.playback.windowMinutes,
+        forceRemux: opts?.forceRemux,
       });
       if (get().token !== token) return; // une autre chaîne a été lancée entre-temps
       set({ info, loading: false });
@@ -121,7 +123,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     }
   },
 
-  async playCatchup(ch, prog) {
+  async playCatchup(ch, prog, forceRemux) {
     const profile = activeProfile();
     if (!profile || !(await resolve(channelAccess(profile, ch, adultCtx()), ch.name))) return;
     const token = get().token + 1;
@@ -130,7 +132,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
       const backend = await getBackend();
       const url = await backend.catchupUrl(ch, prog.start, prog.stop);
       if (!url) throw new Error("Ce programme n'est pas disponible en replay.");
-      const info = await backend.play({ url, userAgent: ch.userAgent, referrer: ch.referrer, timeshift: false, windowMinutes: 0 });
+      const info = await backend.play({ url, userAgent: ch.userAgent, referrer: ch.referrer, timeshift: false, windowMinutes: 0, media: true, forceRemux });
       if (get().token === token) set({ info, loading: false });
     } catch (e) {
       if (get().token === token) set({ loading: false, error: errorMessage(e) });
@@ -158,7 +160,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     });
     fun.onPlay(item.kind === "radio" ? "radio" : "media", item);
     try {
-      const info = await (await getBackend()).play({ url, userAgent: item.userAgent, referrer: item.referrer, timeshift: false, windowMinutes: 0, media: !item.live });
+      const info = await (await getBackend()).play({ url, userAgent: item.userAgent, referrer: item.referrer, timeshift: false, windowMinutes: 0, media: !item.live, forceRemux: opts.forceRemux });
       if (get().token === token) set({ info, loading: false });
     } catch (e) {
       if (get().token === token) set({ loading: false, error: errorMessage(e) });
@@ -190,10 +192,10 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
 
   setMode: (mode) => set({ mode }),
 
-  retry() {
+  retry(forceRemux = false) {
     const { channel, catchup, media } = get();
-    if (media) get().playMedia(media.item, { episode: media.episode, queue: media.queue, resumeAt: media.resumeAt, age: media.age });
-    else if (channel && catchup) get().playCatchup(channel, catchup);
-    else if (channel) get().play(channel);
+    if (media) get().playMedia(media.item, { episode: media.episode, queue: media.queue, resumeAt: media.resumeAt, age: media.age, forceRemux });
+    else if (channel && catchup) get().playCatchup(channel, catchup, forceRemux);
+    else if (channel) get().play(channel, { forceRemux });
   },
 }));

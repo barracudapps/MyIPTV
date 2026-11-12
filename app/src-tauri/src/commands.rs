@@ -338,6 +338,9 @@ pub struct PlayRequest {
     /// Film, épisode ou piste : le format est analysé et converti si la webview ne sait pas le lire.
     #[serde(default)]
     pub media: bool,
+    /// Le lecteur a échoué sur le flux direct : passer par ffmpeg.
+    #[serde(default)]
+    pub force_remux: bool,
 }
 
 fn default_window() -> u32 {
@@ -401,23 +404,17 @@ pub async fn play(st: St<'_>, req: PlayRequest) -> Res<PlayInfo> {
 
     *st.remux.lock().await = None;
     let mut warning = ts_error;
+    let has_ffmpeg = crate::transcode::find_tool("ffmpeg").is_some();
+
+    // Le lecteur a échoué sur le flux direct : on passe par ffmpeg.
+    if req.force_remux && has_ffmpeg {
+        return Ok(remux_session(&st, &up).await);
+    }
+
     if req.media && !req.url.to_lowercase().contains(".m3u8") {
-        if crate::transcode::find_tool("ffmpeg").is_some() {
+        if has_ffmpeg {
             match crate::transcode::probe(&up).await {
-                Ok(p) if !p.web_playable() => {
-                    let sid = format!("{:x}", SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0));
-                    let info = PlayInfo {
-                        url: format!("{}/remux/{sid}", st.base_url()),
-                        kind: "remux",
-                        timeshift: false,
-                        error: None,
-                        duration: p.duration,
-                        audio_tracks: p.audio.clone(),
-                        remux_format: Some(p.remux_format()),
-                    };
-                    *st.remux.lock().await = Some((sid, up.clone(), p));
-                    return Ok(info);
-                }
+                Ok(p) if !p.web_playable() => return Ok(start_remux(&st, &up, p).await),
                 Ok(_) => {}
                 Err(e) => log::warn!("analyse ffprobe : {e}"),
             }
@@ -426,16 +423,81 @@ pub async fn play(st: St<'_>, req: PlayRequest) -> Res<PlayInfo> {
         }
     }
 
-    let kind = match guess_kind(&req.url, None) {
-        "mpegts" if !req.url.to_lowercase().contains(".ts") => {
-            // Extension inconnue : on interroge le serveur.
-            let ct = st.http.head(&req.url).headers(up.headers()).timeout(Duration::from_secs(8)).send().await.ok()
-                .and_then(|r| r.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).map(str::to_string));
-            guess_kind(&req.url, ct.as_deref())
+    // L'extension de l'URL ment souvent : on regarde les premiers octets du flux.
+    let kind = match sniff(&st, &up).await {
+        Some(k @ ("hls" | "mpegts" | "native")) => k,
+        Some(_) if has_ffmpeg => return Ok(remux_session(&st, &up).await),
+        Some(other) => {
+            warning = Some(format!("format {other} non pris en charge sans ffmpeg"));
+            guess_kind(&req.url, None)
         }
-        k => k,
+        None => guess_kind(&req.url, None),
     };
     Ok(PlayInfo::simple(crate::server::proxy_url(&st.base_url(), &req.url, &up), kind, false, warning))
+}
+
+/// Reconnaît le format réel d'un flux d'après son type MIME et ses premiers octets.
+/// Renvoie `hls`, `mpegts`, `native`, ou le nom d'un format qui nécessite ffmpeg (`dash`, `flv`, `inconnu`).
+async fn sniff(st: &AppState, up: &Upstream) -> Option<&'static str> {
+    let resp = st.http.get(&up.url).headers(up.headers()).timeout(Duration::from_secs(10)).send().await.ok()?;
+    let ct = resp.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase();
+    let path = resp.url().path().to_lowercase();
+    let mut head: Vec<u8> = Vec::with_capacity(4096);
+    let mut stream = resp.bytes_stream();
+    while head.len() < 1024 {
+        match tokio::time::timeout(Duration::from_secs(6), futures_util::StreamExt::next(&mut stream)).await {
+            Ok(Some(Ok(b))) => head.extend_from_slice(&b),
+            _ => break,
+        }
+    }
+    Some(classify_head(&head, &ct, &path))
+}
+
+pub(crate) fn classify_head(head: &[u8], ct: &str, path: &str) -> &'static str {
+    let text = String::from_utf8_lossy(&head[..head.len().min(512)]);
+    let trimmed = text.trim_start_matches('\u{feff}').trim_start();
+    if trimmed.starts_with("#EXTM3U") || ct.contains("mpegurl") {
+        "hls"
+    } else if trimmed.starts_with("<?xml") && text.contains("<MPD") || trimmed.starts_with("<MPD") || ct.contains("dash+xml") || path.ends_with(".mpd") {
+        "dash"
+    } else if head.first() == Some(&0x47) && (head.len() < 189 || head[188] == 0x47) || ct.contains("mp2t") {
+        "mpegts"
+    } else if head.get(4..8) == Some(b"ftyp") || head.starts_with(b"ID3") || head.starts_with(b"OggS") || head.starts_with(b"fLaC") || head.starts_with(&[0x1a, 0x45, 0xdf, 0xa3]) && ct.contains("webm") {
+        "native"
+    } else if head.len() > 1 && head[0] == 0xff && head[1] & 0xe0 == 0xe0 {
+        // Trame MP3/AAC brute (radios).
+        "native"
+    } else if head.starts_with(b"FLV") {
+        "flv"
+    } else if ct.starts_with("audio/") || ct.starts_with("video/mp4") {
+        "native"
+    } else {
+        "inconnu"
+    }
+}
+
+async fn remux_session(st: &AppState, up: &Upstream) -> PlayInfo {
+    let p = match tokio::time::timeout(Duration::from_secs(12), crate::transcode::probe(up)).await {
+        Ok(Ok(p)) => p,
+        // Analyse impossible (direct lent à démarrer) : copie telle quelle.
+        _ => crate::transcode::Probe { container: String::new(), duration: None, video_codec: None, audio: vec![], subtitles: vec![] },
+    };
+    start_remux(st, up, p).await
+}
+
+async fn start_remux(st: &AppState, up: &Upstream, p: crate::transcode::Probe) -> PlayInfo {
+    let sid = format!("{:x}", SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0));
+    let info = PlayInfo {
+        url: format!("{}/remux/{sid}", st.base_url()),
+        kind: "remux",
+        timeshift: false,
+        error: None,
+        duration: p.duration,
+        audio_tracks: p.audio.clone(),
+        remux_format: Some(p.remux_format()),
+    };
+    *st.remux.lock().await = Some((sid, up.clone(), p));
+    info
 }
 
 #[tauri::command]
@@ -526,6 +588,26 @@ pub struct RecInfo {
 #[tauri::command]
 pub fn rec_info(st: St<'_>) -> RecInfo {
     RecInfo { dir: st.recorder.dir.to_string_lossy().into(), ffmpeg: crate::transcode::find_tool("ffmpeg").is_some(), base: format!("{}/rec", st.base_url()) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::classify_head;
+
+    #[test]
+    fn sniffs_real_formats() {
+        assert_eq!(classify_head(b"#EXTM3U\n#EXT-X-VERSION:3", "text/plain", "/live"), "hls");
+        let mut ts = vec![0u8; 400];
+        ts[0] = 0x47;
+        ts[188] = 0x47;
+        assert_eq!(classify_head(&ts, "application/octet-stream", "/stream"), "mpegts");
+        assert_eq!(classify_head(b"\x00\x00\x00\x20ftypisom", "", "/v"), "native");
+        assert_eq!(classify_head(b"ID3\x04\x00", "", "/radio"), "native");
+        assert_eq!(classify_head(&[0xff, 0xfb, 0x90, 0x00], "", "/radio"), "native");
+        assert_eq!(classify_head(b"<?xml version=\"1.0\"?><MPD xmlns", "", "/m"), "dash");
+        assert_eq!(classify_head(b"FLV\x01", "", "/f"), "flv");
+        assert_eq!(classify_head(b"<html>erreur</html>", "text/html", "/x"), "inconnu");
+    }
 }
 
 #[cfg(test)]

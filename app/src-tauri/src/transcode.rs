@@ -147,10 +147,14 @@ pub fn remux_args(up: &Upstream, p: &Probe, start: f64, audio: usize) -> Vec<Str
         }
         // Codec vidéo ancien (MPEG-2, MPEG-4 Part 2…) : conversion rapide.
         Some(_) => a.extend(["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p"].map(String::from)),
-        None => {}
+        // Codec inconnu (analyse impossible) : copie, plutôt que le MPEG-2 par défaut de ffmpeg.
+        None => a.extend(["-c:v", "copy"].map(String::from)),
     }
     let acodec = p.audio.get(audio).map(|t| t.codec.as_str()).unwrap_or("");
-    if WEB_AUDIO.contains(&acodec) {
+    if p.audio.is_empty() && p.video_codec.is_none() {
+        // Rien n'est connu du flux : AAC est sûr pour tout son d'entrée.
+        a.extend(["-c:a", "aac", "-b:a", "192k"].map(String::from));
+    } else if WEB_AUDIO.contains(&acodec) {
         a.extend(["-c:a", "copy"].map(String::from));
     } else {
         // Le 5.1 est conservé : AAC le gère et les webviews le décodent.
