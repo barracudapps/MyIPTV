@@ -214,10 +214,14 @@ fn counts(vod: &[iptv_core::VodItem]) -> HashMap<String, usize> {
     m
 }
 
+/// Retire une source de la mémoire ; `purge` efface aussi son cache (suppression définitive).
 #[tauri::command]
-pub async fn remove_source(st: St<'_>, id: String) -> Res<()> {
+pub async fn remove_source(st: St<'_>, id: String, purge: bool) -> Res<()> {
     st.channels.write().await.remove(&id);
     st.set_vod(&id, vec![]).await;
+    if !purge {
+        return Ok(());
+    }
     let _ = std::fs::remove_file(st.cache_dir.join("sources").join(format!("{}.json", stable_key(&[&id]))));
     Ok(())
 }
