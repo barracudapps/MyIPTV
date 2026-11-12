@@ -156,7 +156,8 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
       error: null,
       info: null,
       token,
-      mode: get().mode === "hidden" ? "docked" : get().mode,
+      // Nouveau contenu : grand lecteur ; épisode suivant de la même série : on garde la taille choisie.
+      mode: get().mode === "hidden" || get().media?.item.id !== item.id ? "docked" : get().mode,
     });
     fun.onPlay(item.kind === "radio" ? "radio" : "media", item);
     try {

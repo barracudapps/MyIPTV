@@ -54,6 +54,8 @@ export default function App() {
       installSpatialNavigation(() => {
         const ui = useUi.getState();
         if (ui.pin) return;
+        const player = usePlayer.getState();
+        if (!document.fullscreenElement && player.mode === "docked" && !player.channel && player.media && !["radio", "music", "podcast", "audiobook"].includes(player.media.item.kind ?? "")) return player.setMode("mini");
         if (ui.person) useUi.setState({ person: null });
         else if (ui.detailId) useUi.setState({ detailId: null });
         else if (document.fullscreenElement) document.exitFullscreen();

@@ -180,13 +180,23 @@ export function Player() {
   // Le lecteur reste monté en permanence : la vidéo continue quand on change d'écran.
   const slotView = view === "live" || view === "favorites";
   const wantsDocked = mode === "docked" && slotView && channel != null;
-  const effective = !active || mode === "hidden" ? "hidden" : compact ? "compact" : wantsDocked ? "docked" : mode === "docked" && !autoMini ? "hidden-keep" : "mini";
+  // Film, épisode, émission : pas d'emplacement dans un écran, le grand lecteur occupe la zone principale.
+  const wantsTheater = mode === "docked" && channel == null && media != null && !isAudio;
+  const effective = !active || mode === "hidden" ? "hidden" : compact ? "compact" : wantsTheater ? "theater" : wantsDocked ? "docked" : mode === "docked" && !autoMini ? "hidden-keep" : "mini";
+
+  // Changer d'écran depuis la navigation réduit le grand lecteur sans couper la lecture.
+  const lastView = useRef(view);
+  useEffect(() => {
+    if (lastView.current === view) return;
+    lastView.current = view;
+    if (usePlayer.getState().mode === "docked" && usePlayer.getState().channel == null) setMode("mini");
+  }, [view, setMode]);
 
   useLayoutEffect(() => {
-    if (effective !== "docked") return;
+    if (effective !== "docked" && effective !== "theater") return;
     let raf = 0;
     const update = () => {
-      const slot = document.getElementById("player-slot");
+      const slot = effective === "theater" ? document.querySelector("main.main") : document.getElementById("player-slot");
       const r = slot?.getBoundingClientRect() ?? null;
       setRect((prev) => (prev && r && prev.x === r.x && prev.y === r.y && prev.width === r.width && prev.height === r.height ? prev : r));
       raf = requestAnimationFrame(update);
@@ -521,8 +531,8 @@ export function Player() {
     ? { position: "fixed", inset: 0, zIndex: 100, borderRadius: 0 }
     : isMini
       ? { position: "fixed", right: miniPos.right, bottom: miniPos.bottom, width: MINI_W, height: (MINI_W * 9) / 16, zIndex: 50 }
-      : effective === "docked" && rect
-        ? { position: "fixed", left: rect.left, top: rect.top, width: rect.width, height: rect.height, zIndex: 5 }
+      : (effective === "docked" || effective === "theater") && rect
+        ? { position: "fixed", left: rect.left, top: rect.top, width: rect.width, height: rect.height, zIndex: effective === "theater" ? 66 : 5, borderRadius: effective === "theater" ? 0 : undefined }
         : { position: "fixed", width: 1, height: 1, opacity: 0, pointerEvents: "none", left: -10, top: -10 };
 
   const startDrag = (e: React.PointerEvent) => {
@@ -552,6 +562,7 @@ export function Player() {
   const expand = () => {
     if (compact) exitCompact();
     setMode("docked");
+    useUi.setState({ detailId: null, person: null });
     if (channel) setView("live");
   };
 
