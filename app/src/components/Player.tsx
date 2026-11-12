@@ -1,5 +1,6 @@
 import { displayName } from "../lib/variants";
 import { scrobble } from "../lib/trakt";
+import { CastBar, CastDialog } from "./CastDialog";
 import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type HlsType from "hls.js";
@@ -144,6 +145,8 @@ export function Player() {
   const prefs = profile?.player ?? DEFAULT_PLAYER_PREFS;
   const autoMini = useSettings((s) => s.playback.autoMiniPlayer);
   const prefsTimeshift = useSettings((s) => s.playback.timeshift);
+  const source = usePlayer((s) => s.source);
+  const [castOpen, setCastOpen] = useState(false);
   const sources = useSettings((s) => s.sources);
   const sourceNames = useMemo(() => new Map(sources.map((x) => [x.id, x.name])), [sources]);
   const autoNext = useSettings((s) => s.playback.autoNext);
@@ -713,6 +716,9 @@ export function Player() {
         </div>
       )}
 
+      {!small && <CastBar />}
+      {castOpen && <CastDialog video={videoRef.current} onClose={() => setCastOpen(false)} />}
+
       {nextIn != null && (
         <div className="next-up">
           <span>Épisode suivant dans {nextIn} s</span>
@@ -850,6 +856,11 @@ export function Player() {
             <button className={`icon-btn ${panel ? "active" : ""}`} title="Réglages de lecture" onClick={() => setPanel(panel ? null : tracks.audio.length > 1 || (info?.audioTracks?.length ?? 0) > 1 ? "audio" : tracks.qualities.length > 1 ? "quality" : "picture")}>
               <Icon name="sliders" />
             </button>
+            {source && (
+              <button className="icon-btn" title="Diffuser sur un autre écran (téléviseur, Chromecast…)" onClick={() => setCastOpen(true)}>
+                <Icon name="cast" />
+              </button>
+            )}
             <button className="icon-btn" title={compactSupported ? "Mini-lecteur flottant (au-dessus de toutes les fenêtres)" : "Image dans l'image"} onClick={floating}>
               <Icon name="pip" />
             </button>

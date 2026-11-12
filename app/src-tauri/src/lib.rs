@@ -1,6 +1,7 @@
 mod commands;
 mod library;
 mod recorder;
+mod cast;
 mod server;
 mod share;
 mod state;
@@ -38,6 +39,7 @@ pub fn run() {
             });
             app.manage(state);
             app.manage(Arc::new(share::ShareState::default()));
+            app.manage(Arc::new(cast::CastState::default()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +67,11 @@ pub fn run() {
             commands::rec_info,
             commands::probe_stream,
             share::share_start,
+            cast::cast_discover,
+            cast::cast_start,
+            cast::cast_control,
+            cast::cast_stop,
+            cast::cast_status,
             share::share_status,
             share::share_stop,
             share::share_fetch,

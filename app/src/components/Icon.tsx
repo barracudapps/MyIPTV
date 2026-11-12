@@ -17,6 +17,7 @@ const PATHS: Record<string, string> = {
   expand: "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5",
   shrink: "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5",
   pip: "M3 5h18v14H3zM12 12h7v5h-7z",
+  cast: "M3 16a5 5 0 0 1 5 5M3 12a9 9 0 0 1 9 9M3 8.5V5h18v14h-6M3 20.5v.5",
   close: "M6 6l12 12M18 6L6 18",
   alert: "M12 3l10 18H2zM12 10v5M12 18v.5",
   shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4",

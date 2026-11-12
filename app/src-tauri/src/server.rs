@@ -43,6 +43,25 @@ pub fn router(state: Arc<AppState>) -> Router {
         .with_state(state)
 }
 
+#[derive(Clone)]
+struct Relay {
+    st: Arc<AppState>,
+    token: String,
+    base: String,
+}
+
+/// Relais exposé au réseau local pendant une diffusion : seul le chemin secret répond.
+pub fn relay_router(st: Arc<AppState>, token: String, base: String) -> Router {
+    Router::new().route("/c/:token/proxy", get(relay_proxy)).with_state(Relay { st, token, base })
+}
+
+async fn relay_proxy(State(r): State<Relay>, Path(token): Path<String>, Query(q): Query<ProxyQuery>, headers: HeaderMap) -> Response {
+    if token != r.token {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    proxy_with_base(&r.st, &r.base, q, headers).await
+}
+
 fn cors(mut r: Response) -> Response {
     let h = r.headers_mut();
     h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
@@ -63,6 +82,12 @@ struct ProxyQuery {
 }
 
 async fn proxy(State(st): State<Arc<AppState>>, Query(q): Query<ProxyQuery>, headers: HeaderMap) -> Response {
+    let base = st.base_url();
+    proxy_with_base(&st, &base, q, headers).await
+}
+
+/// Relais d'un flux ; `base` préfixe les adresses réécrites des playlists HLS.
+async fn proxy_with_base(st: &AppState, base: &str, q: ProxyQuery, headers: HeaderMap) -> Response {
     let up = Upstream { url: q.u.clone(), user_agent: q.ua, referrer: q.referrer };
     let mut req = st.http.get(&up.url).headers(up.headers());
     if let Some(range) = headers.get(header::RANGE) {
@@ -82,7 +107,7 @@ async fn proxy(State(st): State<Arc<AppState>>, Query(q): Query<ProxyQuery>, hea
             Ok(b) => b,
             Err(e) => return error(StatusCode::BAD_GATEWAY, e.to_string()),
         };
-        let rewritten = rewrite_playlist(&st.base_url(), &final_url, &body, &up);
+        let rewritten = rewrite_playlist(base, &final_url, &body, &up);
         let mut r = Response::new(Body::from(rewritten));
         r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("application/vnd.apple.mpegurl"));
         r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));

@@ -39,6 +39,8 @@ interface PlayerState {
   streamIndex: number;
   /** Test des connexions en cours. */
   probing: boolean;
+  /** Flux d'origine en cours de lecture (avant relais local), pour la diffusion vers un autre écran. */
+  source: { url: string; userAgent?: string; referrer?: string; live: boolean; title: string; poster?: string } | null;
   media: MediaContext | null;
   info: PlayInfo | null;
   /** Programme lu en replay (null = direct). */
@@ -141,7 +143,7 @@ async function startStream(token: number, index: number, forceRemux?: boolean) {
   const { streams } = usePlayer.getState();
   const stream = streams[index]?.channel ?? usePlayer.getState().channel;
   if (!stream) return;
-  usePlayer.setState({ streamIndex: index });
+  usePlayer.setState({ streamIndex: index, source: { url: stream.url, userAgent: stream.userAgent, referrer: stream.referrer, live: true, title: usePlayer.getState().channel?.name ?? stream.name, poster: stream.logo } });
   const settings = useSettings.getState();
   try {
     const backend = await getBackend();
@@ -245,6 +247,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
   streams: [],
   streamIndex: 0,
   probing: false,
+  source: null,
 
   async play(ch, opts) {
     const profile = activeProfile();
@@ -321,6 +324,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
       const backend = await getBackend();
       const url = await backend.catchupUrl(src, prog.start, prog.stop);
       if (!url) throw new Error("Ce programme n'est pas disponible en replay.");
+      usePlayer.setState({ source: { url, userAgent: src.userAgent, referrer: src.referrer, live: false, title: `${ch.name} — ${prog.title}`, poster: ch.logo } });
       const info = await backend.play({ url, userAgent: src.userAgent, referrer: src.referrer, timeshift: false, windowMinutes: 0, media: true, forceRemux });
       await loadEngines(info);
       if (get().token === token) set({ info, loading: false });
@@ -381,6 +385,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
       mode: get().mode === "hidden" || get().media?.item.id !== item.id ? "docked" : get().mode,
     });
     fun.onPlay(item.kind === "radio" ? "radio" : "media", item);
+    set({ source: { url, userAgent: copy?.userAgent ?? item.userAgent, referrer: copy?.referrer ?? item.referrer, live: !!item.live, title: opts.episode ? `${item.title} — ${opts.episode.title}` : item.title, poster: item.poster } });
     try {
       const info = await (await getBackend()).play({ url, userAgent: copy?.userAgent ?? item.userAgent, referrer: copy?.referrer ?? item.referrer, timeshift: false, windowMinutes: 0, media: !item.live, forceRemux: opts.forceRemux });
       await loadEngines(info);

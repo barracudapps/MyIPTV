@@ -1033,3 +1033,14 @@ html[data-motion="off"] .hero, html[data-motion="off"][data-showcase] .vod-card,
 }
 /* Bannière en tête de page : elle remonte sous le menu, le titre de la section passe dessous. */
 .vod-page.with-hero .hero { margin-top: -24px; }
+
+/* Diffusion vers un autre écran */
+.cast-list { display: grid; gap: 8px; }
+.cast-device { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); text-align: left; color: var(--text); transition: border-color .18s, background-color .18s; }
+.cast-device:hover, .cast-device:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
+.cast-device > span { display: grid; gap: 2px; }
+.cast-device svg { color: var(--accent); flex: none; }
+.cast-overlay { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 20px; text-align: center; background: radial-gradient(circle at 50% 40%, #1d2330, #000); color: #fff; }
+.cast-overlay svg { color: var(--accent); }
+.cast-seek { display: flex; align-items: center; gap: 10px; width: min(460px, 80vw); font-variant-numeric: tabular-nums; }
+.cast-seek input { flex: 1; accent-color: var(--accent); }

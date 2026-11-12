@@ -35,6 +35,13 @@ export function createNativeBackend(): Backend {
       status: () => invoke("share_status"),
       stop: () => invoke("share_stop"),
     },
+    cast: {
+      discover: () => invoke("cast_discover"),
+      start: (device, media) => invoke("cast_start", { device, media }),
+      control: (action, position) => invoke("cast_control", { action, position }),
+      stop: () => invoke("cast_stop"),
+      status: () => invoke("cast_status"),
+    },
     shareFetch: (address, code) => invoke("share_fetch", { address, code }),
     probeStream: (s, timeoutMs) => invoke("probe_stream", { url: s.url, userAgent: s.userAgent, referrer: s.referrer, timeoutMs }),
     play: (req) => invoke("play", { req }),

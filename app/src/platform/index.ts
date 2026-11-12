@@ -2,6 +2,35 @@ import type { RecInfo, Recording } from "../types";
 import type { VodItem } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
+export interface CastDevice {
+  id: string;
+  name: string;
+  kind: "chromecast" | "dlna";
+  host: string;
+  port: number;
+  controlUrl?: string;
+  model?: string;
+}
+
+export interface CastMedia {
+  url: string;
+  title: string;
+  userAgent?: string;
+  referrer?: string;
+  live: boolean;
+  start?: number;
+  poster?: string;
+}
+
+export interface CastStatus {
+  active: boolean;
+  device?: string | null;
+  state: string;
+  position: number;
+  duration?: number | null;
+  error?: string | null;
+}
+
 export interface StreamProbe {
   ok: boolean;
   ms: number;
@@ -51,6 +80,14 @@ export interface Backend {
     start(payload: string): Promise<ShareInfo>;
     status(): Promise<ShareStatus>;
     stop(): Promise<void>;
+  };
+  /** Diffusion vers un écran du réseau (Chromecast, DLNA) : appareils natifs seulement. */
+  cast?: {
+    discover(): Promise<CastDevice[]>;
+    start(device: CastDevice, media: CastMedia): Promise<void>;
+    control(action: "play" | "pause" | "seek", position?: number): Promise<void>;
+    stop(): Promise<void>;
+    status(): Promise<CastStatus>;
   };
   /** Récupère et déchiffre la configuration partagée par un autre appareil. */
   shareFetch(address: string, code: string): Promise<string>;
