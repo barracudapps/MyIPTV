@@ -666,3 +666,12 @@ html.disco body { animation: disco 1.2s linear infinite; }
 .player:has(.youtube-wrap) .player-top button { pointer-events: auto; }
 
 .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border: 0; min-height: 32px; padding: 0 12px; font-size: .85em; }
+
+/* Durée de pause du direct */
+.setting-block { display: grid; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.buffer-choice { display: grid; gap: 6px; }
+.buffer-choice .chips { flex-wrap: wrap; overflow: visible; padding-bottom: 0; }
+.player-panel .buffer-choice { padding: 4px 4px 8px; }
+.player-panel .buffer-choice .chip { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.18); }
+.player-panel .buffer-choice .chip.active { background: var(--accent); border-color: var(--accent); }
+.player-panel .buffer-choice .dim { color: rgba(255,255,255,.65); }

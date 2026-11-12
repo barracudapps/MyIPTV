@@ -1,3 +1,4 @@
+import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
 import mpegts from "mpegts.js";
@@ -40,7 +41,8 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       liveSyncDurationCount: opts.timeshift ? 2 : 3,
       // Ne jamais ramener de force au direct : c'est l'utilisateur qui décide (pause du direct).
       liveMaxLatencyDurationCount: Infinity,
-      backBufferLength: opts.timeshift ? 120 : 600,
+      // Sans enregistrement sur disque, le retour arrière vit dans la mémoire du lecteur.
+      backBufferLength: opts.timeshift ? 120 : opts.live ? Math.min(useSettings.getState().playback.windowMinutes, MEMORY_MAX_MINUTES) * 60 : 600,
       maxBufferLength: 30,
       enableWorker: true,
       lowLatencyMode: false,
@@ -129,7 +131,7 @@ function isAudioOnly() {
   return k === "radio" || k === "music" || k === "podcast" || k === "audiobook";
 }
 
-type Panel = null | "audio" | "subtitles" | "quality" | "picture" | "sound" | "speed";
+type Panel = null | "audio" | "subtitles" | "quality" | "picture" | "sound" | "speed" | "buffer";
 
 export function Player() {
   const { channel, media, info, catchup, loading, error, mode, setMode, stop, retry, zap, nextEpisode } = usePlayer();
@@ -138,6 +140,7 @@ export function Player() {
   const profile = useActiveProfile();
   const prefs = profile?.player ?? DEFAULT_PLAYER_PREFS;
   const autoMini = useSettings((s) => s.playback.autoMiniPlayer);
+  const prefsTimeshift = useSettings((s) => s.playback.timeshift);
   const autoNext = useSettings((s) => s.playback.autoNext);
   const mascotOn = useSettings((s) => s.fun.mascot);
   const mascotColor = useSettings((s) => s.fun.mascotColor);
@@ -843,6 +846,7 @@ export function Player() {
                 ["picture", "Image", true],
                 ["sound", "Son", true],
                 ["speed", "Vitesse", !isLiveStream],
+                ["buffer", "Pause du direct", channel != null && !catchup && prefsTimeshift],
               ] as [Panel, string, boolean][]
             )
               .filter(([, , shown]) => shown)
@@ -952,6 +956,14 @@ export function Player() {
                   <strong>{l}</strong> <span className="dim">{d}</span>
                 </button>
               ))}
+            {panel === "buffer" && (
+              <>
+                <BufferChoice compact />
+                <button className="opt" onClick={() => retry()}>
+                  <strong>Appliquer maintenant</strong> <span className="dim">Relance la chaîne : le retour arrière déjà enregistré est perdu.</span>
+                </button>
+              </>
+            )}
             {panel === "speed" &&
               [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
                 <button

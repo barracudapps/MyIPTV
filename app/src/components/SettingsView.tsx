@@ -1,3 +1,4 @@
+import { BufferChoice } from "./BufferChoice";
 import { useMemo, useState } from "react";
 import { useActiveProfile, useSettings } from "../store/settings";
 import { askPin, useUi } from "../store/ui";
@@ -395,8 +396,11 @@ function PlaybackSettings() {
         checked={pb.timeshift}
         onChange={(v) => set({ timeshift: v })}
       />
-      {diskTs && (
-        <Range label="Durée enregistrée" value={pb.windowMinutes} min={15} max={360} step={15} fmt={(v) => (v >= 60 ? `${Math.floor(v / 60)} h ${v % 60 ? `${v % 60} min` : ""}` : `${v} min`)} onChange={(v) => set({ windowMinutes: v })} />
+      {pb.timeshift && (
+        <div className="setting-block">
+          <strong>Durée de pause du direct</strong>
+          <BufferChoice />
+        </div>
       )}
       {isAdmin && (
         <Toggle
