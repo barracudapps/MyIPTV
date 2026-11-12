@@ -3,6 +3,7 @@ mod library;
 mod server;
 mod state;
 mod timeshift;
+mod transcode;
 
 use std::sync::Arc;
 

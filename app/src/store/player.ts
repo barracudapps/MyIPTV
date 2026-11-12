@@ -158,7 +158,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     });
     fun.onPlay(item.kind === "radio" ? "radio" : "media", item);
     try {
-      const info = await (await getBackend()).play({ url, userAgent: item.userAgent, referrer: item.referrer, timeshift: false, windowMinutes: 0 });
+      const info = await (await getBackend()).play({ url, userAgent: item.userAgent, referrer: item.referrer, timeshift: false, windowMinutes: 0, media: !item.live });
       if (get().token === token) set({ info, loading: false });
     } catch (e) {
       if (get().token === token) set({ loading: false, error: errorMessage(e) });

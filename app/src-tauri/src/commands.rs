@@ -335,6 +335,9 @@ pub struct PlayRequest {
     pub timeshift: bool,
     #[serde(default = "default_window")]
     pub window_minutes: u32,
+    /// Film, épisode ou piste : le format est analysé et converti si la webview ne sait pas le lire.
+    #[serde(default)]
+    pub media: bool,
 }
 
 fn default_window() -> u32 {
@@ -345,10 +348,23 @@ fn default_window() -> u32 {
 #[serde(rename_all = "camelCase")]
 pub struct PlayInfo {
     pub url: String,
-    /// `hls`, `mpegts` ou `native`.
+    /// `hls`, `mpegts`, `native` ou `remux` (conversion à la volée, `?start=` et `&audio=`).
     pub kind: &'static str,
     pub timeshift: bool,
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub audio_tracks: Vec<crate::transcode::StreamTrack>,
+    /// Format du flux converti : `mpegts` ou `mp4`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remux_format: Option<&'static str>,
+}
+
+impl PlayInfo {
+    fn simple(url: String, kind: &'static str, timeshift: bool, error: Option<String>) -> Self {
+        PlayInfo { url, kind, timeshift, error, duration: None, audio_tracks: vec![], remux_format: None }
+    }
 }
 
 fn guess_kind(url: &str, content_type: Option<&str>) -> &'static str {
@@ -377,9 +393,36 @@ pub async fn play(st: St<'_>, req: PlayRequest) -> Res<PlayInfo> {
             Ok(()) => {
                 let url = format!("{}/ts/{}/index.m3u8", st.base_url(), sess.id);
                 *st.session.lock().await = Some(sess);
-                return Ok(PlayInfo { url, kind: "hls", timeshift: true, error: None });
+                return Ok(PlayInfo::simple(url, "hls", true, None));
             }
             Err(e) => ts_error = Some(e), // repli : lecture directe
+        }
+    }
+
+    *st.remux.lock().await = None;
+    let mut warning = ts_error;
+    if req.media && !req.url.to_lowercase().contains(".m3u8") {
+        if crate::transcode::find_tool("ffmpeg").is_some() {
+            match crate::transcode::probe(&up).await {
+                Ok(p) if !p.web_playable() => {
+                    let sid = format!("{:x}", SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0));
+                    let info = PlayInfo {
+                        url: format!("{}/remux/{sid}", st.base_url()),
+                        kind: "remux",
+                        timeshift: false,
+                        error: None,
+                        duration: p.duration,
+                        audio_tracks: p.audio.clone(),
+                        remux_format: Some(p.remux_format()),
+                    };
+                    *st.remux.lock().await = Some((sid, up.clone(), p));
+                    return Ok(info);
+                }
+                Ok(_) => {}
+                Err(e) => log::warn!("analyse ffprobe : {e}"),
+            }
+        } else if ["mkv", "avi", "wmv", "flv"].iter().any(|e| req.url.to_lowercase().split('?').next().unwrap_or("").ends_with(e)) {
+            warning = Some("ce format nécessite ffmpeg (non installé) : la lecture risque d'échouer".into());
         }
     }
 
@@ -392,12 +435,13 @@ pub async fn play(st: St<'_>, req: PlayRequest) -> Res<PlayInfo> {
         }
         k => k,
     };
-    Ok(PlayInfo { url: crate::server::proxy_url(&st.base_url(), &req.url, &up), kind, timeshift: false, error: ts_error })
+    Ok(PlayInfo::simple(crate::server::proxy_url(&st.base_url(), &req.url, &up), kind, false, warning))
 }
 
 #[tauri::command]
 pub async fn stop_playback(st: St<'_>) -> Res<()> {
     st.session.lock().await.take();
+    st.remux.lock().await.take();
     Ok(())
 }
 

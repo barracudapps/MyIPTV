@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use iptv_core::{Channel, Epg, VodDetail, VodItem};
 use tokio::sync::{Mutex, RwLock};
 
-use crate::timeshift::Session;
+use crate::timeshift::{Session, Upstream};
+use crate::transcode::Probe;
 
 pub struct AppState {
     pub http: reqwest::Client,
@@ -20,6 +21,8 @@ pub struct AppState {
     pub details: Mutex<HashMap<String, VodDetail>>,
     /// Session de lecture en direct (une seule à la fois).
     pub session: Mutex<Option<Session>>,
+    /// Fichier en cours de conversion à la volée (flux et analyse ffprobe).
+    pub remux: Mutex<Option<(String, Upstream, Probe)>>,
 }
 
 impl AppState {
@@ -44,6 +47,7 @@ impl AppState {
             vod_all: RwLock::new(Vec::new()),
             details: Mutex::new(HashMap::new()),
             session: Mutex::new(None),
+            remux: Mutex::new(None),
         }
     }
 

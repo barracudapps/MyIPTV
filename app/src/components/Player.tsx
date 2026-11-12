@@ -8,6 +8,7 @@ import { useUi } from "../store/ui";
 import { isTauri } from "../platform";
 import { programmeAccess, DEFAULT_PLAYER_PREFS, type AspectMode, type AudioMode } from "../lib/parental";
 import { current, fmtDuration, fmtTime, nowSec } from "../lib/util";
+import { code639_1 } from "../lib/trackLang";
 import { applyAudioMode, autoSelect, NO_TRACKS, PICTURE_PRESETS, readTracks, setAudio, setQuality, setSubtitle, videoStyle, type Tracks } from "../lib/media";
 import { compactSupported, enterCompact, exitCompact, isCompact, onCompactChange, startDragging } from "../lib/miniWindow";
 import { fun } from "../lib/fun";
@@ -114,6 +115,10 @@ export function Player() {
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
   const [panel, setPanel] = useState<Panel>(null);
   const [nextIn, setNextIn] = useState<number | null>(null);
+  /** Conversion à la volée : position de départ du flux en cours et piste audio. */
+  const remuxRef = useRef({ offset: 0, audio: 0 });
+  const [remuxAudio, setRemuxAudio] = useState(0);
+  const isRemux = info?.kind === "remux";
 
   const active = channel != null || media != null;
   const isAudio = media != null && ["radio", "music", "podcast", "audiobook"].includes(media.item.kind ?? "");
@@ -164,12 +169,25 @@ export function Player() {
         refreshTracks();
       }
     };
-    const engine = attach(video, info.url, info.kind, { timeshift: info.timeshift, live: isLiveStream }, setEngineError, onTracks);
-    engineRef.current = engine;
     const resumeAt = usePlayer.getState().media?.resumeAt ?? 0;
-    if (resumeAt > 5) {
-      video.addEventListener("loadedmetadata", () => (video.currentTime = resumeAt), { once: true });
+    let engine: Engine;
+    if (info.kind === "remux") {
+      // Piste audio initiale choisie selon les langues favorites ; la reprise démarre directement au bon endroit.
+      const p = useSettings.getState().profiles.find((x) => x.id === useSettings.getState().activeProfileId);
+      const tracks = info.audioTracks ?? [];
+      const rank = (l?: string) => {
+        const i = p?.languages.indexOf(code639_1(l) ?? "") ?? -1;
+        return i < 0 ? 99 : i;
+      };
+      const audio = p?.player.autoTracks && tracks.length ? [...tracks].sort((a, b) => rank(a.language) - rank(b.language))[0].index : 0;
+      remuxRef.current = { offset: resumeAt > 5 ? resumeAt : 0, audio };
+      setRemuxAudio(audio);
+      engine = attach(video, `${info.url}?start=${remuxRef.current.offset}&audio=${audio}`, info.remuxFormat === "mpegts" ? "mpegts" : "native", { timeshift: false, live: false }, setEngineError, onTracks);
+    } else {
+      engine = attach(video, info.url, info.kind, { timeshift: info.timeshift, live: isLiveStream }, setEngineError, onTracks);
+      if (resumeAt > 5) video.addEventListener("loadedmetadata", () => (video.currentTime = resumeAt), { once: true });
     }
+    engineRef.current = engine;
     video.playbackRate = 1;
     setSpeed(1);
     video.play().catch(() => {
@@ -179,7 +197,8 @@ export function Player() {
       video.play().catch(() => undefined);
     });
     return () => {
-      engine.destroy();
+      // La conversion peut avoir remplacé le moteur (déplacement, piste audio).
+      engineRef.current?.destroy();
       engineRef.current = null;
     };
   }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -197,6 +216,10 @@ export function Player() {
     const video = videoRef.current;
     if (!video) return;
     const tick = () => {
+      if (info?.kind === "remux") {
+        setClock({ playing: !video.paused, t: remuxRef.current.offset + video.currentTime, start: 0, end: info.duration ?? 0, live: false, wall: nowSec() });
+        return;
+      }
       const s = video.seekable;
       const start = s.length ? s.start(0) : 0;
       const end = s.length ? s.end(s.length - 1) : video.duration || 0;
@@ -219,8 +242,10 @@ export function Player() {
     const video = videoRef.current;
     if (!video || !media || media.item.live) return;
     const save = (finished = false) => {
-      const d = video.duration;
-      if (!Number.isFinite(d) || d <= 0 || (!finished && video.currentTime < 5)) return;
+      const remuxed = usePlayer.getState().info?.kind === "remux";
+      const d = remuxed ? usePlayer.getState().info?.duration ?? 0 : video.duration;
+      const pos = remuxed ? remuxRef.current.offset + video.currentTime : video.currentTime;
+      if (!Number.isFinite(d) || d <= 0 || (!finished && pos < 5)) return;
       const ep = media.episode;
       useSettings.getState().recordProgress({
         itemId: media.item.id,
@@ -229,9 +254,9 @@ export function Player() {
         poster: media.item.poster,
         episodeId: ep?.id,
         episodeLabel: ep ? (ep.season > 1 || media.queue.some((e) => e.season > 1) ? `S${ep.season}E${ep.episode}` : `${sectionOf(media.item.kind).unit} ${ep.episode}`) : undefined,
-        position: finished ? d : video.currentTime,
+        position: finished ? d : pos,
         duration: d,
-        finished: finished || video.currentTime / d > 0.95,
+        finished: finished || pos / d > 0.95,
       });
     };
     const id = setInterval(() => !video.paused && save(), 5000);
@@ -293,9 +318,31 @@ export function Player() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  /** Flux converti : on relance la conversion à la position voulue. */
+  const remuxLoad = (offset: number, audio = remuxRef.current.audio) => {
+    const v = videoRef.current;
+    if (!v || !info) return;
+    const target = Math.max(0, Math.min(offset, (info.duration ?? offset + 1) - 2));
+    remuxRef.current = { offset: target, audio };
+    setRemuxAudio(audio);
+    engineRef.current?.destroy();
+    engineRef.current = attach(v, `${info.url}?start=${target.toFixed(1)}&audio=${audio}`, info.remuxFormat === "mpegts" ? "mpegts" : "native", { timeshift: false, live: false }, setEngineError, refreshTracks);
+    v.play().catch(() => undefined);
+  };
+  const seekTo = (pos: number) => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (isRemux) remuxLoad(pos);
+    else v.currentTime = pos;
+  };
   const seekBy = (d: number) => {
     const v = videoRef.current;
     if (!v) return;
+    if (isRemux) {
+      remuxLoad(clock.t + d);
+      poke();
+      return;
+    }
     const max = isLiveStream ? clock.end - 1 : v.duration || clock.end;
     v.currentTime = Math.min(Math.max(clock.start, v.currentTime + d), max);
     poke();
@@ -564,8 +611,7 @@ export function Player() {
               aria-valuenow={clock.t - clock.start}
               onClick={(e) => {
                 const r = e.currentTarget.getBoundingClientRect();
-                const v = videoRef.current;
-                if (v) v.currentTime = clock.start + ((e.clientX - r.left) / r.width) * span;
+                seekTo(clock.start + ((e.clientX - r.left) / r.width) * span);
               }}
             >
               <div className="seekbar-fill" style={{ width: `${((clock.t - clock.start) / span) * 100}%` }} />
@@ -629,7 +675,7 @@ export function Player() {
                 <Icon name="subtitles" />
               </button>
             )}
-            <button className={`icon-btn ${panel ? "active" : ""}`} title="Réglages de lecture" onClick={() => setPanel(panel ? null : tracks.audio.length > 1 ? "audio" : tracks.qualities.length > 1 ? "quality" : "picture")}>
+            <button className={`icon-btn ${panel ? "active" : ""}`} title="Réglages de lecture" onClick={() => setPanel(panel ? null : tracks.audio.length > 1 || (info?.audioTracks?.length ?? 0) > 1 ? "audio" : tracks.qualities.length > 1 ? "quality" : "picture")}>
               <Icon name="sliders" />
             </button>
             <button className="icon-btn" title={compactSupported ? "Mini-lecteur flottant (au-dessus de toutes les fenêtres)" : "Image dans l'image"} onClick={floating}>
@@ -647,7 +693,7 @@ export function Player() {
           <div className="panel-tabs">
             {(
               [
-                ["audio", "Audio", tracks.audio.length > 1],
+                ["audio", "Audio", tracks.audio.length > 1 || (isRemux && (info?.audioTracks?.length ?? 0) > 1)],
                 ["subtitles", "Sous-titres", tracks.subtitles.length > 0],
                 ["quality", "Qualité", tracks.qualities.length > 1],
                 ["picture", "Image", true],
@@ -667,6 +713,17 @@ export function Player() {
           </div>
           <div className="panel-body">
             {panel === "audio" &&
+              isRemux &&
+              info?.audioTracks?.map((t) => (
+                <button key={t.index} className={`opt ${remuxAudio === t.index ? "on" : ""}`} onClick={() => remuxLoad(clock.t, t.index)}>
+                  {t.title ?? (t.language ? t.language.toUpperCase() : `Piste ${t.index + 1}`)}
+                  <span className="dim">
+                    {[t.language?.toUpperCase(), t.codec.toUpperCase(), t.channels ? (t.channels >= 6 ? "5.1" : t.channels === 2 ? "stéréo" : `${t.channels} canaux`) : ""].filter(Boolean).join(" · ")}
+                  </span>
+                </button>
+              ))}
+            {panel === "audio" &&
+              !isRemux &&
               tracks.audio.map((t) => (
                 <button key={t.id} className={`opt ${tracks.audioCurrent === t.id ? "on" : ""}`} onClick={() => (setAudio(videoRef.current!, engineRef.current?.hls ?? null, t.id), refreshTracks())}>
                   {t.label}

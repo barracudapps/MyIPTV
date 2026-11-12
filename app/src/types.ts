@@ -80,13 +80,25 @@ export interface EpgStats {
   errors: string[];
 }
 
-export type StreamKind = "hls" | "mpegts" | "native";
+export type StreamKind = "hls" | "mpegts" | "native" | "remux";
+
+export interface StreamTrack {
+  index: number;
+  codec: string;
+  language?: string;
+  title?: string;
+  channels?: number;
+}
 
 export interface PlayInfo {
   url: string;
   kind: StreamKind;
   timeshift: boolean;
   error?: string | null;
+  /** Conversion à la volée : durée totale et pistes audio du fichier d'origine. */
+  duration?: number;
+  audioTracks?: StreamTrack[];
+  remuxFormat?: "mpegts" | "mp4";
 }
 
 export interface PlayRequest {
@@ -95,6 +107,8 @@ export interface PlayRequest {
   referrer?: string;
   timeshift: boolean;
   windowMinutes: number;
+  /** Film, épisode, piste : format analysé et converti si nécessaire. */
+  media?: boolean;
 }
 
 // ------------------------------------------------------------------ Bibliothèque

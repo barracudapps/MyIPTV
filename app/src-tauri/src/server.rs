@@ -36,6 +36,7 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/proxy", get(proxy))
         .route("/ts/:sid/:file", get(ts_file))
+        .route("/remux/:sid", get(remux))
         .route("/health", get(|| async { "ok" }))
         .with_state(state)
 }
@@ -124,6 +125,38 @@ pub fn rewrite_playlist(base: &str, playlist_url: &Url, body: &str, up: &Upstrea
         out.push('\n');
     }
     out
+}
+
+#[derive(Deserialize)]
+struct RemuxQuery {
+    #[serde(default)]
+    start: f64,
+    #[serde(default)]
+    audio: usize,
+}
+
+/// Flux MP4 fragmenté produit par ffmpeg ; le processus s'arrête quand le lecteur se déconnecte.
+async fn remux(State(st): State<Arc<AppState>>, Path(sid): Path<String>, Query(q): Query<RemuxQuery>) -> Response {
+    let Some((up, probe)) = st.remux.lock().await.as_ref().filter(|(id, ..)| *id == sid).map(|(_, u, p)| (u.clone(), p.clone())) else {
+        return error(StatusCode::NOT_FOUND, "conversion terminée");
+    };
+    let mut child = match crate::transcode::spawn_remux(&up, &probe, q.start, q.audio) {
+        Ok(c) => c,
+        Err(e) => return error(StatusCode::INTERNAL_SERVER_ERROR, e),
+    };
+    let Some(stdout) = child.stdout.take() else {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "ffmpeg sans sortie");
+    };
+    // Le processus vit tant que le corps de la réponse est lu (kill_on_drop).
+    let stream = futures_util::StreamExt::map(tokio_util::io::ReaderStream::new(stdout), move |chunk| {
+        let _keep = &child;
+        chunk
+    });
+    let mut r = Response::new(Body::from_stream(stream));
+    let ct = if probe.remux_format() == "mpegts" { "video/mp2t" } else { "video/mp4" };
+    r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static(ct));
+    r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    cors(r)
 }
 
 async fn ts_file(State(st): State<Arc<AppState>>, Path((sid, file)): Path<(String, String)>) -> Response {
