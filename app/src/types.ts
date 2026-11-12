@@ -246,3 +246,29 @@ export interface PersonView {
   items: VodItem[];
   credits: Credit[];
 }
+
+// ------------------------------------------------------------------ Enregistrements
+
+export type RecStatus = "scheduled" | "recording" | "done" | "failed" | "cancelled";
+
+export interface Recording {
+  id: string;
+  channel: Channel;
+  title: string;
+  subtitle?: string;
+  start: number;
+  stop: number;
+  padBefore: number;
+  padAfter: number;
+  status: RecStatus;
+  file?: string;
+  size: number;
+  error?: string;
+  profileId?: string;
+}
+
+export interface RecInfo {
+  dir: string;
+  ffmpeg: boolean;
+  base: string;
+}

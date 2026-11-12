@@ -450,6 +450,84 @@ pub async fn timeshift_status(st: St<'_>) -> Res<Option<f64>> {
     Ok(st.session.lock().await.as_ref().map(|s| s.buffered_secs()))
 }
 
+// ------------------------------------------------------------------ Enregistrements
+
+#[tauri::command]
+pub async fn rec_list(st: St<'_>) -> Res<Vec<crate::recorder::Recording>> {
+    let mut list = st.recorder.list.lock().await.clone();
+    list.sort_by_key(|r| std::cmp::Reverse(r.start));
+    Ok(list)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecRequest {
+    pub channel: Channel,
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub start: i64,
+    pub stop: i64,
+    #[serde(default = "pad_before")]
+    pub pad_before: i64,
+    #[serde(default = "pad_after")]
+    pub pad_after: i64,
+    pub profile_id: Option<String>,
+}
+
+fn pad_before() -> i64 {
+    120
+}
+fn pad_after() -> i64 {
+    300
+}
+
+/// Programme un enregistrement ; un doublon (même chaîne, même début) n'est pas recréé.
+#[tauri::command]
+pub async fn rec_schedule(st: St<'_>, req: RecRequest) -> Res<crate::recorder::Recording> {
+    if req.stop <= now() {
+        return Err("Ce programme est déjà terminé.".into());
+    }
+    if let Some(r) = st.recorder.list.lock().await.iter().find(|r| r.channel.id == req.channel.id && r.start == req.start && r.status != crate::recorder::RecStatus::Cancelled) {
+        return Ok(r.clone());
+    }
+    let r = crate::recorder::Recording {
+        id: format!("{:x}", SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+        channel: req.channel,
+        title: req.title,
+        subtitle: req.subtitle,
+        start: req.start,
+        stop: req.stop,
+        pad_before: req.pad_before.clamp(0, 1800),
+        pad_after: req.pad_after.clamp(0, 3600),
+        status: crate::recorder::RecStatus::Scheduled,
+        file: None,
+        size: 0,
+        error: None,
+        profile_id: req.profile_id,
+    };
+    Ok(st.recorder.schedule(r).await)
+}
+
+#[tauri::command]
+pub async fn rec_cancel(st: St<'_>, id: String, delete_file: bool) -> Res<()> {
+    st.recorder.cancel(&id, delete_file).await;
+    Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecInfo {
+    pub dir: String,
+    pub ffmpeg: bool,
+    /// URL de lecture des fichiers : `<base>/rec/<nom de fichier>`.
+    pub base: String,
+}
+
+#[tauri::command]
+pub fn rec_info(st: St<'_>) -> RecInfo {
+    RecInfo { dir: st.recorder.dir.to_string_lossy().into(), ffmpeg: crate::transcode::find_tool("ffmpeg").is_some(), base: format!("{}/rec", st.base_url()) }
+}
+
 #[cfg(test)]
 mod live_tests {
     use super::*;
@@ -459,7 +537,7 @@ mod live_tests {
     #[tokio::test]
     #[ignore]
     async fn live_catalogs_load() {
-        let st = AppState::new(std::env::temp_dir().join("myiptv-cat-test"), 1);
+        let st = AppState::new(std::env::temp_dir().join("myiptv-cat-test"), std::env::temp_dir().join("myiptv-rec-test"), 1);
         let src = |kind: SourceKind| Source { id: "t".into(), name: "t".into(), kind, epg_urls: vec![] };
         let cases = vec![
             ("films", src(SourceKind::Archive { collection: "feature_films".into(), mediatype: "movies".into(), content: VodKind::Movie, rows: 50 })),

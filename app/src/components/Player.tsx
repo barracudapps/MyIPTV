@@ -16,6 +16,7 @@ import { sectionOf } from "../lib/sections";
 import { Icon } from "./Icon";
 import { ChannelLogo } from "./ChannelLogo";
 import { MascotFigure } from "./Mascot";
+import { useRecordings } from "../store/recordings";
 
 type Engine = { destroy(): void; hls?: Hls; playingDate?: () => Date | null };
 
@@ -648,6 +649,7 @@ export function Player() {
                 <Icon name="next" />
               </button>
             ) : null}
+            {channel && !catchup && <RecButton channel={channel} prog={playingProg} />}
             {channel && !catchup && seekable && !atLive && (
               <button className="btn btn-live" onClick={goLive}>
                 Revenir au direct
@@ -825,5 +827,20 @@ export function Player() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Enregistre le programme en cours (ou l'heure qui vient sans guide). */
+function RecButton({ channel, prog }: { channel: import("../types").Channel; prog?: import("../types").Programme }) {
+  const rec = useRecordings((s) => (prog ? s.find(channel.id, prog.start) : s.list.find((r) => r.channel.id === channel.id && r.status === "recording")));
+  const active = rec?.status === "recording" || rec?.status === "scheduled";
+  return (
+    <button
+      className={`icon-btn ${active ? "recording" : ""}`}
+      title={active ? "Arrêter l'enregistrement" : prog ? `Enregistrer « ${prog.title} »` : "Enregistrer la prochaine heure"}
+      onClick={() => (active && rec ? useRecordings.getState().cancel(rec.id, false) : useRecordings.getState().record(channel, prog))}
+    >
+      <Icon name="rec" />
+    </button>
   );
 }

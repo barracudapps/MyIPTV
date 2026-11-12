@@ -14,6 +14,7 @@ export const NAV_ITEMS: [View, string, string][] = [
   ["guide", "Guide", "guide"],
   ...SECTIONS.map((s) => [`vod:${s.kind}`, s.label, s.icon] as [View, string, string]),
   ["favorites", "Favoris", "star"],
+  ["recordings", "Enregistrements", "rec"],
   ["sources", "Sources", "sources"],
   ["settings", "Réglages", "settings"],
 ];

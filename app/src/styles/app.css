@@ -549,3 +549,12 @@ html.disco body { animation: disco 1.2s linear infinite; }
 @media (prefers-reduced-motion: reduce) {
   .mascot-svg, .mascot-svg .antennas, .confetti span, .season span, .tv-static, html.disco body, .eq span { animation: none !important; }
 }
+
+/* Enregistrements */
+.rec-list { list-style: none; padding: 0; margin: 0 0 20px; }
+.rec-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.rec-row code { font-size: .85em; }
+.mini-badge.live { color: var(--live); border-color: var(--live); }
+.rec-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--live); margin-right: 5px; vertical-align: middle; }
+.icon-btn.recording { color: var(--live); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }

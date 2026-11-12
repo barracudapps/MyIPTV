@@ -1,3 +1,4 @@
+import type { RecInfo, Recording } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
 /** Services fournis par la plateforme : natif (Tauri + Rust) ou web/TV (WASM). */
@@ -17,6 +18,10 @@ export interface Backend {
   vodSearch(text: string, field: SearchField, preferLanguages: string[], includeAdult: boolean, perKind: number): Promise<Partial<Record<VodKind, VodPage>>>;
   vodDetail(id: string, keys: MetaKeys): Promise<VodDetail>;
   person(name: string, tmdbId: number | undefined, keys: MetaKeys): Promise<PersonView>;
+  recList(): Promise<Recording[]>;
+  recSchedule(req: { channel: Channel; title: string; subtitle?: string; start: number; stop: number; profileId?: string }): Promise<Recording>;
+  recCancel(id: string, deleteFile: boolean): Promise<void>;
+  recInfo(): Promise<RecInfo | null>;
   play(req: PlayRequest): Promise<PlayInfo>;
   stop(): Promise<void>;
 }

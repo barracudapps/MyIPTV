@@ -4,7 +4,7 @@ import { useSettings } from "./settings";
 
 import type { VodKind } from "../types";
 
-export type View = "live" | "guide" | "favorites" | "search" | "sources" | "settings" | `vod:${VodKind}`;
+export type View = "live" | "guide" | "favorites" | "search" | "recordings" | "sources" | "settings" | `vod:${VodKind}`;
 
 interface PinRequest {
   title: string;

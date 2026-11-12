@@ -130,6 +130,17 @@ export async function createWebBackend(): Promise<Backend> {
     async person(name) {
       return { name, items: [], credits: [] };
     },
+    // Enregistrement impossible depuis un navigateur ou une TV (pas d'accès disque).
+    async recList() {
+      return [];
+    },
+    async recSchedule() {
+      throw new Error("L'enregistrement n'est disponible que sur l'application de bureau ou Android.");
+    },
+    async recCancel() {},
+    async recInfo() {
+      return null;
+    },
     async play(req): Promise<PlayInfo> {
       return { url: req.url, kind: guessKind(req.url), timeshift: false };
     },

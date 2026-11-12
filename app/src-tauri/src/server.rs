@@ -37,6 +37,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/proxy", get(proxy))
         .route("/ts/:sid/:file", get(ts_file))
         .route("/remux/:sid", get(remux))
+        .route("/rec/:file", get(rec_file))
         .route("/health", get(|| async { "ok" }))
         .with_state(state)
 }
@@ -157,6 +158,21 @@ async fn remux(State(st): State<Arc<AppState>>, Path(sid): Path<String>, Query(q
     r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static(ct));
     r.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     cors(r)
+}
+
+/// Fichier enregistré (MPEG-TS), lu par mpegts.js.
+async fn rec_file(State(st): State<Arc<AppState>>, Path(file): Path<String>) -> Response {
+    if file.contains('/') || file.contains("..") || !file.ends_with(".ts") {
+        return error(StatusCode::BAD_REQUEST, "nom invalide");
+    }
+    match tokio::fs::File::open(st.recorder.dir.join(&file)).await {
+        Ok(f) => {
+            let mut r = Response::new(Body::from_stream(tokio_util::io::ReaderStream::new(f)));
+            r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("video/mp2t"));
+            cors(r)
+        }
+        Err(_) => error(StatusCode::NOT_FOUND, "enregistrement introuvable"),
+    }
 }
 
 async fn ts_file(State(st): State<Arc<AppState>>, Path((sid, file)): Path<(String, String)>) -> Response {

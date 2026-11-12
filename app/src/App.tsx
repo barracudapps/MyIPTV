@@ -16,6 +16,8 @@ import { ProfilePicker } from "./components/ProfilePicker";
 import { Player } from "./components/Player";
 import { PinDialog, Toasts } from "./components/Dialogs";
 import { VodView } from "./components/VodView";
+import { RecordingsView } from "./components/RecordingsView";
+import { useRecordings } from "./store/recordings";
 import { DetailView, PersonDialog } from "./components/DetailView";
 import { FunLayer, Mascot } from "./components/Mascot";
 import { installEasterEggs } from "./lib/fun";
@@ -63,6 +65,9 @@ export default function App() {
   );
   useEffect(() => installEasterEggs(), []);
   useEffect(() => {
+    useRecordings.getState().refresh();
+  }, []);
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (e.key === "/" && t.tagName !== "INPUT" && t.tagName !== "TEXTAREA") {
@@ -96,6 +101,7 @@ export default function App() {
         {view === "sources" && <SourcesView />}
         {view === "settings" && <SettingsView />}
         {view.startsWith("vod:") && <VodView kind={view.slice(4) as VodKind} />}
+        {view === "recordings" && <RecordingsView />}
       </main>
       <Player />
       <DetailView />

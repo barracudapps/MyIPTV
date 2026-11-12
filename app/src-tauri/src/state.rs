@@ -23,10 +23,11 @@ pub struct AppState {
     pub session: Mutex<Option<Session>>,
     /// Fichier en cours de conversion à la volée (flux et analyse ffprobe).
     pub remux: Mutex<Option<(String, Upstream, Probe)>>,
+    pub recorder: std::sync::Arc<crate::recorder::Recorder>,
 }
 
 impl AppState {
-    pub fn new(cache_dir: PathBuf, port: u16) -> Self {
+    pub fn new(cache_dir: PathBuf, recordings_dir: PathBuf, port: u16) -> Self {
         let http = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
             .pool_idle_timeout(std::time::Duration::from_secs(30))
@@ -37,7 +38,9 @@ impl AppState {
         let _ = std::fs::create_dir_all(cache_dir.join("meta"));
         // Les sessions de timeshift d'un lancement précédent sont obsolètes.
         let _ = std::fs::remove_dir_all(cache_dir.join("timeshift"));
+        let recorder = crate::recorder::Recorder::new(recordings_dir, http.clone());
         Self {
+            recorder,
             http,
             cache_dir,
             port,

@@ -24,6 +24,10 @@ export function createNativeBackend(): Backend {
     vodSearch: (text, field, preferLanguages, includeAdult, perKind) => invoke("vod_search", { text, field, preferLanguages, includeAdult, perKind }),
     vodDetail: (id, keys) => invoke("vod_detail", { id, keys }),
     person: (name, tmdbId, keys) => invoke("person", { name, tmdbId, keys }),
+    recList: () => invoke("rec_list"),
+    recSchedule: (req) => invoke("rec_schedule", { req }),
+    recCancel: (id, deleteFile) => invoke("rec_cancel", { id, deleteFile }),
+    recInfo: () => invoke("rec_info"),
     play: (req) => invoke("play", { req }),
     stop: () => invoke("stop_playback"),
   };

@@ -11,6 +11,7 @@ import type { Channel, Programme } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { useRecordings } from "../store/recordings";
 
 const PX_PER_MIN = 4;
 const ROW_H = 64;
@@ -28,6 +29,8 @@ export function GuideView() {
   const [dayOffset, setDayOffset] = useState(0);
   const [onlyWithGuide, setOnlyWithGuide] = useState(true);
   const [selected, setSelected] = useState<{ ch: Channel; p: Programme } | null>(null);
+  const recordings = useRecordings((s) => s.list);
+  const recorded = useMemo(() => new Set(recordings.filter((r) => r.status !== "cancelled" && r.status !== "failed").map((r) => `${r.channel.id}@${r.start}`)), [recordings]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const dayStart = useMemo(() => {
@@ -123,7 +126,10 @@ export function GuideView() {
                         onClick={() => setSelected({ ch, p })}
                         title={`${fmtTime(p.start)} ${p.title}`}
                       >
-                        <strong>{p.title}</strong>
+                        <strong>
+                          {recorded.has(`${ch.id}@${p.start}`) && <span className="rec-dot" title="Enregistrement programmé" />}
+                          {p.title}
+                        </strong>
                         <span>
                           {fmtTime(p.start)}
                           {state === "past" && ch.catchup ? " · replay" : ""}
@@ -177,10 +183,27 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
               <Icon name="replay" /> {p.stop <= now ? "Revoir" : "Depuis le début"}
             </button>
           )}
+          {p.stop > now && <RecordButton ch={ch} p={p} />}
           {p.start > now && <span className="dim">Diffusion à venir.</span>}
           {p.stop <= now && !ch.catchup && <span className="dim">Cette chaîne ne propose pas de replay.</span>}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function RecordButton({ ch, p }: { ch: Channel; p: Programme }) {
+  const rec = useRecordings((s) => s.find(ch.id, p.start));
+  if (rec) {
+    return (
+      <button className="btn" onClick={() => useRecordings.getState().cancel(rec.id, false)}>
+        <span className="rec-dot" /> {rec.status === "recording" ? "Arrêter l'enregistrement" : "Annuler l'enregistrement"}
+      </button>
+    );
+  }
+  return (
+    <button className="btn" onClick={() => useRecordings.getState().record(ch, p)}>
+      <span className="rec-dot" /> Enregistrer
+    </button>
   );
 }
