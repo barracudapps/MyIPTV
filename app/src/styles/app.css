@@ -772,3 +772,18 @@ html[data-motion="off"] .nav-item, html[data-motion="off"] .nav-item svg, html[d
   .main > *, .settings-content, .settings-content > .settings-section > *, .modal, .detail, .modal-backdrop, .detail-backdrop, .dd-menu, .player-panel, .panel-body, .toast { animation: none !important; }
   .nav-item, .nav-item svg, .tab, .chip, .btn, .theme-swatch, .settings-nav button, .panel-tabs button { transition: none !important; transform: none !important; }
 }
+
+/* Glisser-déposer des listes. */
+.drop-area { position: relative; }
+.drop-overlay { position: absolute; inset: -6px; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 10px; border: 2px dashed var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 88%, var(--accent)); color: var(--text); pointer-events: none; animation: fade-in .15s ease-out; }
+.drop-overlay svg { color: var(--accent); }
+.drop-overlay.page-drop { position: fixed; inset: 16px; z-index: 60; font-size: 1.2em; }
+.dropzone { position: relative; display: flex; align-items: center; gap: 14px; padding: 20px 18px; border: 2px dashed var(--border); border-radius: var(--radius); background: var(--surface-2); color: var(--text-dim); font-weight: 500; cursor: pointer; transition: border-color .18s, background-color .18s; }
+.dropzone:hover, .dropzone:focus-within, .dropzone.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); color: var(--text); }
+.dropzone svg { color: var(--accent); flex: none; }
+.dropzone strong { color: var(--text); }
+.dropzone input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-weight: 500; }
+.file-list li { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border: 1px solid var(--border); border-radius: calc(var(--radius) * .8); background: var(--surface); animation: item-in .2s var(--ease-out); }
+.file-list li > span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-list .icon-btn { width: 28px; height: 28px; }

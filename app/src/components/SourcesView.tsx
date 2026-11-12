@@ -9,6 +9,7 @@ import { LEGAL_TEST_LIST, SUSPICIOUS_TEST_LIST } from "../lib/testLists";
 import type { RiskReport, Source, SourceKind } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { readPlaylistFiles, useDropZone, type DroppedPlaylists, type PlaylistFile } from "../lib/drop";
 
 type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin" | "test";
 
@@ -19,8 +20,11 @@ export function SourcesView() {
   const epgStats = useLibrary((s) => s.epgStats);
   const loading = useLibrary((s) => s.loading);
   const epgLoading = useLibrary((s) => s.epgLoading);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<DroppedPlaylists | boolean>(false);
   const [editing, setEditing] = useState<Source | null>(null);
+  const isAdmin = useSettings((s) => s.profiles.find((p) => p.id === s.activeProfileId)?.kind === "admin");
+  // Glisser une liste n'importe où sur la page ouvre l'ajout avec ce qui a été déposé.
+  const pageDrop = useDropZone((d) => (d.files.length || d.links.length || d.ignored.length) && setAdding(d));
 
   const count = (id: string) => channels.filter((c) => c.sourceId === id).length;
   const describe = (s: Source) => {
@@ -51,7 +55,7 @@ export function SourcesView() {
   };
 
   return (
-    <div className="page">
+    <div className="page" {...(isAdmin && !adding ? pageDrop.bind : {})}>
       <header className="page-head">
         <div>
           <h1>Sources</h1>
@@ -142,7 +146,13 @@ export function SourcesView() {
         </details>
       )}
 
-      {adding && <AddSourceDialog onClose={() => setAdding(false)} />}
+      {adding && <AddSourceDialog initial={typeof adding === "object" ? adding : undefined} onClose={() => setAdding(false)} />}
+      {pageDrop.over && !adding && (
+        <div className="drop-overlay page-drop" aria-hidden="true">
+          <Icon name="upload" size={40} />
+          <strong>Déposez vos listes M3U ou leurs liens</strong>
+        </div>
+      )}
       {editing && <EditSourceDialog source={editing} onClose={() => setEditing(null)} />}
     </div>
   );
@@ -177,11 +187,25 @@ function EditSourceDialog({ source, onClose }: { source: Source; onClose(): void
   );
 }
 
-function AddSourceDialog({ onClose }: { onClose(): void }) {
-  const [tab, setTab] = useState<Tab>("catalog");
+function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: DroppedPlaylists }) {
+  const [tab, setTab] = useState<Tab>(initial?.files.length ? "file" : initial?.links.length ? "url" : "catalog");
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [files, setFiles] = useState<{ name: string; content: string }[]>([]);
+  const [url, setUrl] = useState(initial?.links.join("\n") ?? "");
+  const [files, setFiles] = useState<PlaylistFile[]>(initial?.files ?? []);
+  const [ignored, setIgnored] = useState<string[]>(initial?.ignored ?? []);
+  const addFiles = (more: PlaylistFile[], skipped: string[]) => {
+    setFiles((cur) => [...cur, ...more.filter((f) => !cur.some((c) => c.name === f.name && c.content.length === f.content.length))]);
+    setIgnored(skipped);
+  };
+  const drop = useDropZone((d) => {
+    if (d.files.length || d.ignored.length) {
+      addFiles(d.files, d.ignored);
+      if (d.files.length) setTab("file");
+    } else if (d.links.length) {
+      setUrl((cur) => [cur.trim(), ...d.links].filter(Boolean).join("\n"));
+      setTab("url");
+    }
+  });
   const [xt, setXt] = useState({ server: "", username: "", password: "" });
   const [jf, setJf] = useState({ server: "", username: "", password: "" });
   const [epg, setEpg] = useState("");
@@ -322,6 +346,13 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
 
   return (
     <Modal title="Ajouter une source" onClose={onClose} wide>
+      <div className="drop-area" {...drop.bind}>
+      {drop.over && (
+        <div className="drop-overlay" aria-hidden="true">
+          <Icon name="upload" size={34} />
+          <strong>Déposez vos listes M3U ou leurs liens</strong>
+        </div>
+      )}
       <div className="tabs" role="tablist">
         {(
           [
@@ -411,16 +442,40 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
             </label>
           )}
           {tab === "file" && (
-            <label className="field">
+            <div className="field">
               Fichiers .m3u / .m3u8 (un ou plusieurs)
-              <input
-                required
-                type="file"
-                multiple
-                accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"
-                onChange={async (e) => setFiles(await Promise.all([...(e.target.files ?? [])].map(async (f) => ({ name: f.name, content: await f.text() }))))}
-              />
-            </label>
+              <label className={`dropzone ${drop.over ? "over" : ""}`}>
+                <Icon name="upload" size={26} />
+                <span>
+                  <strong>Glissez vos fichiers ici</strong> ou <u>parcourez</u>
+                </span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl,text/plain"
+                  onChange={async (e) => {
+                    const r = await readPlaylistFiles([...(e.target.files ?? [])]);
+                    addFiles(r.files, r.ignored);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="file-list">
+                  {files.map((f) => (
+                    <li key={f.name + f.content.length}>
+                      <Icon name="list" size={16} />
+                      <span>{f.name}</span>
+                      <span className="dim small">{(f.content.match(/#EXTINF/g)?.length ?? 0).toLocaleString("fr-FR")} entrées</span>
+                      <button type="button" className="icon-btn" title={`Retirer ${f.name}`} onClick={() => setFiles((cur) => cur.filter((x) => x !== f))}>
+                        <Icon name="close" size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {ignored.length > 0 && <span className="small warn-text">Ignoré{ignored.length > 1 ? "s" : ""}, ce ne sont pas des listes M3U : {ignored.join(", ")}</span>}
+            </div>
           )}
           {tab === "jellyfin" && (
             <>
@@ -489,6 +544,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
           </div>
         </form>
       )}
+      </div>
     </Modal>
   );
 }
