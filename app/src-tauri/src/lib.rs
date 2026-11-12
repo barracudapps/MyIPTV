@@ -36,6 +36,7 @@ pub fn run() {
             commands::remove_source,
             commands::load_epg,
             commands::programmes,
+            commands::search_programmes,
             commands::catchup_url,
             commands::play,
             commands::stop_playback,

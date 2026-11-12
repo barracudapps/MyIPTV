@@ -173,6 +173,44 @@ pub async fn programmes(st: St<'_>, channels: Vec<Channel>, from: i64, to: i64) 
     Ok(channels.iter().map(|c| (c.id.clone(), epg.for_channel(c, from, to))).collect())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgrammeHit {
+    pub channel_id: String,
+    pub programme: Programme,
+}
+
+/// Recherche plein texte dans le guide (titres et sous-titres), de l'archive aux jours à venir.
+#[tauri::command]
+pub async fn search_programmes(st: St<'_>, query: String, limit: usize) -> Res<Vec<ProgrammeHit>> {
+    let q = iptv_core::util::normalize_name(&query);
+    if q.len() < 2 {
+        return Ok(vec![]);
+    }
+    let channels = st.channels.read().await;
+    let epg = st.epg.read().await;
+    let from = now() - 7 * 86_400;
+    let mut hits = Vec::new();
+    let mut seen_epg_ids = std::collections::HashSet::new();
+    for ch in channels.values().flatten() {
+        let Some(id) = epg.resolve(ch) else { continue };
+        // Plusieurs chaînes (qualités, sources) partagent le même guide : un seul résultat.
+        if !seen_epg_ids.insert(id.to_string()) {
+            continue;
+        }
+        for p in epg.programmes.get(id).into_iter().flatten() {
+            if p.stop > from && (iptv_core::util::normalize_name(&p.title).contains(&q) || p.subtitle.as_deref().is_some_and(|s| iptv_core::util::normalize_name(s).contains(&q))) {
+                hits.push(ProgrammeHit { channel_id: ch.id.clone(), programme: p.clone() });
+            }
+        }
+    }
+    // Les programmes en cours et à venir d'abord, puis les replays récents.
+    let t = now();
+    hits.sort_by_key(|h| if h.programme.stop > t { h.programme.start - t } else { (t - h.programme.start) + 100 * 86_400 });
+    hits.truncate(limit.min(500));
+    Ok(hits)
+}
+
 #[tauri::command]
 pub fn catchup_url(channel: Channel, start: i64, stop: i64) -> Option<String> {
     iptv_core::catchup_url(&channel, start, stop, now())
