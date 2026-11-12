@@ -1,3 +1,4 @@
+import { channelIds, groupChannels } from "../lib/variants";
 import { startTask } from "./activity";
 import { withContent } from "../lib/playlists";
 import { create } from "zustand";
@@ -79,9 +80,13 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     all.sort((a, b) => (order.get(a.sourceId)! - order.get(b.sourceId)!) || 0);
     // Guides limités aux pays des langues favorites de tous les profils.
     const langs = [...new Set(useSettings.getState().profiles.flatMap((p) => p.languages))];
+    // Copies d'une même chaîne (sources, qualités) regroupées sous une seule entrée.
+    const grouped = groupChannels(all);
+    const byId = new Map<string, Channel>();
+    for (const c of grouped) for (const id of channelIds(c)) byId.set(id, c);
     set((s) => ({
-      channels: all,
-      byId: new Map(all.map((c) => [c.id, c])),
+      channels: grouped,
+      byId,
       errors,
       loading: false,
       vodCounts,

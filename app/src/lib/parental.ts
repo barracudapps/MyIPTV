@@ -1,3 +1,4 @@
+import { channelIds } from "./variants";
 import type { Channel, Programme } from "../types";
 
 export type ProfileKind = "admin" | "standard" | "child";
@@ -114,8 +115,10 @@ export function channelAccess(p: Profile, ch: Channel, adult: AdultContext): Acc
   if (ch.adult) return adultAccess(p, adult);
   if (p.kind === "child") {
     const r = p.child!;
-    if (r.blacklist.includes(ch.id)) return { ok: false, reason: "blocked", message: "Chaîne bloquée par un parent." };
-    if (r.whitelist.includes(ch.id)) return { ok: true };
+    // Chaîne regroupée : une copie bloquée bloque le groupe, une copie autorisée l'autorise.
+    const ids = channelIds(ch);
+    if (ids.some((id) => r.blacklist.includes(id))) return { ok: false, reason: "blocked", message: "Chaîne bloquée par un parent." };
+    if (ids.some((id) => r.whitelist.includes(id))) return { ok: true };
     if (r.whitelistOnly) return { ok: false, reason: "blocked", message: "Seules les chaînes autorisées par un parent sont visibles." };
     if (ch.group && r.blockedGroups.some((g) => g.toLowerCase() === ch.group!.toLowerCase()))
       return { ok: false, reason: "blocked", message: "Catégorie bloquée par un parent." };
@@ -144,7 +147,7 @@ export function programmeAccess(p: Profile, ch: Channel, prog: Programme | undef
       ? { ok: true }
       : { ok: false, reason: "blocked", message: `Programme déconseillé aux moins de ${prog.age} ans.` };
   }
-  if (r.allowUnrated || r.whitelist.includes(ch.id)) return { ok: true };
+  if (r.allowUnrated || channelIds(ch).some((id) => r.whitelist.includes(id))) return { ok: true };
   return { ok: false, reason: "blocked", message: "Programme sans classification d'âge." };
 }
 

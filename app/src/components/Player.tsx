@@ -1,3 +1,4 @@
+import { displayName } from "../lib/variants";
 import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type HlsType from "hls.js";
@@ -132,16 +133,18 @@ function isAudioOnly() {
   return k === "radio" || k === "music" || k === "podcast" || k === "audiobook";
 }
 
-type Panel = null | "audio" | "subtitles" | "quality" | "picture" | "sound" | "speed" | "buffer";
+type Panel = null | "audio" | "subtitles" | "quality" | "picture" | "sound" | "speed" | "buffer" | "sources";
 
 export function Player() {
-  const { channel, media, info, catchup, loading, error, mode, setMode, stop, retry, zap, nextEpisode } = usePlayer();
+  const { channel, media, info, catchup, loading, error, mode, setMode, stop, retry, zap, nextEpisode, streams, streamIndex, probing } = usePlayer();
   const view = useUi((s) => s.view);
   const setView = useUi((s) => s.setView);
   const profile = useActiveProfile();
   const prefs = profile?.player ?? DEFAULT_PLAYER_PREFS;
   const autoMini = useSettings((s) => s.playback.autoMiniPlayer);
   const prefsTimeshift = useSettings((s) => s.playback.timeshift);
+  const sources = useSettings((s) => s.sources);
+  const sourceNames = useMemo(() => new Map(sources.map((x) => [x.id, x.name])), [sources]);
   const autoNext = useSettings((s) => s.playback.autoNext);
   const mascotOn = useSettings((s) => s.fun.mascot);
   const mascotColor = useSettings((s) => s.fun.mascotColor);
@@ -241,6 +244,8 @@ export function Player() {
       if (isFile && !triedRemux.current && info.kind !== "remux" && !info.timeshift) {
         triedRemux.current = true;
         usePlayer.getState().retry(true);
+      } else if (st.tryNextStream(msg)) {
+        // Plusieurs sources : une autre copie prend le relais.
       } else setEngineError(msg);
     };
     setTracks(NO_TRACKS);
@@ -551,7 +556,7 @@ export function Player() {
   const isMini = effective === "mini";
   const hiddenKeep = effective === "hidden-keep";
   const small = isMini || compact;
-  const title = channel?.name ?? media!.item.title;
+  const title = channel ? displayName(channel) : media!.item.title;
   const subtitle = media?.episode ? media.episode.title || `${sectionOf(media.item.kind).unit} ${media.episode.episode}` : playingProg ? playingProg.title : media?.item.year ? String(media.item.year) : undefined;
 
   const style: React.CSSProperties = compact
@@ -668,7 +673,7 @@ export function Player() {
       {!shownError && info?.kind !== "youtube" && info?.kind !== "webpage" && !isAudio && (loading || !clock.ready) && !blocked && (
         <div className="player-center">
           <div className="spinner" />
-          {!small && <span>{info?.timeshift ? "Préparation du direct…" : "Connexion…"}</span>}
+          {!small && <span>{probing ? `Test de ${streams.length} sources…` : info?.timeshift ? "Préparation du direct…" : streams.length > 1 ? `Connexion (source ${streamIndex + 1}/${streams.length})…` : "Connexion…"}</span>}
         </div>
       )}
 
@@ -849,6 +854,7 @@ export function Player() {
                 ["sound", "Son", true],
                 ["speed", "Vitesse", !isLiveStream],
                 ["buffer", "Pause du direct", channel != null && !catchup && prefsTimeshift],
+                ["sources", `Sources (${streams.length})`, !catchup && !media?.episode && streams.length > 1],
               ] as [Panel, string, boolean][]
             )
               .filter(([, , shown]) => shown)
@@ -958,6 +964,22 @@ export function Player() {
                   <strong>{l}</strong> <span className="dim">{d}</span>
                 </button>
               ))}
+            {panel === "sources" &&
+              streams.map((st, i) => {
+                const source = sourceNames.get(st.channel.sourceId) ?? "Source";
+                const status = st.failed ? `échec : ${st.failed}` : st.probe ? (st.probe.ok ? `répond en ${Math.round(st.probe.ms)} ms` : st.probe.error ?? "injoignable") : "non testée";
+                return (
+                  <button key={st.channel.id} className={`opt ${i === streamIndex ? "on" : ""} ${st.failed || st.probe?.ok === false ? "bad" : ""}`} onClick={() => usePlayer.getState().useStream(i)}>
+                    <strong>
+                      {i === 0 && !st.failed && st.probe?.ok && <span className="mini-badge ok">conseillée</span>} {st.channel.name}
+                    </strong>
+                    <span className="dim">
+                      {source}
+                      {st.quality ? ` · ${st.quality}p` : ""} · {status}
+                    </span>
+                  </button>
+                );
+              })}
             {panel === "buffer" && (
               <>
                 <BufferChoice compact />

@@ -20,6 +20,10 @@ export interface Channel {
   adult?: boolean;
   languages?: string[];
   countries?: string[];
+  /** Autres copies de la même chaîne (autres sources ou qualités), regroupées sous celle-ci. */
+  variants?: Channel[];
+  /** Rang d'affichage du groupe (position de sa première copie). */
+  groupOrder?: number;
 }
 
 export interface Programme {
@@ -160,6 +164,8 @@ export interface VodItem {
   live?: boolean;
   adult?: boolean;
   episodes?: Episode[];
+  /** Autres copies du même contenu (autres sources), regroupées sous celle-ci. */
+  alternates?: VodItem[];
 }
 
 export interface Person {

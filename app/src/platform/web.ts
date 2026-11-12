@@ -155,6 +155,29 @@ export async function createWebBackend(): Promise<Backend> {
       throw new Error("L'enregistrement n'est disponible que sur l'application de bureau ou Android.");
     },
     async recCancel() {},
+    async probeStream(s, timeoutMs) {
+      // Le navigateur ne fixe ni User-Agent ni Referer : le test reflète ce que le lecteur obtiendra.
+      // Pas d'en-tête Range (requête préliminaire CORS refusée par bien des serveurs) : seul le premier bloc est lu.
+      const started = performance.now();
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const r = await fetch(s.url, { signal: ctrl.signal, cache: "no-store" });
+        if (!r.ok) return { ok: false, ms: performance.now() - started, error: `HTTP ${r.status}` };
+        const reader = r.body?.getReader();
+        const first = reader ? (await reader.read()).value : new Uint8Array(await r.arrayBuffer());
+        reader?.cancel().catch(() => undefined);
+        const ms = performance.now() - started;
+        const playlist = (r.headers.get("content-type") ?? "").includes("mpegurl") || /\.m3u8($|\?)/i.test(s.url);
+        if (!first?.length) return { ok: false, ms, error: "réponse vide" };
+        if (playlist && !new TextDecoder().decode(first.slice(0, 512)).includes("#EXTM3U")) return { ok: false, ms, error: "réponse qui n'est pas une playlist" };
+        return { ok: true, ms };
+      } catch (e) {
+        return { ok: false, ms: performance.now() - started, error: ctrl.signal.aborted ? "trop lent" : "inaccessible depuis le navigateur" };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
     async shareFetch(address, code) {
       let base = address.trim().replace(/\/+$/, "");
       if (!/^https?:\/\//.test(base)) base = `http://${base}`;

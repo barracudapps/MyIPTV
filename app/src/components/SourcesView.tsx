@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { streamsOf } from "../lib/variants";
 import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
 import { useSettings } from "../store/settings";
@@ -28,7 +29,13 @@ export function SourcesView() {
   // Glisser une liste n'importe où sur la page ouvre l'ajout avec ce qui a été déposé.
   const pageDrop = useDropZone((d) => (d.files.length || d.links.length || d.ignored.length) && setAdding(d));
 
-  const count = (id: string) => channels.filter((c) => c.sourceId === id).length;
+  // Chaque copie compte pour sa source, même regroupée sous une chaîne d'une autre source.
+  const perSource = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const c of channels) for (const v of streamsOf(c)) n.set(v.sourceId, (n.get(v.sourceId) ?? 0) + 1);
+    return n;
+  }, [channels]);
+  const count = (id: string) => perSource.get(id) ?? 0;
   const describe = (s: Source) => {
     switch (s.kind) {
       case "xtream":

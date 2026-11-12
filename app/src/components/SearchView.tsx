@@ -1,3 +1,4 @@
+import { displayName } from "../lib/variants";
 import { useEffect, useMemo, useState } from "react";
 import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
@@ -248,7 +249,7 @@ function HitList({ title, hits, action, icon }: { title: string; hits: { ch: Cha
               <span className="hit-text">
                 <strong>{h.p.title}</strong>
                 <span className="dim">
-                  {h.ch.name} · {fmtDay(h.p.start)} {fmtTime(h.p.start)}
+                  {displayName(h.ch)} · {fmtDay(h.p.start)} {fmtTime(h.p.start)}
                   {h.p.subtitle ? ` · ${h.p.subtitle}` : ""}
                 </span>
               </span>

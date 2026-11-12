@@ -92,13 +92,10 @@ fn seasons_from(item: &VodItem, label: &str) -> Vec<Season> {
     by.into_iter().map(|(n, episodes)| Season { number: n, name: if label.is_empty() { format!("Saison {n}") } else { label.to_string() }, episodes }).collect()
 }
 
-/// Fiche complète : données de la source, épisodes/pistes, puis TMDB/OMDb si une clé est fournie.
-#[tauri::command]
-pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail> {
-    if let Some(d) = st.details.lock().await.get(&id) {
-        return Ok(d.clone());
-    }
-    let item = st.vod_all.read().await.iter().find(|i| i.id == id).cloned().ok_or("Contenu introuvable (source désactivée ?)")?;
+/// Fiche telle que la source la fournit (épisodes, pistes, fichiers), sans métadonnées externes.
+async fn source_detail(st: &AppState, item: &VodItem) -> Res<VodDetail> {
+    let st = st;
+    let item = item.clone();
     let kind = item.kind;
     let mut d = VodDetail {
         cast: item.cast.iter().map(|n| Person { name: n.clone(), ..Default::default() }).collect(),
@@ -152,6 +149,37 @@ pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail
             _ => {}
         },
     }
+
+    Ok(d)
+}
+
+/// Fiche complète : données de la source, épisodes/pistes, puis TMDB/OMDb si une clé est fournie.
+#[tauri::command]
+pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail> {
+    if let Some(d) = st.details.lock().await.get(&id) {
+        return Ok(d.clone());
+    }
+    let item = {
+        let all = st.vod_all.read().await;
+        iptv_core::vod::find_copy(&all, &id).cloned().ok_or("Contenu introuvable (source désactivée ?)")?
+    };
+    let kind = item.kind;
+    // Plusieurs sources pour ce contenu : si la première ne répond pas, la suivante prend le relais.
+    let mut d = match source_detail(&st, &item).await {
+        Ok(d) => d,
+        Err(first) => {
+            let mut found = None;
+            for alt in &item.alternates {
+                if let Ok(mut alt_d) = source_detail(&st, alt).await {
+                    let alt_url = alt_d.item.url.take();
+                    alt_d.item = VodItem { url: alt_url.or(item.url.clone()), ..item.clone() };
+                    found = Some(alt_d);
+                    break;
+                }
+            }
+            found.ok_or(first)?
+        }
+    };
 
     // Métadonnées externes (films, séries, émissions).
     let lang = keys.language.clone().unwrap_or_else(|| "fr-FR".into());

@@ -941,3 +941,10 @@ html[data-fx="luxe"][data-motion="off"] .btn, html[data-fx="luxe"][data-motion="
   html[data-fx="luxe"] .main > *, html[data-fx="luxe"] .settings-content, html[data-fx="luxe"] .settings-content > .settings-section > *, html[data-fx="luxe"] .vod-row-scroll > *, html[data-fx="luxe"] .modal, html[data-fx="luxe"] .detail, html[data-fx="luxe"] .modal::before, html[data-fx="luxe"] .detail::before, html[data-fx="luxe"] .detail-hero[style]::before, html[data-fx="luxe"] .nav-brand span, html[data-fx="luxe"] .nav-item.active::before, html[data-fx="luxe"] .dd-menu, html[data-fx="luxe"] .activity-popover, html[data-fx="luxe"] .toast, html[data-fx="luxe"] .modal-backdrop, html[data-fx="luxe"] .detail-backdrop { animation: none !important; }
   html[data-fx="luxe"] .btn-primary::after { display: none; }
 }
+
+/* Chaînes regroupées : nombre de copies et choix de la source dans le lecteur. */
+.variant-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .68em; font-weight: 700; letter-spacing: .03em; padding: 1px 7px; border-radius: 999px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); white-space: nowrap; }
+.channel-tile .variant-badge { position: absolute; top: 8px; left: 8px; }
+.channel-name .variant-badge { margin-left: 6px; }
+.panel-body .opt.bad { opacity: .6; }
+.panel-body .opt .mini-badge { margin: 0 4px 0 0; }

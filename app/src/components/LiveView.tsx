@@ -1,3 +1,4 @@
+import { channelIds, displayName } from "../lib/variants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLibrary } from "../store/library";
@@ -38,7 +39,7 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
   const base = useMemo(() => {
     if (scope === "all") return visible;
     const fav = new Set(profile.favorites);
-    return visible.filter((c) => fav.has(c.id));
+    return visible.filter((c) => channelIds(c).some((id) => fav.has(id)));
   }, [scope, visible, profile.favorites]);
 
   const groups = useMemo(() => {
@@ -94,8 +95,8 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
 
   const recent = useMemo(() => {
     if (scope !== "favorites") return [];
-    const byId = new Map(visible.map((c) => [c.id, c]));
-    return profile.recent.map((id) => byId.get(id)).filter(Boolean).slice(0, 12) as Channel[];
+    const byId = new Map(visible.flatMap((c) => channelIds(c).map((id) => [id, c] as const)));
+    return [...new Set(profile.recent.map((id) => byId.get(id)).filter(Boolean))].slice(0, 12) as Channel[];
   }, [scope, profile.recent, visible]);
 
   if (!hasSources) {
@@ -284,7 +285,7 @@ function useChannelState(channel: Channel) {
   const progs = useLibrary((s) => s.programmes[channel.id]);
   const now = useNow();
   const { now: prog, next } = current(progs, now);
-  const fav = profile.favorites.includes(channel.id);
+  const fav = channelIds(channel).some((id) => profile.favorites.includes(id));
   return { profile, playing, prog, next, now, fav };
 }
 
@@ -295,7 +296,9 @@ function FavButton({ channel, fav }: { channel: Channel; fav: boolean }) {
       title={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
       onClick={(e) => {
         e.stopPropagation();
-        useSettings.getState().toggleFavorite(channel.id);
+        // Retrait : toutes les copies ; ajout : la chaîne affichée.
+        if (fav) for (const id of channelIds(channel)) { if (useSettings.getState().profiles.find((x) => x.id === useSettings.getState().activeProfileId)?.favorites.includes(id)) useSettings.getState().toggleFavorite(id); }
+        else useSettings.getState().toggleFavorite(channel.id);
         const p = useSettings.getState().profiles.find((x) => x.id === useSettings.getState().activeProfileId);
         fun.onFavorite(!fav, (p?.favorites.length ?? 0) + (p?.vodFavorites.length ?? 0));
       }}
@@ -317,9 +320,10 @@ function ChannelRow({ channel, list, showNowNext, showProgress }: { channel: Cha
         </span>
         <span className="channel-text">
           <span className="channel-name">
-            {channel.name}
+            {displayName(channel)}
             {channel.adult && <Icon name="lock" size={14} />}
             <ReplayBadge channel={channel} />
+            <VariantBadge channel={channel} />
           </span>
           {showNowNext && prog && (
             <span className="channel-prog">
@@ -339,6 +343,17 @@ function ChannelRow({ channel, list, showNowNext, showProgress }: { channel: Cha
   );
 }
 
+/** Nombre de copies regroupées : l'app choisit la meilleure au lancement. */
+function VariantBadge({ channel }: { channel: Channel }) {
+  const n = channel.variants?.length;
+  if (!n) return null;
+  return (
+    <span className="variant-badge" title={`${n + 1} sources pour cette chaîne : la plus rapide et de meilleure qualité est choisie au lancement.`}>
+      {n + 1} sources
+    </span>
+  );
+}
+
 function ChannelTile({ channel, list }: { channel: Channel; list: Channel[] }) {
   const { playing, prog, fav } = useChannelState(channel);
   return (
@@ -349,8 +364,9 @@ function ChannelTile({ channel, list }: { channel: Channel; list: Channel[] }) {
           <LangBadge langs={channel.languages} />
         </span>
         <span className="channel-name">
-          {channel.name} <ReplayBadge channel={channel} compact />
+          {displayName(channel)} <ReplayBadge channel={channel} compact />
         </span>
+        <VariantBadge channel={channel} />
         {prog && <span className="tile-prog">{prog.title}</span>}
       </button>
       <FavButton channel={channel} fav={fav} />

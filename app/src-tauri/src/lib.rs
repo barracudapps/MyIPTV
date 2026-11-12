@@ -62,6 +62,7 @@ pub fn run() {
             commands::rec_schedule,
             commands::rec_cancel,
             commands::rec_info,
+            commands::probe_stream,
             share::share_start,
             share::share_status,
             share::share_stop,

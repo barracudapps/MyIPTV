@@ -1,3 +1,4 @@
+import { displayName } from "../lib/variants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useLibrary } from "../store/library";
@@ -116,7 +117,7 @@ export function GuideView() {
               <div key={row.key} className="guide-row" style={{ transform: `translateY(${row.start + 36}px)`, height: ROW_H }}>
                 <button className="guide-channel" style={{ width: CH_COL }} onClick={() => usePlayer.getState().play(ch, { zapList: channels })} title={`Regarder ${ch.name}`}>
                   <ChannelLogo channel={ch} size={36} />
-                  <span>{ch.name}</span>
+                  <span>{displayName(ch)}</span>
                   <ReplayBadge channel={ch} compact />
                 </button>
                 <div className="guide-progs" style={{ left: CH_COL, width }}>
@@ -167,7 +168,7 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
         <div className="row">
           <ChannelLogo channel={ch} size={40} />
           <div>
-            <strong>{ch.name}</strong>
+            <strong>{displayName(ch)}</strong>
             <div className="dim">
               {fmtDay(p.start)} · {fmtTime(p.start)} – {fmtTime(p.stop)}
               {p.category ? ` · ${p.category}` : ""}

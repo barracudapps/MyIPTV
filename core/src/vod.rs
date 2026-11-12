@@ -119,6 +119,9 @@ pub struct VodItem {
     pub episodes: Vec<Episode>,
     #[serde(default, skip_serializing_if = "is_none_ref")]
     pub source_ref: VodRef,
+    /// Autres copies du même contenu (autres sources), regroupées sous celle-ci.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alternates: Vec<VodItem>,
 }
 
 fn is_none_ref(r: &VodRef) -> bool {
@@ -165,6 +168,74 @@ pub struct VodDetail {
     pub countries: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub age: Option<u8>,
+}
+
+// ------------------------------------------------------------------ Copies
+
+/// Types regroupés : un même titre y désigne le même contenu. Les morceaux, podcasts
+/// et livres audio portent souvent des titres communs à des œuvres différentes.
+fn groupable(kind: Option<VodKind>) -> bool {
+    matches!(kind, Some(VodKind::Movie) | Some(VodKind::Series) | Some(VodKind::Radio))
+}
+
+/// Copie la plus documentée : elle représente le groupe.
+fn richness(i: &VodItem) -> u32 {
+    (i.poster.is_some() as u32) * 4 + (i.tmdb_id.is_some() as u32) * 3 + (i.plot.is_some() as u32) * 2 + (i.year.is_some() as u32) + (i.rating.is_some() as u32)
+}
+
+/// Regroupe les copies d'un même film, d'une même série ou d'une même radio venant de
+/// plusieurs sources : même type, même titre nettoyé, et même année quand les deux la
+/// donnent. La copie la plus documentée représente le groupe, à la place de la première.
+pub fn group_copies(items: Vec<VodItem>) -> Vec<VodItem> {
+    let mut groups: Vec<Vec<VodItem>> = Vec::with_capacity(items.len());
+    let mut by_key: std::collections::HashMap<(Option<VodKind>, String), Vec<usize>> = std::collections::HashMap::new();
+    for it in items {
+        if !groupable(it.kind) || it.title.trim().is_empty() {
+            groups.push(vec![it]);
+            continue;
+        }
+        let key = (it.kind, fold(&it.title));
+        let slot = by_key.get(&key).and_then(|idx| {
+            idx.iter().copied().find(|&g| {
+                let head = &groups[g][0];
+                head.adult == it.adult && (head.year.is_none() || it.year.is_none() || head.year == it.year)
+            })
+        });
+        match slot {
+            Some(g) => groups[g].push(it),
+            None => {
+                by_key.entry(key).or_default().push(groups.len());
+                groups.push(vec![it]);
+            }
+        }
+    }
+    groups
+        .into_iter()
+        .map(|mut g| {
+            if g.len() == 1 {
+                return g.pop().unwrap();
+            }
+            let best = (0..g.len()).max_by_key(|&i| (richness(&g[i]), std::cmp::Reverse(i))).unwrap_or(0);
+            let mut head = g.remove(best);
+            for alt in &g {
+                for l in &alt.languages {
+                    if !head.languages.contains(l) {
+                        head.languages.push(l.clone());
+                    }
+                }
+                head.year = head.year.or(alt.year);
+                head.poster = head.poster.take().or_else(|| alt.poster.clone());
+                head.plot = head.plot.take().or_else(|| alt.plot.clone());
+            }
+            head.alternates = g;
+            head
+        })
+        .collect()
+}
+
+/// Contenu par identifiant, y compris une copie regroupée sous un autre (historique, favoris).
+pub fn find_copy<'a>(items: &'a [VodItem], id: &str) -> Option<&'a VodItem> {
+    items.iter().find(|i| i.id == id).or_else(|| items.iter().find(|i| i.alternates.iter().any(|a| a.id == id)))
 }
 
 // ------------------------------------------------------------------ Titres
@@ -546,7 +617,18 @@ pub struct VodPage {
 
 /// Version allégée pour les grilles (sans épisodes ni synopsis).
 fn summary(i: &VodItem) -> VodItem {
-    VodItem { episodes: vec![], plot: i.plot.as_ref().map(|p| p.chars().take(200).collect()), ..i.clone() }
+    VodItem {
+        episodes: vec![],
+        plot: i.plot.as_ref().map(|p| p.chars().take(200).collect()),
+        // Copies allégées : seule leur adresse sert (repli à la lecture).
+        alternates: i.alternates.iter().map(|a| VodItem { episodes: vec![], plot: None, cast: vec![], alternates: vec![], ..a.clone() }).collect(),
+        ..i.clone()
+    }
+}
+
+/// Rang d'un contenu dans une liste d'identifiants, par lui-même ou l'une de ses copies.
+fn id_rank(i: &VodItem, m: &HashMap<&str, usize>) -> Option<usize> {
+    std::iter::once(i.id.as_str()).chain(i.alternates.iter().map(|a| a.id.as_str())).filter_map(|id| m.get(id).copied()).min()
 }
 
 pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
@@ -562,7 +644,8 @@ pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
         .filter(|i| {
             q.any_languages.as_ref().map_or(true, |ls| i.languages.iter().any(|l| ls.contains(l)) || (q.include_unknown_language && i.languages.is_empty()))
         })
-        .filter(|i| ids.as_ref().map_or(true, |m| m.contains_key(i.id.as_str())))
+        // Favoris et historique peuvent viser une copie regroupée sous une autre.
+        .filter(|i| ids.as_ref().map_or(true, |m| id_rank(i, m).is_some()))
         .filter(|i| q.country.as_ref().map_or(true, |c| i.countries.contains(c)))
         .filter_map(|i| match &text {
             None => Some((i, 0)),
@@ -574,7 +657,7 @@ pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
     let rank = |i: &VodItem| lang::rank(&i.languages, prefs);
     match (q.sort, &text, &ids) {
         // Liste explicite sans tri demandé (historique, favoris) : ordre fourni.
-        (VodSort::Default, None, Some(m)) => hits.sort_by_key(|(i, _)| m[i.id.as_str()]),
+        (VodSort::Default, None, Some(m)) => hits.sort_by_key(|(i, _)| id_rank(i, m).unwrap_or(usize::MAX)),
         (VodSort::Default, Some(_), _) => hits.sort_by(|a, b| rank(a.0).cmp(&rank(b.0)).then(b.1.cmp(&a.1))),
         (VodSort::Default, None, None) => hits.sort_by(|a, b| rank(a.0).cmp(&rank(b.0)).then(b.0.added.cmp(&a.0.added))),
         (VodSort::Added, ..) => hits.sort_by(|a, b| b.0.added.cmp(&a.0.added)),
@@ -687,6 +770,34 @@ pub fn with_person<'a>(items: &'a [VodItem], name: &str) -> Vec<&'a VodItem> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn groups_copies_of_the_same_movie() {
+        let mk = |id: &str, src: &str, title: &str, year: Option<u16>, poster: bool| VodItem {
+            id: id.into(),
+            source_id: src.into(),
+            kind: Some(VodKind::Movie),
+            title: title.into(),
+            year,
+            poster: poster.then(|| format!("{id}.jpg")),
+            url: Some(format!("http://{src}/{id}.mp4")),
+            ..Default::default()
+        };
+        let out = group_copies(vec![
+            mk("a", "s1", "Le Grand Bleu", Some(1988), false),
+            mk("b", "s2", "le grand bleu", None, true),
+            mk("c", "s3", "Le Grand Bleu", Some(2024), true),
+            VodItem { kind: Some(VodKind::Music), ..mk("d", "s1", "Intro", None, false) },
+            VodItem { kind: Some(VodKind::Music), ..mk("e", "s2", "Intro", None, false) },
+        ]);
+        assert_eq!(out.len(), 4);
+        // La copie avec affiche représente le groupe ; l'année connue est reprise.
+        assert_eq!(out[0].id, "b");
+        assert_eq!(out[0].year, Some(1988));
+        assert_eq!(out[0].alternates.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), ["a"]);
+        assert_eq!(out[1].id, "c");
+        assert_eq!(find_copy(&out, "a").map(|i| i.id.as_str()), Some("b"));
+    }
     use super::*;
 
     #[test]

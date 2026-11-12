@@ -69,7 +69,8 @@ impl AppState {
         }
         let mut ids: Vec<&String> = map.keys().collect();
         ids.sort();
-        *self.vod_all.write().await = ids.into_iter().flat_map(|k| map[k].iter().cloned()).collect();
+        // Copies d'un même film, d'une même série ou radio venant de plusieurs sources : une seule entrée.
+        *self.vod_all.write().await = iptv_core::vod::group_copies(ids.into_iter().flat_map(|k| map[k].iter().cloned()).collect());
     }
 
     pub fn base_url(&self) -> String {

@@ -1,6 +1,12 @@
 import type { RecInfo, Recording } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
+export interface StreamProbe {
+  ok: boolean;
+  ms: number;
+  error?: string;
+}
+
 export interface ShareInfo {
   code: string;
   addresses: string[];
@@ -45,6 +51,8 @@ export interface Backend {
   };
   /** Récupère et déchiffre la configuration partagée par un autre appareil. */
   shareFetch(address: string, code: string): Promise<string>;
+  /** Test rapide d'un flux : répond-il, et en combien de temps ? */
+  probeStream(stream: { url: string; userAgent?: string; referrer?: string }, timeoutMs: number): Promise<StreamProbe>;
   play(req: PlayRequest): Promise<PlayInfo>;
   stop(): Promise<void>;
 }

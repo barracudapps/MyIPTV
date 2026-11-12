@@ -770,3 +770,46 @@ mod live_tests {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct StreamProbe {
+    ok: bool,
+    /// Délai jusqu'aux premiers octets, en millisecondes.
+    ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Test rapide d'un flux avant lecture : répond-il, et en combien de temps ? Seuls les
+/// premiers octets sont lus ; une playlist HLS doit commencer comme telle.
+#[tauri::command]
+pub async fn probe_stream(st: St<'_>, url: String, user_agent: Option<String>, referrer: Option<String>, timeout_ms: Option<u64>) -> Res<StreamProbe> {
+    let up = Upstream { url: url.clone(), user_agent, referrer };
+    let started = std::time::Instant::now();
+    let timeout = Duration::from_millis(timeout_ms.unwrap_or(3000).clamp(500, 10_000));
+    let attempt = async {
+        let mut resp = st.http.get(&up.url).headers(up.headers()).header(reqwest::header::RANGE, "bytes=0-4095").send().await.map_err(|e| e.to_string())?;
+        if !resp.status().is_success() {
+            return Err(format!("HTTP {}", resp.status().as_u16()));
+        }
+        let ct = resp.headers().get(reqwest::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("").to_lowercase();
+        let first = resp.chunk().await.map_err(|e| e.to_string())?.unwrap_or_default();
+        let playlist = ct.contains("mpegurl") || url.split('?').next().unwrap_or("").ends_with(".m3u8");
+        if playlist && !String::from_utf8_lossy(&first[..first.len().min(512)]).contains("#EXTM3U") {
+            return Err("réponse qui n'est pas une playlist".into());
+        }
+        if first.is_empty() {
+            return Err("réponse vide".into());
+        }
+        Ok(())
+    };
+    let result = match tokio::time::timeout(timeout, attempt).await {
+        Ok(r) => r,
+        Err(_) => Err("trop lent".into()),
+    };
+    let ms = started.elapsed().as_millis() as u64;
+    Ok(match result {
+        Ok(()) => StreamProbe { ok: true, ms, error: None },
+        Err(e) => StreamProbe { ok: false, ms, error: Some(e) },
+    })
+}
