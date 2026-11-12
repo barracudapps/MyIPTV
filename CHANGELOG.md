@@ -4,6 +4,37 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+## [0.3.0] - 2026-11-12
+
+### Ajouté
+- Chaînes, films, séries et radios présents plusieurs fois (sources, qualités) regroupés sous une seule entrée ; au lancement, toutes les copies sont testées en parallèle et la plus pertinente est lue (répond, rapide, meilleure qualité), avec bascule automatique si elle échoue et onglet « Sources » dans le lecteur.
+- Partage en réseau local : sources, comptes, profils, thèmes et réglages copiés vers un autre appareil avec une adresse et un code (transfert chiffré, valable 10 minutes).
+- Ajout de plusieurs liens ou fichiers M3U d'un coup, avec une seule vérification et une seule double confirmation pour tout le lot.
+- Glisser-déposer des listes M3U (fichiers ou liens) sur la fenêtre d'ajout ou la page Sources.
+- Indicateur d'activité : chargements, guides, vérifications, partages et enregistrements en cours, avec progression.
+- Durée de pause du direct réglable, aussi depuis le lecteur.
+- Télécommande : touches lecture, pause, avance et retour rapides, stop, CH+/CH−, Retour sur Android TV, Tizen et webOS.
+- Thèmes : dix nouveaux thèmes, Studio et Studio clair (menu en icônes), Maison (thème de luxe avec ses propres animations).
+- Animations des écrans, fenêtres, menus et panneaux, désactivables.
+- Choix entre plusieurs mascottes.
+- Lecteurs officiels YouTube et Dailymotion pour les directs diffusés sur ces plateformes.
+- Explication quand une chaîne recherchée est absente (chaînes payantes, filtres actifs).
+- Intégration continue et paquets pour toutes les plateformes, projet Android.
+
+### Amélioré
+- Ajouter une source ne recharge que cette source ; les sources se chargent quelques-unes à la fois.
+- Démarrage plus léger : lecteurs vidéo et écrans secondaires chargés à la demande, chaque plateforme n'embarque que son moteur (code principal de 983 à 316 Ko).
+- Analyse des grandes listes environ 15 % plus rapide dans la version web et TV.
+- Films et épisodes dans un grand lecteur.
+
+### Corrigé
+- Sources en double supprimées au démarrage et refusées à l'ajout (même liste, compte ou fichier, quelle que soit l'écriture).
+- Réglages qui ne s'enregistraient plus après l'import d'un gros fichier M3U (contenu désormais rangé dans IndexedDB).
+- Chargements multiples et bloqués avec un grand nombre de sources.
+- Couleur « Éléments » des thèmes jamais appliquée.
+- Guides disparus de leur serveur signalés en erreur à chaque chargement.
+- Erreurs de lecture obsolètes qui relançaient la lecture.
+
 ## [0.2.0] - 2026-11-12
 
 ### Ajouté

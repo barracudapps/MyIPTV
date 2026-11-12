@@ -1,6 +1,6 @@
 [package]
 name = "myiptv"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "MyIPTV — lecteur IPTV multiplateforme"
 

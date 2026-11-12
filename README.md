@@ -55,13 +55,17 @@ cd app && npm run typecheck
 ## Fonctionnalités
 
 - Sources : catalogue gratuit iptv-org (par pays, langue, thème), M3U (lien ou fichier), Xtream Codes, guides XMLTV (gzip accepté).
-- Analyse de chaque source importée : avertissement et double confirmation si elle présente les signes d'une offre illégale.
+- Ajout de plusieurs liens ou fichiers d'un coup, par glisser-déposer ; sources en double reconnues et refusées ; seules les sources nouvelles sont chargées.
+- Analyse de chaque source importée : avertissement et double confirmation (une seule pour tout un lot) si elle présente les signes d'une offre illégale.
+- Copies multiples d'une chaîne ou d'un film regroupées ; la meilleure connexion est choisie au lancement, avec bascule automatique.
 - Direct : liste ou mosaïque virtualisées (dizaines de milliers de chaînes), catégories, favoris, récents, zapping.
 - Pause du direct, retour arrière, reprise au début du programme, retour au direct.
 - Replay (catch-up) : Xtream, modèles M3U `catchup-source`, Flussonic.
 - Guide des programmes en grille, sur 7 jours en arrière et 3 jours en avant.
 - Recherche globale dans les chaînes et les programmes, avec mini-lecteur flottant.
-- Profils (administrateur, standard, enfant), thèmes prédéfinis et écrans personnalisables (couleurs, police, disposition, densité), import/export.
+- Profils (administrateur, standard, enfant), thèmes prédéfinis et écrans personnalisables (couleurs, police, disposition, densité), import/export, animations désactivables.
+- Partage en réseau local de la configuration et des comptes vers un autre appareil (chiffré par un code).
+- Indicateur des traitements en cours.
 - Contrôle parental : code PIN, chaînes adultes verrouillées, profils enfants filtrés par âge avec tolérance réglable, listes blanche et noire, catégories bloquées.
 - Partage en réseau local : sources, comptes, profils, thèmes et réglages copiés d'un appareil à l'autre avec une adresse et un code (chiffré, valable 10 minutes) ; envoi depuis le bureau ou Android, réception partout.
 - Navigation à la télécommande : flèches et OK, Retour (ferme l'élément ouvert, puis quitte l'application sur Android TV), CH+/CH−, lecture/pause, avance et retour rapides (30 s), stop. Touches multimédia déclarées sur Tizen, Retour webOS et Android pris en charge.

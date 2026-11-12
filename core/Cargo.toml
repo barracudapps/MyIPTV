@@ -1,6 +1,6 @@
 [package]
 name = "iptv-core"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Parsers et modèles IPTV (M3U, XMLTV, Xtream, catch-up) partagés entre l'app native et la version web/TV"
 
