@@ -882,7 +882,7 @@ html[data-fx="luxe"] .vod-card:hover .vod-poster, html[data-fx="luxe"] .vod-card
   transform: translateY(-6px) scale(1.035); border-color: rgba(201,164,92,.7);
   box-shadow: 0 26px 60px rgba(0,0,0,.6), 0 0 36px rgba(201,164,92,.12);
 }
-html[data-fx="luxe"] .vod-poster img { transition: transform 1.4s var(--ease-out), filter 1s; filter: saturate(.92); }
+html[data-fx="luxe"] .vod-poster img { transition: transform 1.4s var(--ease-out), filter 1s, opacity .6s var(--ease-out); filter: saturate(.92); }
 html[data-fx="luxe"] .vod-card:hover .vod-poster img { transform: scale(1.06); filter: saturate(1.05); }
 html[data-fx="luxe"] .channel-row { transition: background-color .5s var(--ease-out), box-shadow .5s; }
 html[data-fx="luxe"] .channel-row:hover, html[data-fx="luxe"] .channel-row:focus-within { background: linear-gradient(90deg, rgba(201,164,92,.09), transparent 70%); }
@@ -948,3 +948,12 @@ html[data-fx="luxe"][data-motion="off"] .btn, html[data-fx="luxe"][data-motion="
 .channel-name .variant-badge { margin-left: 6px; }
 .panel-body .opt.bad { opacity: .6; }
 .panel-body .opt .mini-badge { margin: 0 4px 0 0; }
+
+/* Images chargées à la demande : la place est gardée, l'image apparaît en fondu. */
+.lazy-img { display: block; width: 100%; height: 100%; }
+.lazy-img img { width: 100%; height: 100%; display: block; opacity: 0; transition: opacity .25s ease-out; }
+.logo .lazy-img { width: 86%; height: 86%; }
+.lazy-img.ready img { opacity: 1; }
+html[data-motion="off"] .lazy-img img { transition: none; }
+.episode .lazy-img.ep-still { width: 128px; height: auto; aspect-ratio: 16 / 9; flex: none; border-radius: calc(var(--radius) * .6); overflow: hidden; background: var(--surface-2); }
+.episode .lazy-img.ep-still img { object-fit: cover; }

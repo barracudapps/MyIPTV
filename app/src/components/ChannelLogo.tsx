@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Channel } from "../types";
+import { LazyImg } from "./LazyImg";
 
 function initials(name: string) {
   return name
@@ -23,7 +24,7 @@ export function ChannelLogo({ channel, size = 40 }: { channel: Channel; size?: n
   if (channel.logo && !failed) {
     return (
       <span className="logo" style={box}>
-        <img src={channel.logo} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+        <LazyImg src={channel.logo} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
       </span>
     );
   }

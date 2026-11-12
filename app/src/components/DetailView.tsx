@@ -8,6 +8,7 @@ import { sectionOf } from "../lib/sections";
 import { langFlag, langName } from "../lib/languages";
 import { errorMessage, fmtDuration } from "../lib/util";
 import { useExit } from "../lib/motion";
+import { LazyImg } from "./LazyImg";
 import type { Episode, Person, PersonView as PersonData, VodDetail } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
@@ -31,7 +32,7 @@ function Stars({ value, onChange }: { value: number; onChange(v: number): void }
 function PersonChip({ p }: { p: Person }) {
   return (
     <button className="person-chip" onClick={() => useUi.setState({ person: { name: p.name, tmdbId: p.tmdbId } })} title={`Tous les contenus avec ${p.name}`}>
-      <span className="person-photo">{p.photo ? <img src={p.photo} alt="" loading="lazy" /> : p.name.slice(0, 1)}</span>
+      <span className="person-photo">{p.photo ? <LazyImg src={p.photo} alt="" /> : p.name.slice(0, 1)}</span>
       <span className="person-name">{p.name}</span>
       {p.role && <span className="person-role">{p.role}</span>}
     </button>
@@ -251,7 +252,7 @@ export function DetailView() {
                     return (
                       <li key={e.id} className={current ? "current" : ""}>
                         <button className="episode" onClick={() => playEpisode(e, current && !history?.finished ? history!.position : 0)} disabled={!access.ok && access.reason === "blocked"}>
-                          {e.still ? <img src={e.still} alt="" loading="lazy" /> : <span className="ep-num">{e.episode}</span>}
+                          {e.still ? <LazyImg src={e.still} alt="" wrapClassName="ep-still" /> : <span className="ep-num">{e.episode}</span>}
                           <span className="ep-text">
                             <strong>{e.title || `${meta.unit} ${e.episode}`}</strong>
                             <span className="dim">

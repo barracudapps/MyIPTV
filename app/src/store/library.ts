@@ -30,6 +30,8 @@ interface LibraryState {
   ensureProgrammes(channels: Channel[], from: number, to: number): Promise<void>;
 }
 
+/** Chaînes dont les programmes restent en mémoire (le guide et les vignettes en redemandent au besoin). */
+const MAX_GUIDE_CHANNELS = 1500;
 /** Sources chargées en parallèle. */
 const LOAD_CONCURRENCY = 6;
 let loadGeneration = 0;
@@ -185,11 +187,23 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     const f = Math.min(from, nowSec() - 6 * 3600);
     const t = Math.max(to, nowSec() + 24 * 3600);
     const backend = await getBackend();
-    const res = await backend.programmes(missing, f, t);
+    // Les copies regroupées n'intéressent pas le guide : inutile de les transmettre.
+    const res = await backend.programmes(missing.map(({ variants: _v, ...c }) => c), f, t);
     set((s) => {
-      const programmes = { ...s.programmes, ...res };
+      const programmes: Record<string, Programme[]> = { ...s.programmes };
       const loadedRange = { ...s.loadedRange };
-      for (const c of missing) loadedRange[c.id] = [f, t];
+      // Les chaînes vues récemment passent en fin de liste ; les plus anciennes sont oubliées au-delà du plafond.
+      for (const c of missing) {
+        delete programmes[c.id];
+        delete loadedRange[c.id];
+        programmes[c.id] = res[c.id] ?? [];
+        loadedRange[c.id] = [f, t];
+      }
+      const keys = Object.keys(programmes);
+      for (const k of keys.slice(0, Math.max(0, keys.length - MAX_GUIDE_CHANNELS))) {
+        delete programmes[k];
+        delete loadedRange[k];
+      }
       return { programmes, loadedRange };
     });
   },

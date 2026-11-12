@@ -1,3 +1,4 @@
+import { LazyImg } from "./LazyImg";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
@@ -31,7 +32,7 @@ export function VodCard({ item, progress }: { item: VodItem; progress?: number }
     <button className={`vod-card shape-${meta.shape}`} onClick={() => openItem(item)} title={item.year ? `${item.title} (${item.year})` : item.title}>
       <span className="vod-poster">
         {item.poster && !broken ? (
-          <img src={item.poster} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+          <LazyImg src={item.poster} alt="" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
         ) : (
           <span className="vod-poster-fallback">
             <Icon name={meta.icon} size={34} />

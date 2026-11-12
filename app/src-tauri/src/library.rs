@@ -16,6 +16,9 @@ use crate::commands::get_json;
 use crate::state::AppState;
 
 type Res<T> = Result<T, String>;
+
+/// Fiches détaillées gardées en mémoire avant de repartir de zéro.
+const MAX_DETAILS: usize = 300;
 type St<'a> = State<'a, Arc<AppState>>;
 
 const META_TTL: u64 = 7 * 86_400;
@@ -213,7 +216,14 @@ pub async fn vod_detail(st: St<'_>, id: String, keys: MetaKeys) -> Res<VodDetail
             i.rating = d.imdb_rating.or(d.tmdb_rating).or(i.rating);
         }
     }
-    st.details.lock().await.insert(id, d.clone());
+    {
+        // Fiches gardées pour la session, dans une limite raisonnable de mémoire.
+        let mut details = st.details.lock().await;
+        if details.len() >= MAX_DETAILS {
+            details.clear();
+        }
+        details.insert(id, d.clone());
+    }
     Ok(d)
 }
 
