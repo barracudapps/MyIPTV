@@ -17,6 +17,7 @@ import { DetailView, PersonDialog } from "./components/DetailView";
 import { FunLayer, Mascot } from "./components/Mascot";
 import { installEasterEggs } from "./lib/fun";
 import { preloadEngines } from "./lib/engines";
+import { ActivityBar } from "./components/ActivityIndicator";
 import type { VodKind } from "./types";
 
 // Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
@@ -136,6 +137,7 @@ export default function App() {
       <FunLayer />
       <PinDialog />
       <Toasts />
+      <ActivityBar />
     </div>
   );
 }

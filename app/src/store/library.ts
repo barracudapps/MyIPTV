@@ -1,3 +1,4 @@
+import { startTask } from "./activity";
 import { withContent } from "../lib/playlists";
 import { create } from "zustand";
 import { getBackend } from "../platform";
@@ -47,6 +48,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     const all_sources = useSettings.getState().sources;
     const sources = all_sources.filter((s) => s.enabled);
     set({ loading: true });
+    const task = startTask("Chargement des sources", { done: 0, total: sources.length });
     // Sources désactivées : retirées de la mémoire du backend (leur cache est conservé).
     await Promise.all(all_sources.filter((s) => !s.enabled).map((s) => backend.removeSource(s.id, false)));
     const errors: Record<string, string> = {};
@@ -57,6 +59,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     await Promise.all(
       sources.map(async (s) => {
         try {
+          task.update({ detail: s.name });
           const r = await backend.loadSource(await withContent(s), force);
           // Listes intégrées : un flux servi depuis une adresse IP brute est le plus souvent un relais
           // non officiel d'une chaîne ; écarté sauf choix contraire de l'utilisateur.
@@ -66,9 +69,12 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
           for (const [k, n] of Object.entries(r.vodCounts ?? {})) vodCounts[k] = (vodCounts[k] ?? 0) + n;
         } catch (e) {
           errors[s.id] = errorMessage(e);
+        } finally {
+          task.step();
         }
       }),
     );
+    task.end();
     const order = new Map(sources.map((s, i) => [s.id, i]));
     all.sort((a, b) => (order.get(a.sourceId)! - order.get(b.sourceId)!) || 0);
     // Guides limités aux pays des langues favorites de tous les profils.
@@ -92,6 +98,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
       return;
     }
     set({ epgLoading: true });
+    const task = startTask("Guide des programmes", { detail: `${urls.length} guide${urls.length > 1 ? "s" : ""} à lire` });
     try {
       const backend = await getBackend();
       const stats = await backend.loadEpg(urls, force);
@@ -99,6 +106,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     } catch (e) {
       set({ epgStats: { channels: 0, programmes: 0, errors: [errorMessage(e)] } });
     } finally {
+      task.end();
       set({ epgLoading: false });
     }
   },

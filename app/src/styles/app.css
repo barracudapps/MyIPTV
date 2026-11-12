@@ -706,7 +706,7 @@ html.disco body { animation: disco 1.2s linear infinite; }
   [data-nav="rail"] .nav { padding: 14px 10px; align-items: center; }
   [data-nav="rail"] .nav-brand { padding: 4px 0 16px; justify-content: center; }
   [data-nav="rail"] .nav-brand span,
-  [data-nav="rail"] .nav-item > span:not(.avatar),
+  [data-nav="rail"] .nav-item > span:not(.avatar):not(.spinner),
   [data-nav="rail"] .nav-count,
   [data-nav="rail"] .nav-foot .clock small { display: none; }
   [data-nav="rail"] .nav-items { width: 100%; }
@@ -787,3 +787,31 @@ html[data-motion="off"] .nav-item, html[data-motion="off"] .nav-item svg, html[d
 .file-list li { display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 12px; border: 1px solid var(--border); border-radius: calc(var(--radius) * .8); background: var(--surface); animation: item-in .2s var(--ease-out); }
 .file-list li > span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-list .icon-btn { width: 28px; height: 28px; }
+
+/* Activité : traitements en cours. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.spinner.tiny { width: 16px; height: 16px; border-width: 2px; flex: none; }
+.activity-bar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 95; overflow: hidden; pointer-events: none; background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.activity-bar::after { content: ""; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--accent); border-radius: 3px; animation: activity-slide 1.3s ease-in-out infinite; }
+@keyframes activity-slide { from { left: -35%; } to { left: 100%; } }
+.activity-btn { position: relative; }
+.activity-btn.busy { color: var(--text); }
+.activity-btn:not(.busy) svg { opacity: .55; }
+.activity-count { display: none; }
+.activity-popover { position: fixed; z-index: 85; width: min(340px, calc(100vw - 24px)); max-height: min(70vh, 480px); overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 18px 48px rgba(0,0,0,.35); animation: panel-in .18s var(--ease-out); }
+.activity-popover header { display: grid; gap: 2px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.activity-popover ul { list-style: none; margin: 0; padding: 6px; display: grid; gap: 4px; }
+.activity-empty { padding: 12px 14px; margin: 0; }
+.activity-task { display: grid; gap: 5px; padding: 8px 8px 10px; border-radius: calc(var(--radius) * .7); background: var(--surface-2); animation: item-in .2s var(--ease-out); }
+.activity-task-head, .activity-rec { display: flex; align-items: center; gap: 8px; text-align: left; color: var(--text); }
+.activity-task-head strong, .activity-rec strong { flex: 1; font-size: .92em; }
+.activity-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-progress { position: relative; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--text) 12%, transparent); overflow: hidden; }
+.activity-progress span { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 4px; transition: width .3s var(--ease-out); }
+.activity-progress.indeterminate span { width: 35%; animation: activity-slide 1.3s ease-in-out infinite; }
+.activity-rec .rec-dot { animation: pulse 1.4s ease-in-out infinite; margin: 0 4px; }
+/* Menu en icônes ou en barre : pastille de nombre sur le bouton. */
+[data-nav="rail"] .activity-btn.busy .activity-count,
+[data-nav="top"] .activity-btn.busy .activity-count,
+[data-nav="bottom"] .activity-btn.busy .activity-count { display: grid; place-items: center; position: absolute; top: 2px; right: 8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: .62em; font-weight: 800; }
+@media (prefers-reduced-motion: reduce) { .activity-bar::after, .activity-progress.indeterminate span { animation-duration: 3s; } }

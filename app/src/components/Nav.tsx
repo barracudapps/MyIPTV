@@ -7,6 +7,7 @@ import { useNow } from "../lib/hooks";
 import { fmtTime } from "../lib/util";
 import { switchProfile } from "./ProfilePicker";
 import { Icon } from "./Icon";
+import { ActivityButton } from "./ActivityIndicator";
 
 export const NAV_ITEMS: [View, string, string][] = [
   ["search", "Recherche", "search"],
@@ -57,6 +58,7 @@ export function Nav() {
         ))}
       </div>
       <div className="nav-foot">
+        <ActivityButton />
         {showClock && (
           <div className="clock">
             <span>{fmtTime(now)}</span>

@@ -3,6 +3,7 @@ import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
 import { useSettings } from "../store/settings";
 import { useUi } from "../store/ui";
+import { startTask, track } from "../store/activity";
 import { CATALOG_ALL, CATALOG_CATEGORIES, CATALOG_COUNTRIES, CATALOG_LANGUAGES, type CatalogEntry } from "../lib/catalog";
 import { errorMessage, uid } from "../lib/util";
 import { LEGAL_TEST_LIST, SUSPICIOUS_TEST_LIST } from "../lib/testLists";
@@ -237,6 +238,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     setError(null);
     setFailures([]);
     setProgress({ done: 0, total: sources.length });
+    const task = startTask("Vérification des listes", { done: 0, total: sources.length });
     const backend = await getBackend();
     const added: Source[] = [];
     const risky: { source: Source; report: RiskReport }[] = [];
@@ -247,6 +249,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
       while (next < sources.length) {
         const source = sources[next++];
         const label = source.kind === "m3uUrl" ? source.url : source.name;
+        task.update({ detail: source.name });
         try {
           const preview = await backend.previewSource(source);
           if (preview.risk.total === 0) {
@@ -260,9 +263,11 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           if (source.kind === "m3uUrl") retry.push(source.url);
         }
         setProgress((p) => p && { ...p, done: p.done + 1 });
+        task.step();
       }
     };
     await Promise.all([worker(), worker(), worker()]);
+    task.end();
     // Ordre de saisie conservé malgré les vérifications en parallèle.
     const order = (x: Source) => sources.findIndex((y) => y.id === x.id);
     added.sort((a, b) => order(a) - order(b));
@@ -300,7 +305,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     setBusy(true);
     setError(null);
     try {
-      const preview = await (await getBackend()).previewSource(source);
+      const preview = await track("Vérification de la source", async () => (await getBackend()).previewSource(source), source.name);
       if (preview.risk.total === 0) throw new Error("Aucune chaîne trouvée dans cette source.");
       if (preview.risk.level === "low") commit(source);
       else setBatch({ clean: [], risky: [{ source: { ...source, risk: preview.risk.level }, report: preview.risk }] });

@@ -4,6 +4,7 @@ import { applyPayload, buildPayload, parsePayload, shareableSources, type ShareP
 import { useSettings } from "../store/settings";
 import { askPin, useUi } from "../store/ui";
 import { useLibrary } from "../store/library";
+import { startTask, track } from "../store/activity";
 import { Toggle } from "./ThemeEditor";
 import { Icon } from "./Icon";
 
@@ -49,6 +50,12 @@ function SendCard({ backend }: { backend: Backend }) {
   const [error, setError] = useState<string | null>(null);
   const hasKeys = !!(meta.tmdb || meta.omdb);
 
+  const sharing = !!info && status?.active !== false;
+  useEffect(() => {
+    if (!sharing || !info) return;
+    const task = startTask("Partage réseau ouvert", { detail: `Code ${info.code}` });
+    return () => task.end();
+  }, [sharing, info]);
   useEffect(() => {
     if (!info) return;
     const tick = () => backend.share!.status().then(setStatus, () => {});
@@ -159,7 +166,7 @@ function ReceiveCard({ backend }: { backend: Backend }) {
     setError(null);
     setBusy(true);
     try {
-      const p = parsePayload(await backend.shareFetch(address, code));
+      const p = parsePayload(await track("Réception d'une configuration", backend.shareFetch(address, code), address));
       try {
         localStorage.setItem(LAST_ADDRESS_KEY, address.trim());
       } catch {
