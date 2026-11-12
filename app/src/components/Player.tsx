@@ -1,4 +1,5 @@
 import { displayName } from "../lib/variants";
+import { scrobble } from "../lib/trakt";
 import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type HlsType from "hls.js";
@@ -361,16 +362,33 @@ export function Player() {
         finished: finished || pos / d > 0.95,
       });
     };
+    // Trakt : lecture signalée en direct (sans effet si le profil n'est pas connecté).
+    const progress = () => {
+      const remuxed = usePlayer.getState().info?.kind === "remux";
+      const d = remuxed ? usePlayer.getState().info?.duration ?? 0 : video.duration;
+      const pos = remuxed ? remuxRef.current.offset + video.currentTime : video.currentTime;
+      return Number.isFinite(d) && d > 0 ? (pos / d) * 100 : 0;
+    };
+    const traktOn = !!useSettings.getState().profiles.find((p) => p.id === useSettings.getState().activeProfileId)?.trakt;
+    let stopped = false;
+    const onPlaying = () => traktOn && void scrobble("start", media.item, media.episode, progress());
     const id = setInterval(() => !video.paused && save(), 5000);
-    const onPause = () => save();
+    const onPause = () => {
+      save();
+      if (traktOn && !video.ended) void scrobble("pause", media.item, media.episode, progress());
+    };
     const onEnded = () => {
       save(true);
+      if (traktOn && !stopped) (stopped = true), void scrobble("stop", media.item, media.episode, 100);
       if (autoNext && media.queue.length) setNextIn(8);
     };
+    video.addEventListener("playing", onPlaying);
     video.addEventListener("pause", onPause);
     video.addEventListener("ended", onEnded);
     return () => {
       clearInterval(id);
+      if (traktOn && !stopped && progress() > 1) void scrobble(progress() >= 80 ? "stop" : "pause", media.item, media.episode, progress());
+      video.removeEventListener("playing", onPlaying);
       video.removeEventListener("pause", onPause);
       video.removeEventListener("ended", onEnded);
       save();

@@ -1,4 +1,5 @@
 import type { RecInfo, Recording } from "../types";
+import type { VodItem } from "../types";
 import type { Channel, EpgStats, MetaKeys, PersonView, PlayInfo, PlayRequest, Programme, SearchField, Source, SourceResult, VodDetail, VodFacets, VodKind, VodPage, VodQuery } from "../types";
 
 export interface StreamProbe {
@@ -37,6 +38,8 @@ export interface Backend {
   vodFacets(kind: VodKind | undefined, preferLanguages: string[], includeAdult: boolean): Promise<VodFacets>;
   vodSearch(text: string, field: SearchField, preferLanguages: string[], includeAdult: boolean, perKind: number): Promise<Partial<Record<VodKind, VodPage>>>;
   vodDetail(id: string, keys: MetaKeys): Promise<VodDetail>;
+  /** Contenus de la bibliothèque par identifiant TMDB (synchronisation Trakt). */
+  vodByTmdb(ids: number[]): Promise<VodItem[]>;
   person(name: string, tmdbId: number | undefined, keys: MetaKeys): Promise<PersonView>;
   jellyfinLogin(server: string, username: string, password: string): Promise<{ server: string; userId: string; token: string; serverName?: string }>;
   recList(): Promise<Recording[]>;

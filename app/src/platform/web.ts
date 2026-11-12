@@ -24,6 +24,7 @@ type Wasm = {
   vodFacets(kind: string | undefined, prefs: string[], adult: boolean): VodFacets;
   vodSearch(text: string, field: string, prefs: string[], adult: boolean, perKind: number): Partial<Record<VodKind, VodPage>>;
   vodItem(id: string): VodItem | null;
+  vodByTmdb(ids: number[]): VodItem[];
   vodEnrich(id: string, detail: VodDetail): void;
   vodWithPerson(name: string): VodItem[];
   vodMatchCredit(title: string, year: number | undefined, tmdbId: number | undefined, kind: string): VodItem | null;
@@ -264,6 +265,9 @@ export async function createWebBackend(): Promise<Backend> {
     async searchProgrammes() {
       // Recherche dans le guide non disponible en version TV (mémoire limitée).
       return [];
+    },
+    async vodByTmdb(ids) {
+      return w.vodByTmdb(ids);
     },
     async vodQuery(q) {
       return w.vodQuery(q);

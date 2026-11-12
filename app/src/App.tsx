@@ -17,6 +17,7 @@ import { DetailView, PersonDialog } from "./components/DetailView";
 import { FunLayer, Mascot } from "./components/Mascot";
 import { installEasterEggs } from "./lib/fun";
 import { preloadEngines } from "./lib/engines";
+import { importHistory } from "./lib/trakt";
 import { ActivityBar } from "./components/ActivityIndicator";
 import type { VodKind } from "./types";
 
@@ -46,6 +47,16 @@ export default function App() {
   }, [sourcesKey]);
 
   useEffect(preloadEngines, []);
+
+  // Trakt : historique importé une fois la bibliothèque chargée, au plus toutes les 6 heures.
+  const libraryVersion = useLibrary((s) => s.libraryVersion);
+  const traktProfile = profile?.trakt ? profile.id : null;
+  useEffect(() => {
+    if (!traktProfile || !libraryVersion) return;
+    const last = useSettings.getState().profiles.find((p) => p.id === traktProfile)?.trakt?.lastImport ?? 0;
+    if (Date.now() - last < 6 * 3600_000) return;
+    void importHistory().catch((e) => console.warn(`[trakt] import impossible : ${e}`));
+  }, [traktProfile, libraryVersion]);
 
   // Doublons de sources créés par d'anciennes versions : retirés une fois au démarrage.
   useEffect(() => {

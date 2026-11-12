@@ -54,6 +54,7 @@ pub fn run() {
             library::vod_query,
             library::vod_facets,
             library::vod_search,
+            library::vod_by_tmdb,
             library::vod_detail,
             library::person,
             commands::jellyfin_login,

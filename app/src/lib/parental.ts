@@ -40,6 +40,8 @@ export interface Profile {
   /** Historique de visionnage / écoute, le plus récent d'abord. */
   history: HistoryEntry[];
   player: PlayerPrefs;
+  /** Connexion Trakt du profil (historique synchronisé). */
+  trakt?: import("./trakt").TraktSession;
 }
 
 export interface HistoryEntry {

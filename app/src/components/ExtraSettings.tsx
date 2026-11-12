@@ -1,4 +1,5 @@
 
+import { TraktCard } from "./TraktCard";
 import { useActiveProfile, useSettings, type Chattiness } from "../store/settings";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
@@ -95,6 +96,7 @@ function MetaSettings() {
         <input type="password" value={meta.omdb} onChange={(e) => set({ omdb: e.target.value.trim() })} placeholder="Coller la clé ici" autoComplete="off" />
       </label>
       <p className="dim small">Gratuite (1 000 requêtes par jour) sur omdbapi.com. Les réponses sont gardées en cache une semaine.</p>
+      <TraktCard withApp />
     </div>
   );
 }

@@ -71,6 +71,12 @@ pub async fn vod_facets(st: St<'_>, kind: Option<VodKind>, prefer_languages: Vec
     Ok(vod::facets(&all, kind, &prefer_languages, include_adult))
 }
 
+/// Contenus par identifiant TMDB (synchronisation de l'historique avec Trakt).
+#[tauri::command]
+pub async fn vod_by_tmdb(st: St<'_>, ids: Vec<u64>) -> Res<Vec<VodItem>> {
+    Ok(vod::by_tmdb(&st.vod_all.read().await, &ids))
+}
+
 /// Recherche dans toutes les sections ; résultats groupés par section.
 #[tauri::command]
 pub async fn vod_search(st: St<'_>, text: String, field: SearchField, prefer_languages: Vec<String>, include_adult: bool, per_kind: usize) -> Res<HashMap<String, VodPage>> {

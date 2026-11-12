@@ -29,6 +29,7 @@ export function createNativeBackend(): Backend {
     recSchedule: (req) => invoke("rec_schedule", { req }),
     recCancel: (id, deleteFile) => invoke("rec_cancel", { id, deleteFile }),
     recInfo: () => invoke("rec_info"),
+    vodByTmdb: (ids) => invoke("vod_by_tmdb", { ids }),
     share: {
       start: (payload) => invoke("share_start", { payload }),
       status: () => invoke("share_status"),

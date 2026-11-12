@@ -233,6 +233,16 @@ pub fn group_copies(items: Vec<VodItem>) -> Vec<VodItem> {
         .collect()
 }
 
+/// Contenus correspondant à des identifiants TMDB (copies comprises), pour la synchronisation.
+pub fn by_tmdb(items: &[VodItem], ids: &[u64]) -> Vec<VodItem> {
+    let wanted: std::collections::HashSet<u64> = ids.iter().copied().collect();
+    items
+        .iter()
+        .filter(|i| i.tmdb_id.is_some_and(|t| wanted.contains(&t)) || i.alternates.iter().any(|a| a.tmdb_id.is_some_and(|t| wanted.contains(&t))))
+        .map(|i| VodItem { episodes: vec![], alternates: vec![], tmdb_id: i.tmdb_id.or_else(|| i.alternates.iter().find_map(|a| a.tmdb_id)), ..i.clone() })
+        .collect()
+}
+
 /// Contenu par identifiant : l'entrée regroupée, ou la copie exacte quand l'identifiant
 /// est celui d'une copie (historique, favoris, épisodes lus depuis une autre source).
 pub fn find_copy<'a>(items: &'a [VodItem], id: &str) -> Option<&'a VodItem> {

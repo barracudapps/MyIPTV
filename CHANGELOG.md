@@ -4,6 +4,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+### Ajouté
+- Bibliothèque (films, séries, émissions, musique, radio, podcasts, livres audio) dans la version web et TV, avec les mêmes analyseurs que l'application de bureau.
+- Synchronisation Trakt par profil : connexion par code, lecture signalée, contenus vus et reprises importés.
+- Séries présentes sur plusieurs sources : fiche et épisodes lus depuis une source qui répond, avec bascule automatique d'un épisode en échec.
+
+### Amélioré
+- Images chargées seulement après 100 ms d'affichage et libérées loin de l'écran ; caches du guide et des fiches plafonnés.
+
+### Corrigé
+- Films pour adultes d'Internet Archive affichés alors que le contenu adulte est désactivé.
+- Version originale de certains films d'Internet Archive choisie au lieu de la version H.264 lisible partout.
+
 ## [0.3.0] - 2026-11-12
 
 ### Ajouté

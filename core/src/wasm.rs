@@ -450,3 +450,10 @@ pub fn tmdb_person_url(id: f64, key: &str, lang: &str) -> String {
 pub fn tmdb_person_info(json_text: &str) -> Result<JsValue, JsValue> {
     to_js(&crate::tmdb::person_info(&json(json_text)?))
 }
+
+#[wasm_bindgen(js_name = vodByTmdb)]
+pub fn vod_by_tmdb(ids: JsValue) -> Result<JsValue, JsValue> {
+    let ids: Vec<f64> = from_js(ids)?;
+    let ids: Vec<u64> = ids.into_iter().map(|i| i as u64).collect();
+    VOD.with(|v| to_js(&vod::by_tmdb(&v.borrow().1, &ids)))
+}

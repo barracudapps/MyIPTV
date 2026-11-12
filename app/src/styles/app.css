@@ -957,3 +957,9 @@ html[data-fx="luxe"][data-motion="off"] .btn, html[data-fx="luxe"][data-motion="
 html[data-motion="off"] .lazy-img img { transition: none; }
 .episode .lazy-img.ep-still { width: 128px; height: auto; aspect-ratio: 16 / 9; flex: none; border-radius: calc(var(--radius) * .6); overflow: hidden; background: var(--surface-2); }
 .episode .lazy-img.ep-still img { object-fit: cover; }
+
+/* Trakt */
+.trakt-card h3 { display: flex; align-items: center; gap: 8px; }
+.trakt-code { display: grid; gap: 6px; justify-items: start; padding: 12px 14px; border: 1px dashed var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.trakt-code strong { font-size: 1.1em; }
+.trakt-code .code { font-size: 1.8em; font-weight: 800; letter-spacing: .14em; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); }

@@ -13,6 +13,7 @@ import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { ExtraSettings } from "./ExtraSettings";
 import { ShareSettings } from "./ShareSettings";
+import { TraktCard } from "./TraktCard";
 
 type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "share" | "prevention" | "about";
 
@@ -421,6 +422,7 @@ function PlaybackSettings() {
       />
       <Toggle label="Reprendre la dernière chaîne au démarrage" checked={pb.resumeLastChannel} onChange={(v) => set({ resumeLastChannel: v })} />
       <Toggle label="Mini-lecteur automatique" hint="La vidéo continue en petit quand vous allez sur le guide, la recherche ou les réglages." checked={pb.autoMiniPlayer} onChange={(v) => set({ autoMiniPlayer: v })} />
+      <TraktCard />
       <h3>Raccourcis</h3>
       <ul className="shortcuts">
         <li><kbd>Espace</kbd> lecture / pause</li>

@@ -37,6 +37,9 @@ export interface PlaybackSettings {
 export interface MetaSettings {
   tmdb: string;
   omdb: string;
+  /** Application Trakt de l'utilisateur (trakt.tv/oauth/applications). */
+  traktClientId?: string;
+  traktClientSecret?: string;
 }
 
 export type Chattiness = "quiet" | "normal" | "chatty";

@@ -30,7 +30,7 @@ Fonctions selon la plateforme :
 |---|---|---|---|
 | Direct, guide, replay | oui | oui | oui (si le serveur autorise CORS ; toujours sur TV empaquetée) |
 | Pause du direct (timeshift) | sur disque, jusqu'à 6 h | sur disque | mémoire du lecteur |
-| Bibliothèque (films, séries, radio…) | oui | oui | à venir |
+| Bibliothèque (films, séries, radio…) | oui | oui | oui (sources autorisant l'accès depuis le navigateur ; toutes sur TV empaquetée) |
 | MKV / AC3 / DTS, enregistrements | oui (ffmpeg installé) | MPEG-TS seulement | non |
 
 ## Développement
@@ -66,6 +66,7 @@ cd app && npm run typecheck
 - Profils (administrateur, standard, enfant), thèmes prédéfinis et écrans personnalisables (couleurs, police, disposition, densité), import/export, animations désactivables.
 - Partage en réseau local de la configuration et des comptes vers un autre appareil (chiffré par un code).
 - Indicateur des traitements en cours.
+- Synchronisation Trakt par profil : lecture signalée en direct, contenus vus et reprise de lecture importés (application Trakt de l'utilisateur, connexion par code).
 - Contrôle parental : code PIN, chaînes adultes verrouillées, profils enfants filtrés par âge avec tolérance réglable, listes blanche et noire, catégories bloquées.
 - Partage en réseau local : sources, comptes, profils, thèmes et réglages copiés d'un appareil à l'autre avec une adresse et un code (chiffré, valable 10 minutes) ; envoi depuis le bureau ou Android, réception partout.
 - Navigation à la télécommande : flèches et OK, Retour (ferme l'élément ouvert, puis quitte l'application sur Android TV), CH+/CH−, lecture/pause, avance et retour rapides (30 s), stop. Touches multimédia déclarées sur Tizen, Retour webOS et Android pris en charge.
