@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use iptv_core::{Channel, Epg};
+use iptv_core::{Channel, Epg, VodDetail, VodItem};
 use tokio::sync::{Mutex, RwLock};
 
 use crate::timeshift::Session;
@@ -13,6 +13,11 @@ pub struct AppState {
     /// Chaînes chargées, par source.
     pub channels: RwLock<HashMap<String, Vec<Channel>>>,
     pub epg: RwLock<Epg>,
+    /// Films, séries, radios… par source, et vue à plat pour les requêtes.
+    pub vod: RwLock<HashMap<String, Vec<VodItem>>>,
+    pub vod_all: RwLock<Vec<VodItem>>,
+    /// Fiches détaillées déjà assemblées pendant la session.
+    pub details: Mutex<HashMap<String, VodDetail>>,
     /// Session de lecture en direct (une seule à la fois).
     pub session: Mutex<Option<Session>>,
 }
@@ -26,6 +31,7 @@ impl AppState {
             .expect("client HTTP");
         let _ = std::fs::create_dir_all(cache_dir.join("sources"));
         let _ = std::fs::create_dir_all(cache_dir.join("epg"));
+        let _ = std::fs::create_dir_all(cache_dir.join("meta"));
         // Les sessions de timeshift d'un lancement précédent sont obsolètes.
         let _ = std::fs::remove_dir_all(cache_dir.join("timeshift"));
         Self {
@@ -34,8 +40,23 @@ impl AppState {
             port,
             channels: RwLock::new(HashMap::new()),
             epg: RwLock::new(Epg::default()),
+            vod: RwLock::new(HashMap::new()),
+            vod_all: RwLock::new(Vec::new()),
+            details: Mutex::new(HashMap::new()),
             session: Mutex::new(None),
         }
+    }
+
+    pub async fn set_vod(&self, source_id: &str, items: Vec<VodItem>) {
+        let mut map = self.vod.write().await;
+        if items.is_empty() {
+            map.remove(source_id);
+        } else {
+            map.insert(source_id.to_string(), items);
+        }
+        let mut ids: Vec<&String> = map.keys().collect();
+        ids.sort();
+        *self.vod_all.write().await = ids.into_iter().flat_map(|k| map[k].iter().cloned()).collect();
     }
 
     pub fn base_url(&self) -> String {

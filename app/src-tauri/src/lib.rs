@@ -1,4 +1,5 @@
 mod commands;
+mod library;
 mod server;
 mod state;
 mod timeshift;
@@ -41,6 +42,11 @@ pub fn run() {
             commands::play,
             commands::stop_playback,
             commands::timeshift_status,
+            library::vod_query,
+            library::vod_facets,
+            library::vod_search,
+            library::vod_detail,
+            library::person,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de MyIPTV");

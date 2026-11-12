@@ -24,6 +24,8 @@ fn now() -> i64 {
 #[serde(rename_all = "camelCase")]
 pub struct SourceResult {
     pub channels: Vec<Channel>,
+    /// Nombre de contenus par section (films, séries, radio…).
+    pub vod_counts: HashMap<String, usize>,
     pub epg_urls: Vec<String>,
     pub risk: RiskReport,
     pub fetched_at: i64,
@@ -50,25 +52,102 @@ async fn get_text(st: &AppState, url: &str) -> Res<String> {
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
+/// JSON d'une API publique (en-tête User-Agent explicite : exigé par Radio Browser).
+pub(crate) async fn get_json(st: &AppState, url: &str, headers: Option<reqwest::header::HeaderMap>) -> Res<serde_json::Value> {
+    let mut req = st.http.get(url).header(reqwest::header::USER_AGENT, "MyIPTV/0.1").timeout(Duration::from_secs(60));
+    if let Some(h) = headers {
+        req = req.headers(h);
+    }
+    let r = req.send().await.map_err(|e| format!("Téléchargement impossible : {e}"))?;
+    if !r.status().is_success() {
+        return Err(format!("Le serveur a répondu {}", r.status()));
+    }
+    let bytes = r.bytes().await.map_err(|e| e.to_string())?;
+    serde_json::from_slice(&bytes).map_err(|e| format!("Réponse invalide : {e}"))
+}
+
 async fn fetch_playlist(st: &AppState, src: &Source) -> Res<Playlist> {
+    use iptv_core::catalogs as cat;
+    let sid = src.id.as_str();
     match &src.kind {
         SourceKind::M3uUrl { url } => {
             let text = get_text(st, url).await?;
             if !text.trim_start().trim_start_matches('\u{feff}').starts_with("#EXTM3U") && !text.contains("#EXTINF") {
                 return Err("Ce fichier n'est pas une playlist M3U.".into());
             }
-            Ok(iptv_core::parse_m3u(&text, &src.id))
+            Ok(iptv_core::parse_m3u(&text, sid))
         }
-        SourceKind::M3uText { content } => Ok(iptv_core::parse_m3u(content, &src.id)),
+        SourceKind::M3uText { content } => Ok(iptv_core::parse_m3u(content, sid)),
         SourceKind::Xtream { server, username, password, output } => {
             let acc = XtreamAccount { server, username, password, output: output.as_deref().unwrap_or("ts") };
             let info: serde_json::Value = serde_json::from_str(&get_text(st, &acc.api_url(None)).await?).map_err(|_| "Réponse Xtream invalide (vérifiez l'adresse du serveur).")?;
             if info.get("user_info").and_then(|u| u.get("auth")).and_then(|a| a.as_i64().or_else(|| a.as_str().and_then(|s| s.parse().ok()))) == Some(0) {
                 return Err("Identifiants Xtream refusés.".into());
             }
-            let cats: serde_json::Value = serde_json::from_str(&get_text(st, &acc.api_url(Some("get_live_categories"))).await?).unwrap_or_default();
-            let streams: serde_json::Value = serde_json::from_str(&get_text(st, &acc.api_url(Some("get_live_streams"))).await?).map_err(|e| e.to_string())?;
-            Ok(Playlist { channels: live_channels(&acc, &src.id, &cats, &streams), epg_urls: vec![acc.xmltv_url()] })
+            let json = |action: &'static str| {
+                let url = acc.api_url(Some(action));
+                async move { get_text(st, &url).await.ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).unwrap_or_default() }
+            };
+            let (cats, streams, vcats, vstreams, scats, series) = tokio::join!(
+                json("get_live_categories"),
+                json("get_live_streams"),
+                json("get_vod_categories"),
+                json("get_vod_streams"),
+                json("get_series_categories"),
+                json("get_series"),
+            );
+            let mut vod = iptv_core::xtream::vod_items(&acc, sid, &vcats, &vstreams);
+            vod.extend(iptv_core::xtream::series_items(&acc, sid, &scats, &series));
+            Ok(Playlist { channels: live_channels(&acc, sid, &cats, &streams), vod, epg_urls: vec![acc.xmltv_url()] })
+        }
+        SourceKind::Archive { collection, mediatype, content, rows } => {
+            let j = get_json(st, &cat::archive_search_url(collection, mediatype, *rows), None).await?;
+            Ok(Playlist { vod: cat::archive_items(&j, *content, sid), ..Default::default() })
+        }
+        SourceKind::RadioBrowser { countries } => {
+            let mut urls: Vec<String> = countries.iter().take(8).map(|c| cat::radio_search_url(Some(c), 300)).collect();
+            urls.push(cat::radio_search_url(None, 300));
+            let mut vod: Vec<iptv_core::VodItem> = Vec::new();
+            for u in urls {
+                if let Ok(j) = get_json(st, &u, None).await {
+                    vod.extend(cat::radio_items(&j, sid));
+                }
+            }
+            let mut seen = std::collections::HashSet::new();
+            vod.retain(|i| seen.insert(i.id.clone()));
+            if vod.is_empty() {
+                return Err("Annuaire des radios injoignable.".into());
+            }
+            Ok(Playlist { vod, ..Default::default() })
+        }
+        SourceKind::Podcasts { countries } => {
+            let mut vod = Vec::new();
+            for c in countries.iter().take(6) {
+                let lang = iptv_core::lang::lang_from_country(c);
+                let Ok(chart) = get_json(st, &cat::podcast_chart_url(c, 200), None).await else { continue };
+                for ids in cat::podcast_chart_ids(&chart).chunks(100) {
+                    if let Ok(j) = get_json(st, &cat::podcast_lookup_url(ids, c), None).await {
+                        vod.extend(cat::podcast_items(&j, sid, lang));
+                    }
+                }
+            }
+            let mut seen = std::collections::HashSet::new();
+            vod.retain(|i| seen.insert(i.id.clone()));
+            Ok(Playlist { vod, ..Default::default() })
+        }
+        SourceKind::Librivox { languages } => {
+            let mut vod = Vec::new();
+            let langs: Vec<Option<&str>> = if languages.is_empty() { vec![None] } else { languages.iter().map(|l| Some(l.as_str())).collect() };
+            for l in langs.into_iter().take(6) {
+                if let Ok(j) = get_json(st, &cat::librivox_archive_url(l, 400), None).await {
+                    let mut items = cat::archive_items(&j, iptv_core::VodKind::Audiobook, sid);
+                    for i in items.iter_mut().filter(|i| i.languages.is_empty()) {
+                        i.languages = l.map(|x| vec![x.to_string()]).unwrap_or_default();
+                    }
+                    vod.extend(items);
+                }
+            }
+            Ok(Playlist { vod, ..Default::default() })
         }
     }
 }
@@ -98,22 +177,47 @@ pub async fn load_source(st: St<'_>, source: Source, force: bool) -> Res<SourceR
 
     let mut epg_urls = playlist.epg_urls.clone();
     epg_urls.extend(source.epg_urls.iter().cloned());
-    let risk = iptv_core::analyze(&playlist.channels);
+    let risk = iptv_core::analyze(&risk_input(&playlist));
+    let vod_counts = counts(&playlist.vod);
     st.channels.write().await.insert(source.id.clone(), playlist.channels.clone());
-    Ok(SourceResult { channels: playlist.channels, epg_urls, risk, fetched_at })
+    st.set_vod(&source.id, playlist.vod).await;
+    Ok(SourceResult { channels: playlist.channels, vod_counts, epg_urls, risk, fetched_at })
 }
 
 /// Télécharge une source sans l'enregistrer, pour l'analyse de risque avant import.
 #[tauri::command]
 pub async fn preview_source(st: St<'_>, source: Source) -> Res<SourceResult> {
     let p = fetch_playlist(&st, &source).await?;
-    let risk = iptv_core::analyze(&p.channels);
-    Ok(SourceResult { risk, epg_urls: p.epg_urls, channels: vec![], fetched_at: now() })
+    let risk = iptv_core::analyze(&risk_input(&p));
+    Ok(SourceResult { risk, vod_counts: counts(&p.vod), epg_urls: p.epg_urls, channels: vec![], fetched_at: now() })
+}
+
+/// L'analyse de risque porte sur les chaînes et sur les films/séries (catalogues VOD pirates).
+fn risk_input(p: &Playlist) -> Vec<Channel> {
+    let mut all = p.channels.clone();
+    all.extend(p.vod.iter().map(|v| Channel {
+        name: v.raw_name.clone(),
+        group: v.category.clone(),
+        url: v.url.clone().unwrap_or_else(|| "http://vod/movie/x".into()),
+        ..Default::default()
+    }));
+    all
+}
+
+fn counts(vod: &[iptv_core::VodItem]) -> HashMap<String, usize> {
+    let mut m = HashMap::new();
+    for v in vod {
+        if let Some(k) = v.kind {
+            *m.entry(serde_json::to_value(k).ok().and_then(|x| x.as_str().map(str::to_string)).unwrap_or_default()).or_default() += 1;
+        }
+    }
+    m
 }
 
 #[tauri::command]
 pub async fn remove_source(st: St<'_>, id: String) -> Res<()> {
     st.channels.write().await.remove(&id);
+    st.set_vod(&id, vec![]).await;
     let _ = std::fs::remove_file(st.cache_dir.join("sources").join(format!("{}.json", stable_key(&[&id]))));
     Ok(())
 }
@@ -134,7 +238,8 @@ pub async fn load_epg(st: St<'_>, urls: Vec<String>, force: bool) -> Res<EpgStat
     let mut epg = iptv_core::Epg::default();
     let mut errors = vec![];
     let mut seen = std::collections::HashSet::new();
-    for url in urls.into_iter().filter(|u| seen.insert(u.clone())) {
+    // Les agrégats « toutes sources » pèsent plusieurs centaines de Mo : les guides par pays suffisent.
+    for url in urls.into_iter().filter(|u| !u.contains("ALL_SOURCES") && !u.contains("DUMMY_CHANNELS") && seen.insert(u.clone())) {
         let path = st.cache_dir.join("epg").join(stable_key(&[&url]));
         let fresh = std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age.as_secs() < EPG_TTL);
         let bytes = if fresh && !force {
@@ -295,4 +400,30 @@ pub async fn stop_playback(st: St<'_>) -> Res<()> {
 #[tauri::command]
 pub async fn timeshift_status(st: St<'_>) -> Res<Option<f64>> {
     Ok(st.session.lock().await.as_ref().map(|s| s.buffered_secs()))
+}
+
+#[cfg(test)]
+mod live_tests {
+    use super::*;
+    use iptv_core::VodKind;
+
+    /// `cargo test -p myiptv live_catalogs -- --ignored --nocapture`
+    #[tokio::test]
+    #[ignore]
+    async fn live_catalogs_load() {
+        let st = AppState::new(std::env::temp_dir().join("myiptv-cat-test"), 1);
+        let src = |kind: SourceKind| Source { id: "t".into(), name: "t".into(), kind, epg_urls: vec![] };
+        let cases = vec![
+            ("films", src(SourceKind::Archive { collection: "feature_films".into(), mediatype: "movies".into(), content: VodKind::Movie, rows: 50 })),
+            ("radio", src(SourceKind::RadioBrowser { countries: vec!["FR".into()] })),
+            ("podcasts", src(SourceKind::Podcasts { countries: vec!["fr".into()] })),
+            ("livres", src(SourceKind::Librivox { languages: vec!["fr".into()] })),
+        ];
+        for (name, s) in cases {
+            let p = fetch_playlist(&st, &s).await.unwrap_or_else(|e| panic!("{name}: {e}"));
+            let first = p.vod.first().map(|i| (i.title.clone(), i.languages.clone()));
+            println!("{name}: {} contenus, ex. {first:?}", p.vod.len());
+            assert!(!p.vod.is_empty(), "{name} vide");
+        }
+    }
 }
