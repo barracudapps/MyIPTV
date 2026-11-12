@@ -178,6 +178,8 @@ pub fn archive_items(json: &Value, kind: VodKind, source_id: &str) -> Vec<VodIte
             let year = s(&d["year"]).and_then(|y| y.get(..4)?.parse().ok()).or(parsed.year);
             let languages: Vec<String> = list(&d["language"]).iter().filter_map(|l| lang::code_from_alias(l)).map(str::to_string).collect();
             let creators = list(&d["creator"]);
+            let subjects = list(&d["subject"]);
+            let adult = crate::parental::is_adult_media(&raw, &subjects);
             Some(VodItem {
                 id: format!("{source_id}:{}", stable_key(&[&id])),
                 source_id: source_id.into(),
@@ -186,7 +188,8 @@ pub fn archive_items(json: &Value, kind: VodKind, source_id: &str) -> Vec<VodIte
                 raw_name: raw,
                 year,
                 poster: Some(format!("https://archive.org/services/img/{id}")),
-                genres: list(&d["subject"]).into_iter().take(5).collect(),
+                genres: subjects.into_iter().take(5).collect(),
+                adult,
                 languages,
                 plot: s(&d["description"]).map(|t| strip_html(&t)),
                 directors: if matches!(kind, VodKind::Movie | VodKind::Show | VodKind::Audiobook) { creators.clone() } else { vec![] },
@@ -209,8 +212,14 @@ pub fn archive_files(meta: &Value, video: bool) -> Vec<Episode> {
         let rank = |f: &Value| -> Option<u8> {
             let name = s(&f["name"])?.to_lowercase();
             let fmt = s(&f["format"]).unwrap_or_default().to_lowercase();
-            if fmt.contains("h.264") || name.ends_with(".mp4") || name.ends_with(".m4v") {
-                Some(if fmt.contains("512kb") { 2 } else { 3 })
+            // Versions dérivées H.264 d'abord : lisibles partout. L'original en .mp4 peut être
+            // en MPEG-4 Part 2 ou HEVC, que les navigateurs et les TV refusent.
+            if fmt.contains("h.264") {
+                Some(4)
+            } else if fmt.contains("512kb") {
+                Some(3)
+            } else if name.ends_with(".mp4") || name.ends_with(".m4v") {
+                Some(2)
             } else if name.ends_with(".webm") {
                 Some(1)
             } else if name.ends_with(".ogv") {

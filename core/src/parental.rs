@@ -32,9 +32,31 @@ pub fn is_adult(name: &str, group: Option<&str>) -> bool {
     ADULT_HINTS.iter().any(|h| hay.contains(h))
 }
 
+/// Mentions propres aux films et émissions pour adultes (titres et sujets des catalogues).
+const ADULT_MEDIA_HINTS: &[&str] = &["perversion", "sexploitation", "erotica", "softcore", "hardcore", "x-rated", "x rated", "nudity", "nudist", "naturist", "porno", "sexy", "stag film", "burlesque strip", "striptease", "pin-up", "pinup"];
+
+/// Contenu de bibliothèque réservé aux adultes : titre ou sujets. En cas de doute, il est
+/// masqué (contenu adulte désactivé par défaut), mieux vaut cacher un film que l'inverse.
+pub fn is_adult_media(title: &str, subjects: &[String]) -> bool {
+    let joined = subjects.join(" | ");
+    if is_adult(title, Some(&joined)) {
+        return true;
+    }
+    let hay = format!(" {} | {} ", title.to_lowercase(), joined.to_lowercase());
+    ADULT_MEDIA_HINTS.iter().any(|h| hay.contains(h)) || hay.contains(" sex ") || hay.contains(" sex,") || hay.contains("sex film")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adult_media() {
+        assert!(is_adult_media("Felicia, Les Mille Et Une Perversion", &[]));
+        assert!(is_adult_media("Some film", &["Erotica".into(), "1970s".into()]));
+        assert!(!is_adult_media("Fear And Desire", &["Drama".into(), "War".into()]));
+        assert!(!is_adult_media("Sussex Downs", &[]));
+    }
     #[test]
     fn ratings() {
         assert_eq!(age_from_rating("-12"), Some(12));
