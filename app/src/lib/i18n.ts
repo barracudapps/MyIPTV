@@ -35,7 +35,10 @@ const FR: Record<string, string> = {
   oldies: "Rétro", hits: "Tubes", "top 40": "Top 40", talkradio: "Radio parlée",
 };
 
-const DICTS: Record<string, Record<string, string>> = { fr: FR };
+/** Anglais : les libellés d'origine sont déjà en anglais, seuls les techniques sont reformulés. */
+const EN: Record<string, string> = { undefined: "Other", others: "Other", general: "General" };
+
+const DICTS: Record<string, Record<string, string>> = { fr: FR, en: EN };
 
 function translatePart(part: string, dict: Record<string, string>): string {
   const key = part.trim().toLowerCase();
