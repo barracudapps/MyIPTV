@@ -66,3 +66,20 @@ export const CATALOG_CATEGORIES: CatalogEntry[] = [
   ["travel", "Voyage"],
   ["weather", "Météo"],
 ].map(([code, name]) => ({ id: `cat-${code}`, name, url: `${BASE}/categories/${code}.m3u` }));
+
+/**
+ * Plateformes de chaînes gratuites financées par la publicité (FAST), diffusées
+ * officiellement par ces services ; listes tenues par la communauté apsattv.com.
+ * Surtout américaines et anglophones, parfois géo-restreintes.
+ */
+const APSAT = "https://www.apsattv.com";
+export const CATALOG_FAST: CatalogEntry[] = [
+  { id: "fast-lg", name: "LG Channels", url: `${APSAT}/lg.m3u`, hint: "≈ 1 300 chaînes, plusieurs pays" },
+  { id: "fast-xumo", name: "Xumo Play", url: `${APSAT}/xumo.m3u`, hint: "≈ 400 chaînes, États-Unis" },
+  { id: "fast-roku", name: "The Roku Channel", url: `${APSAT}/rok.m3u`, hint: "≈ 330 chaînes, États-Unis" },
+  { id: "fast-distro", name: "DistroTV", url: `${APSAT}/distro.m3u`, hint: "≈ 340 chaînes, international" },
+  { id: "fast-tcl", name: "TCL TV+", url: `${APSAT}/tcl.m3u`, hint: "≈ 600 chaînes, États-Unis" },
+];
+
+/** Serveur de démonstration officiel de Jellyfin : films libres et du domaine public. */
+export const JELLYFIN_DEMO = { server: "https://demo.jellyfin.org/stable", username: "demo", password: "" };

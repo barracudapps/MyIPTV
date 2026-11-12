@@ -5,7 +5,7 @@ import { useLibrary } from "../store/library";
 import { useSettings } from "../store/settings";
 import { useUi } from "../store/ui";
 import { startTask, track } from "../store/activity";
-import { CATALOG_ALL, CATALOG_CATEGORIES, CATALOG_COUNTRIES, CATALOG_LANGUAGES, type CatalogEntry } from "../lib/catalog";
+import { CATALOG_ALL, CATALOG_CATEGORIES, CATALOG_COUNTRIES, CATALOG_FAST, CATALOG_LANGUAGES, JELLYFIN_DEMO, type CatalogEntry } from "../lib/catalog";
 import { errorMessage, uid } from "../lib/util";
 import { LEGAL_TEST_LIST, SUSPICIOUS_TEST_LIST } from "../lib/testLists";
 import type { RiskReport, Source, SourceKind } from "../types";
@@ -424,6 +424,12 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           <CatalogGroup title="Par pays" entries={CATALOG_COUNTRIES} onPick={addCatalog} />
           <CatalogGroup title="Par langue" entries={CATALOG_LANGUAGES} onPick={addCatalog} />
           <CatalogGroup title="Par thème" entries={CATALOG_CATEGORIES} onPick={addCatalog} />
+          <CatalogGroup
+            title="Plateformes gratuites financées par la publicité"
+            note="Chaînes diffusées officiellement et gratuitement par ces services (listes communautaires apsattv.com) ; surtout américaines et anglophones."
+            entries={CATALOG_FAST}
+            onPick={addCatalog}
+          />
         </div>
       ) : (
         <form
@@ -514,6 +520,28 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
                 Jellyfin (gratuit et libre) ou Emby : votre serveur multimédia personnel, avec vos propres films et séries. Ils apparaissent dans Films et Séries
                 avec affiches, casting, saisons et reprise de lecture. Seul un jeton de connexion est conservé, jamais le mot de passe.
               </p>
+              <div className="card demo-card">
+                <span>
+                  <strong>Pas de serveur ?</strong> Essayez le serveur de démonstration officiel de Jellyfin : des films libres et du domaine public (courts
+                  métrages Blender, classiques du cinéma).
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true);
+                    setError(null);
+                    getBackend()
+                      .then((b) => b.jellyfinLogin(JELLYFIN_DEMO.server, JELLYFIN_DEMO.username, JELLYFIN_DEMO.password))
+                      .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, "Démo Jellyfin (films libres)", true))
+                      .catch((err) => setError(errorMessage(err)))
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  <Icon name="plus" /> Ajouter la démo Jellyfin
+                </button>
+              </div>
               <label className="field">
                 Adresse du serveur
                 <input required value={jf.server} onChange={(e) => setJf({ ...jf, server: e.target.value })} placeholder="http://192.168.1.10:8096" />
@@ -532,6 +560,11 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           )}
           {tab === "xtream" && (
             <>
+              <p className="dim small">
+                Les identifiants Xtream Codes viennent de votre fournisseur d'abonnement. Il n'existe pas de serveur Xtream gratuit et légal ouvert à tous : les
+                « codes Xtream gratuits » qui circulent sur internet sont des accès piratés ou volés. Pour des chaînes gratuites, utilisez l'onglet Catalogue
+                gratuit.
+              </p>
               <label className="field">
                 Serveur
                 <input required value={xt.server} onChange={(e) => setXt({ ...xt, server: e.target.value })} placeholder="http://exemple.com:8080" />
@@ -580,14 +613,16 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   );
 }
 
-function CatalogGroup({ title, entries, onPick }: { title: string; entries: CatalogEntry[]; onPick(e: CatalogEntry): void }) {
+function CatalogGroup({ title, note, entries, onPick }: { title: string; note?: string; entries: CatalogEntry[]; onPick(e: CatalogEntry): void }) {
   return (
     <section>
       <h3>{title}</h3>
+      {note && <p className="dim small">{note}</p>}
       <div className="chips wrap">
         {entries.map((e) => (
-          <button key={e.id} className="chip" onClick={() => onPick(e)}>
+          <button key={e.id} className="chip" onClick={() => onPick(e)} title={e.hint}>
             {e.name}
+            {e.hint && <span>{e.hint.split(",")[0]}</span>}
           </button>
         ))}
       </div>

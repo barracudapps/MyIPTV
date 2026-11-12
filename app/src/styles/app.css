@@ -1113,3 +1113,5 @@ html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-m
 .hk-overlay .hk-url { color: rgba(215, 255, 230, .7); font-size: .92em; }
 .hk-spark { width: 100%; height: 34px; display: block; }
 .hk-spark polyline { fill: none; stroke: #39ff88; stroke-width: 1.5; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 3px rgba(57, 255, 136, .6)); }
+.demo-card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 4px 0 12px; }
+.demo-card > span { flex: 1 1 260px; }
