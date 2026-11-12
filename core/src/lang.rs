@@ -95,6 +95,21 @@ pub(crate) fn leading_prefix(name: &str) -> Option<String> {
     (2..=6).contains(&token.chars().count()).then(|| token.to_lowercase())
 }
 
+/// Retire le préfixe de langue/pays d'un libellé : « FR | Action » -> (Some("fr"), « Action »).
+pub fn split_prefix(label: &str) -> (Option<&'static str>, String) {
+    if let Some(p) = leading_prefix(label) {
+        if let Some(code) = lang_from_country(&p).or_else(|| code_from_alias(&p)) {
+            if let Some(i) = label.to_lowercase().find(&p) {
+                let rest = label[i + p.len()..].trim_start_matches(|c: char| "|]):-. ".contains(c)).trim();
+                if !rest.is_empty() {
+                    return (Some(code), rest.to_string());
+                }
+            }
+        }
+    }
+    (None, label.trim().to_string())
+}
+
 /// Langues détectées, la plus probable d'abord.
 pub fn detect(name: &str, group: Option<&str>, tvg_language: Option<&str>, country: Option<&str>) -> Vec<String> {
     let mut out = Vec::new();
@@ -152,6 +167,13 @@ mod tests {
         assert_eq!(detect("AR: قناة", Some("Arabic"), None, None), vec!["ar"]);
         assert!(detect("Frozen Planet", None, None, None).is_empty(), "un mot ordinaire n'est pas un préfixe");
         assert_eq!(detect("Eurosport", None, Some("English;French"), None), vec!["en", "fr"]);
+    }
+
+    #[test]
+    fn splits_prefixes() {
+        assert_eq!(split_prefix("FR | Action"), (Some("fr"), "Action".to_string()));
+        assert_eq!(split_prefix("[EN] Kids"), (Some("en"), "Kids".to_string()));
+        assert_eq!(split_prefix("Documentaires"), (None, "Documentaires".to_string()));
     }
 
     #[test]

@@ -498,6 +498,11 @@ pub struct VodQuery {
     pub genre: Option<String>,
     /// Filtre strict sur une langue.
     pub language: Option<String>,
+    /// « Mes langues » : au moins une de ces langues.
+    pub any_languages: Option<Vec<String>>,
+    /// Avec `any_languages` : garder aussi les contenus dont la langue n'a pas pu être identifiée.
+    #[serde(default)]
+    pub include_unknown_language: bool,
     /// Langues favorites, dans l'ordre : servent au tri.
     #[serde(default)]
     pub prefer_languages: Vec<String>,
@@ -537,6 +542,9 @@ pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
         .filter(|i| q.category.as_ref().map_or(true, |c| i.category.as_ref() == Some(c)))
         .filter(|i| q.genre.as_ref().map_or(true, |g| i.genres.iter().any(|x| x.eq_ignore_ascii_case(g))))
         .filter(|i| q.language.as_ref().map_or(true, |l| i.languages.contains(l)))
+        .filter(|i| {
+            q.any_languages.as_ref().map_or(true, |ls| i.languages.iter().any(|l| ls.contains(l)) || (q.include_unknown_language && i.languages.is_empty()))
+        })
         .filter(|i| ids.as_ref().map_or(true, |m| m.contains_key(i.id.as_str())))
         .filter_map(|i| match &text {
             None => Some((i, 0)),
@@ -566,6 +574,17 @@ pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
 pub struct Facet {
     pub name: String,
     pub count: usize,
+    /// Libellé lisible (préfixe de langue retiré).
+    pub label: String,
+    /// Langue de la catégorie (préfixe ou langue majoritaire de ses contenus).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub language: Option<String>,
+}
+
+impl Facet {
+    fn plain(name: String, count: usize) -> Self {
+        Facet { label: name.clone(), name, count, language: None }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -580,6 +599,7 @@ pub struct VodFacets {
 /// Catégories, genres et langues disponibles, les langues favorites en tête.
 pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], include_adult: bool) -> VodFacets {
     let mut cats: HashMap<&str, (usize, usize)> = HashMap::new();
+    let mut cat_langs: HashMap<&str, HashMap<&str, usize>> = HashMap::new();
     let mut genres: HashMap<String, usize> = HashMap::new();
     let mut langs: HashMap<&str, usize> = HashMap::new();
     let mut total = 0;
@@ -589,6 +609,9 @@ pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], includ
             let e = cats.entry(c).or_insert((0, usize::MAX));
             e.0 += 1;
             e.1 = e.1.min(lang::rank(&i.languages, prefs));
+            if let Some(l) = i.languages.first() {
+                *cat_langs.entry(c).or_default().entry(l).or_default() += 1;
+            }
         }
         for g in &i.genres {
             *genres.entry(g.trim().to_string()).or_default() += 1;
@@ -597,11 +620,18 @@ pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], includ
             *langs.entry(l).or_default() += 1;
         }
     }
-    let mut categories: Vec<_> = cats.into_iter().map(|(n, (c, r))| (r, Facet { name: n.to_string(), count: c })).collect();
+    let mut categories: Vec<_> = cats
+        .into_iter()
+        .map(|(n, (c, r))| {
+            let (prefix_lang, label) = lang::split_prefix(n);
+            let majority = cat_langs.get(n).and_then(|m| m.iter().max_by_key(|(_, k)| **k)).map(|(l, _)| l.to_string());
+            (r, Facet { name: n.to_string(), count: c, label, language: prefix_lang.map(str::to_string).or(majority) })
+        })
+        .collect();
     categories.sort_by(|a, b| a.0.cmp(&b.0).then(b.1.count.cmp(&a.1.count)));
-    let mut genres: Vec<_> = genres.into_iter().map(|(name, count)| Facet { name, count }).collect();
+    let mut genres: Vec<_> = genres.into_iter().map(|(name, count)| Facet::plain(name, count)).collect();
     genres.sort_by(|a, b| b.count.cmp(&a.count));
-    let mut languages: Vec<_> = langs.into_iter().map(|(n, c)| Facet { name: n.to_string(), count: c }).collect();
+    let mut languages: Vec<_> = langs.into_iter().map(|(n, c)| Facet { name: n.to_string(), count: c, label: n.to_string(), language: Some(n.to_string()) }).collect();
     languages.sort_by(|a, b| {
         let ra = prefs.iter().position(|p| p == &a.name).unwrap_or(usize::MAX);
         let rb = prefs.iter().position(|p| p == &b.name).unwrap_or(usize::MAX);
@@ -691,5 +721,7 @@ mod tests {
         assert_eq!(titles(browse), vec!["Nuit Blanche", "La Nuit", "Le Jour"]);
         assert_eq!(with_person(&items, "JEAN ACTEUR").len(), 2);
         assert_eq!(match_filmography(&items, &[("le jour".into(), None, None)]).len(), 1);
+        let mine = query(&items, &VodQuery { any_languages: Some(prefs.clone()), ..Default::default() });
+        assert_eq!(mine.total, 2, "« Mes langues » exclut l'allemand");
     }
 }
