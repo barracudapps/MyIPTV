@@ -30,6 +30,10 @@ interface LibraryState {
   ensureProgrammes(channels: Channel[], from: number, to: number): Promise<void>;
 }
 
+/** Sources chargées en parallèle. */
+const LOAD_CONCURRENCY = 6;
+let loadGeneration = 0;
+
 export const useLibrary = create<LibraryState>()((set, get) => ({
   channels: [],
   byId: new Map(),
@@ -45,6 +49,9 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
   libraryVersion: 0,
 
   async loadAll(force = false) {
+    // Un nouveau chargement remplace le précédent : celui-ci s'arrête et son résultat est ignoré.
+    const gen = ++loadGeneration;
+    const current = () => gen === loadGeneration;
     const backend = await getBackend();
     const all_sources = useSettings.getState().sources;
     const sources = all_sources.filter((s) => s.enabled);
@@ -56,9 +63,11 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     const all: Channel[] = [];
     const epgUrls: string[] = [];
     const vodCounts: Record<string, number> = {};
-    // Chargement en parallèle ; une source en échec n'empêche pas les autres.
-    await Promise.all(
-      sources.map(async (s) => {
+    // Quelques sources à la fois : des centaines en même temps saturent le réseau et l'app.
+    // Une source en échec n'empêche pas les autres.
+    const queue = [...sources];
+    const worker = async () => {
+      for (let s = queue.shift(); s && current(); s = queue.shift()) {
         try {
           task.update({ detail: s.name });
           const r = await backend.loadSource(await withContent(s), force);
@@ -73,9 +82,11 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
         } finally {
           task.step();
         }
-      }),
-    );
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(LOAD_CONCURRENCY, queue.length) }, worker));
     task.end();
+    if (!current()) return;
     const order = new Map(sources.map((s, i) => [s.id, i]));
     all.sort((a, b) => (order.get(a.sourceId)! - order.get(b.sourceId)!) || 0);
     // Guides limités aux pays des langues favorites de tous les profils.

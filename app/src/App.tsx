@@ -38,8 +38,11 @@ export default function App() {
   useEffect(() => applyTheme(profile ? themeFor(profile, custom) : BUILTIN_THEMES[0]), [profile, custom]);
 
   // (Re)chargement des chaînes au démarrage et quand les sources changent.
+  // Léger délai : un import groupé ou un nettoyage modifie les sources plusieurs fois de suite,
+  // un seul chargement suffit.
   useEffect(() => {
-    useLibrary.getState().loadAll();
+    const t = window.setTimeout(() => useLibrary.getState().loadAll(), 300);
+    return () => window.clearTimeout(t);
   }, [sourcesKey]);
 
   useEffect(preloadEngines, []);
