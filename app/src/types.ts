@@ -166,6 +166,8 @@ export interface VodItem {
   episodes?: Episode[];
   /** Autres copies du même contenu (autres sources), regroupées sous celle-ci. */
   alternates?: VodItem[];
+  /** Origine du contenu (fiche et flux), transmise telle quelle au cœur. */
+  sourceRef?: { type: "xtream" | "archive" | "jellyfin"; token?: string };
 }
 
 export interface Person {
