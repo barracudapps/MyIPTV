@@ -95,17 +95,22 @@ export async function createWebBackend(): Promise<Backend> {
       w.clearEpg();
       const all = [...loaded.values()].flat();
       const errors: string[] = [];
+      const missing: string[] = [];
       let programmes = 0;
       for (const url of new Set(urls)) {
         try {
           const r = await fetch(url);
+          if (r.status === 404 || r.status === 410) {
+            missing.push(url);
+            continue;
+          }
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           programmes += w.loadEpg(new Uint8Array(await r.arrayBuffer()), all, now() - 8 * 86400, now() + 4 * 86400);
         } catch (e) {
           errors.push(`${url} : ${e instanceof Error ? e.message : e}`);
         }
       }
-      return { channels: 0, programmes, errors };
+      return { channels: 0, programmes, errors, missing };
     },
     async programmes(channels, from, to) {
       return w.programmes(channels, from, to);

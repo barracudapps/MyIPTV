@@ -128,6 +128,20 @@ export function SourcesView() {
         </div>
       )}
 
+      {epgStats?.missing && epgStats.missing.length > 0 && (
+        <details className="card dim small">
+          <summary>
+            {epgStats.missing.length} guide{epgStats.missing.length > 1 ? "s" : ""} annoncé{epgStats.missing.length > 1 ? "s" : ""} par les listes
+            {epgStats.missing.length > 1 ? " n'existent" : " n'existe"} plus sur leur serveur : ignoré{epgStats.missing.length > 1 ? "s" : ""}, nouvel essai dans une semaine.
+          </summary>
+          <ul>
+            {epgStats.missing.map((u) => (
+              <li key={u}>{u}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {adding && <AddSourceDialog onClose={() => setAdding(false)} />}
       {editing && <EditSourceDialog source={editing} onClose={() => setEditing(null)} />}
     </div>

@@ -80,6 +80,8 @@ export interface EpgStats {
   channels: number;
   programmes: number;
   errors: string[];
+  /** Guides retirés par leur serveur (404, 410), ignorés. */
+  missing?: string[];
 }
 
 export type StreamKind = "hls" | "mpegts" | "native" | "remux" | "youtube" | "webpage";

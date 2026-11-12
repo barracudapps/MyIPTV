@@ -118,8 +118,12 @@ export function filterEpgUrls(urls: string[], langs: string[]): string[] {
   const countries = new Set(countriesFor(langs).map((c) => (c === "GB" ? "UK" : c)));
   return urls.filter((u) => {
     if (/ALL_SOURCES|DUMMY_CHANNELS/i.test(u)) return false;
-    const m = u.match(/epg_ripper_([A-Z]{2})\d*\.xml/);
-    return !m || countries.has(m[1]);
+    if (!/epgshare01\./i.test(u)) return true;
+    // « epg_ripper_FR1 », « epg_ripper_RAKUTEN_FR1 », « epg_ripper_US_LOCALS2 » : pays repéré dans le nom ;
+    // guides thématiques sans pays (« PAC-12 », « locomotiontv ») : chaînes américaines.
+    const name = u.split("/").pop()!.replace(/\.xml(\.gz)?$/i, "").replace(/^epg_ripper_/i, "");
+    const codes = name.split(/[_\-]/).map((t) => t.replace(/\d+$/, "").toUpperCase()).filter((t) => /^[A-Z]{2}$/.test(t));
+    return codes.length ? codes.some((c) => countries.has(c)) : countries.has("US");
   });
 }
 

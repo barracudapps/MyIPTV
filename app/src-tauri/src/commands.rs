@@ -43,6 +43,8 @@ const SOURCE_TTL: i64 = 24 * 3600;
 /// le cache est alors renouvelé au lieu de resservir l'ancien résultat pendant 24 h.
 const SOURCE_CACHE_VERSION: &str = "6";
 const EPG_TTL: u64 = 12 * 3600;
+/// Un guide disparu n'est retenté qu'au bout d'une semaine (ou sur actualisation forcée).
+const EPG_GONE_TTL: u64 = 7 * 86_400;
 
 async fn get_text(st: &AppState, url: &str) -> Res<String> {
     let up = Upstream { url: url.into(), user_agent: None, referrer: None };
@@ -294,6 +296,8 @@ pub struct EpgStats {
     pub channels: usize,
     pub programmes: usize,
     pub errors: Vec<String>,
+    /// Guides retirés par leur serveur (404, 410) : ignorés sans être présentés comme des pannes.
+    pub missing: Vec<String>,
 }
 
 /// Télécharge (ou relit du cache) les guides XMLTV et les indexe pour les chaînes chargées.
@@ -303,10 +307,17 @@ pub async fn load_epg(st: St<'_>, urls: Vec<String>, force: bool) -> Res<EpgStat
     let filter = EpgFilter::for_channels(&all, now() - 8 * 86_400, now() + 4 * 86_400);
     let mut epg = iptv_core::Epg::default();
     let mut errors = vec![];
+    let mut missing = vec![];
     let mut seen = std::collections::HashSet::new();
     // Les agrégats « toutes sources » pèsent plusieurs centaines de Mo : les guides par pays suffisent.
     for url in urls.into_iter().filter(|u| !u.contains("ALL_SOURCES") && !u.contains("DUMMY_CHANNELS") && seen.insert(u.clone())) {
         let path = st.cache_dir.join("epg").join(stable_key(&[&url]));
+        let gone_marker = path.with_extension("gone");
+        let recently_gone = std::fs::metadata(&gone_marker).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age.as_secs() < EPG_GONE_TTL);
+        if recently_gone && !force {
+            missing.push(url);
+            continue;
+        }
         let fresh = std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age.as_secs() < EPG_TTL);
         let bytes = if fresh && !force {
             std::fs::read(&path).map_err(|e| e.to_string())
@@ -321,6 +332,11 @@ pub async fn load_epg(st: St<'_>, urls: Vec<String>, force: bool) -> Res<EpgStat
         };
         let bytes = match bytes {
             Ok(b) => b,
+            Err(e) if e.contains(" 404") || e.contains(" 410") => {
+                let _ = std::fs::write(&gone_marker, b"");
+                missing.push(url);
+                continue;
+            }
             Err(e) => {
                 errors.push(format!("{url} : {e}"));
                 continue;
@@ -333,7 +349,7 @@ pub async fn load_epg(st: St<'_>, urls: Vec<String>, force: bool) -> Res<EpgStat
             Err(e) => errors.push(e.to_string()),
         }
     }
-    let stats = EpgStats { channels: epg.programmes.len(), programmes: epg.programmes.values().map(Vec::len).sum(), errors };
+    let stats = EpgStats { channels: epg.programmes.len(), programmes: epg.programmes.values().map(Vec::len).sum(), errors, missing };
     *st.epg.write().await = epg;
     Ok(stats)
 }
