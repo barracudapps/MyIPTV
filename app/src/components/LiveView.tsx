@@ -58,6 +58,11 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
         (!q || normalize(c.name).includes(q)),
     );
   }, [base, group, filter, langFilter, profile.languages, replayOnly, country]);
+
+  const hiddenByFilters = useMemo(() => {
+    const q = normalize(filter.trim());
+    return list.length || !q ? 0 : base.filter((c) => normalize(c.name).includes(q)).length;
+  }, [list, base, filter]);
   // `base` est déjà trié par langues favorites ; les autres tris s'appliquent par-dessus.
   const sorted = useMemo(() => {
     if (sortBy === "name") return [...list].sort((a, b) => a.name.localeCompare(b.name, "fr"));
@@ -176,7 +181,21 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             <div className="spinner" /> Chargement des chaînes…
           </div>
         ) : sorted.length === 0 ? (
-          scope === "favorites" && (vodFavorites.length || historyItems.length) ? null : <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film." : "Aucune chaîne ne correspond."}</div>
+          scope === "favorites" && (vodFavorites.length || historyItems.length) ? null : scope === "all" && filter.trim() ? (
+            <NoChannelMatch
+              hiddenByFilters={hiddenByFilters}
+              canAddSource={profile.kind !== "child"}
+              onReset={() => {
+                setGroup(ALL);
+                setCountry("");
+                setReplayOnly(false);
+                useUi.setState({ langFilter: "all" });
+              }}
+              onAddSource={() => setView("sources")}
+            />
+          ) : (
+            <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film." : "Aucune chaîne ne correspond."}</div>
+          )
         ) : (
           <ChannelCollection channels={sorted} mode={view} showNowNext={layout.showNowNext} showProgress={layout.showProgress} />
         )}
@@ -400,4 +419,36 @@ function groupLabel(name: string): { label: string; language?: string } {
   const m = name.match(/^\s*[[(|]?\s*([A-Za-z]{2,3})\s*[\]):|\-]\s*(.+)$/);
   const code = m ? countryOrLang(m[1]) : undefined;
   return m && code ? { label: m[2], language: code } : { label: name };
+}
+
+/** Recherche de chaîne sans résultat : filtres trop stricts, ou chaîne absente des sources. */
+function NoChannelMatch({ hiddenByFilters, canAddSource, onReset, onAddSource }: { hiddenByFilters: number; canAddSource: boolean; onReset: () => void; onAddSource: () => void }) {
+  if (hiddenByFilters > 0) {
+    return (
+      <div className="empty-state small">
+        <span>
+          {hiddenByFilters} chaîne{hiddenByFilters > 1 ? "s" : ""} masquée{hiddenByFilters > 1 ? "s" : ""} par les filtres (langue, pays, catégorie, replay).
+        </span>
+        <button className="btn" onClick={onReset}>
+          Afficher tout
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="empty-state">
+      <Icon name="live" size={40} />
+      <h3>Cette chaîne n'est dans aucune de vos sources</h3>
+      <p>
+        Le catalogue intégré ne contient que des chaînes diffusées gratuitement et légalement sur Internet. Les chaînes payantes (bouquets Canal+,
+        box opérateur, offres thématiques…) n'y figurent pas : pour les regarder ici, ajoutez la playlist M3U ou le compte Xtream fourni par votre
+        abonnement, s'il en propose un.
+      </p>
+      {canAddSource && (
+        <button className="btn btn-primary" onClick={onAddSource}>
+          <Icon name="plus" /> Ajouter une source
+        </button>
+      )}
+    </div>
+  );
 }

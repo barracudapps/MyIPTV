@@ -164,7 +164,17 @@ export function SearchView() {
           })}
           <HitList title="Revoir (replay TV)" hits={past} action={(h) => usePlayer.getState().playCatchup(h.ch, h.p)} icon="replay" />
           <HitList title="Prochainement à la télé" hits={upcoming} />
-          {nothing && <p className="dim center">Aucun résultat.</p>}
+          {nothing && (
+            <div className="empty-state">
+              <p>Aucun résultat.</p>
+              {wantChannels && (
+                <p className="small">
+                  Le catalogue intégré ne contient que des chaînes et programmes diffusés gratuitement et légalement. Une chaîne payante n'apparaît
+                  que si vous ajoutez la source fournie par votre abonnement (playlist M3U ou compte Xtream).
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
