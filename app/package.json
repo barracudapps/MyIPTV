@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "preview:web": "vite preview --outDir dist-web --port 4173",
-    "package:tv": "node ../scripts/package-tv.mjs"
+    "package:tv": "node ../scripts/package-tv.mjs",
+    "build:mac": "tauri build --bundles app && V=$(node -p \"require('./package.json').version\") && hdiutil create -volname \"MyIPTV $V\" -srcfolder ../target/release/bundle/macos/MyIPTV.app -ov -format UDZO ../target/release/bundle/dmg/MyIPTV_${V}_$(uname -m).dmg"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.26",
