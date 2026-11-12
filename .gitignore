@@ -4,6 +4,6 @@ dist/
 core/pkg/
 app/src/wasm/
 .DS_Store
-app/src-tauri/gen/
+app/src-tauri/gen/schemas/
 app/dist-web/
 tv/build/

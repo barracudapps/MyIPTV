@@ -16,15 +16,26 @@ app/src-tauri/   Application native Tauri 2 (macOS, Windows, Linux, Android)
 app/src/         Interface React + TypeScript commune à toutes les plateformes
 ```
 
-| Plateforme | Build | Timeshift |
+| Plateforme | Build | Remarques |
 |---|---|---|
-| macOS, Windows, Linux | `npm run tauri build` | sur disque (jusqu'à 6 h) |
-| Android, Android TV | `npm run tauri android build` | sur disque |
-| Samsung Tizen, LG webOS, navigateur | `npm run build:web` puis empaquetage TV | mémoire du lecteur |
+| macOS | `cd app && npx tauri build` | `.app` et `.dmg` dans `target/release/bundle/` |
+| Windows, Linux | intégration continue (tag `vX.Y.Z`) | `.msi`/`.exe`, `.deb`/`.AppImage`/`.rpm` |
+| Android, Android TV | `cd app && npx tauri android build --apk` | variables `ANDROID_HOME`, `NDK_HOME`, Java 17+ |
+| Navigateur | `cd app && npm run build:web` | sortie `app/dist-web/` ; lecture limitée par CORS |
+| LG webOS, Samsung Tizen | `npm run build:web && npm run package:tv` | dossiers prêts dans `tv/build/`, puis `ares-package` / `tizen package` |
+
+Fonctions selon la plateforme :
+
+| | Bureau | Android | Web / TV |
+|---|---|---|---|
+| Direct, guide, replay | oui | oui | oui (si le serveur autorise CORS ; toujours sur TV empaquetée) |
+| Pause du direct (timeshift) | sur disque, jusqu'à 6 h | sur disque | mémoire du lecteur |
+| Bibliothèque (films, séries, radio…) | oui | oui | à venir |
+| MKV / AC3 / DTS, enregistrements | oui (ffmpeg installé) | MPEG-TS seulement | non |
 
 ## Développement
 
-Prérequis : Rust (rustup), Node 20+, et pour la version web/TV `wasm-pack`.
+Prérequis : Rust (rustup), Node 20+, ffmpeg (recommandé : conversion des MKV/AC3 et enregistrements) ; pour la version web/TV, la cible `wasm32-unknown-unknown` et `wasm-bindgen-cli` à la version du `Cargo.lock`.
 
 ```bash
 cd app
