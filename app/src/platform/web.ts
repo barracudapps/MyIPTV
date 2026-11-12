@@ -107,7 +107,9 @@ export async function createWebBackend(): Promise<Backend> {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           programmes += w.loadEpg(new Uint8Array(await r.arrayBuffer()), all, now() - 8 * 86400, now() + 4 * 86400);
         } catch (e) {
-          errors.push(`${url} : ${e instanceof Error ? e.message : e}`);
+          // fetch rejette sans détail quand le serveur n'autorise pas les autres sites (CORS).
+          const msg = e instanceof TypeError ? "le serveur de ce guide n'autorise pas la lecture depuis un navigateur (il fonctionne dans l'application de bureau et sur TV)" : e instanceof Error ? e.message : String(e);
+          errors.push(`${url} : ${msg}`);
         }
       }
       return { channels: 0, programmes, errors, missing };
