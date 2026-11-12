@@ -1958,6 +1958,7 @@ dependencies = [
  "aes-gcm",
  "chrono",
  "flate2",
+ "js-sys",
  "quick-xml 0.36.2",
  "serde",
  "serde-wasm-bindgen",

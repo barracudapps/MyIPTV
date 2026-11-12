@@ -49,13 +49,14 @@ export interface Backend {
   stop(): Promise<void>;
 }
 
-export const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isTauri = __NATIVE_BACKEND__ && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 let backend: Promise<Backend> | null = null;
 
 export function getBackend(): Promise<Backend> {
-  backend ??= isTauri
-    ? import("./native").then((m) => m.createNativeBackend())
-    : import("./web").then((m) => m.createWebBackend());
+  backend ??=
+    __NATIVE_BACKEND__ && (isTauri || !__WEB_BACKEND__)
+      ? import("./native").then((m) => m.createNativeBackend())
+      : import("./web").then((m) => m.createWebBackend());
   return backend;
 }

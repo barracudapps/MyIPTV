@@ -6,7 +6,12 @@ const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    // Chaque build n'embarque que son backend : pas de WASM dans l'app native, pas d'API Tauri sur TV.
+    __WEB_BACKEND__: JSON.stringify(mode !== "production"),
+    __NATIVE_BACKEND__: JSON.stringify(mode !== "web"),
+  },
   clearScreen: false,
   // Les smart TV chargent l'app depuis le système de fichiers : chemins relatifs.
   base: "./",

@@ -1,3 +1,4 @@
+import { loadEngines } from "../lib/engines";
 import { create } from "zustand";
 import { getBackend } from "../platform";
 import type { Channel, Episode, PlayInfo, Programme, VodItem } from "../types";
@@ -115,6 +116,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
         windowMinutes: settings.playback.windowMinutes,
         forceRemux: opts?.forceRemux,
       });
+      await loadEngines(info);
       if (get().token !== token) return; // une autre chaîne a été lancée entre-temps
       set({ info, loading: false });
       if (info.error) useUi.getState().toast(`Timeshift indisponible pour cette chaîne (${info.error}). Lecture directe.`, "info");
@@ -133,6 +135,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
       const url = await backend.catchupUrl(ch, prog.start, prog.stop);
       if (!url) throw new Error("Ce programme n'est pas disponible en replay.");
       const info = await backend.play({ url, userAgent: ch.userAgent, referrer: ch.referrer, timeshift: false, windowMinutes: 0, media: true, forceRemux });
+      await loadEngines(info);
       if (get().token === token) set({ info, loading: false });
     } catch (e) {
       if (get().token === token) set({ loading: false, error: errorMessage(e) });
@@ -162,6 +165,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     fun.onPlay(item.kind === "radio" ? "radio" : "media", item);
     try {
       const info = await (await getBackend()).play({ url, userAgent: item.userAgent, referrer: item.referrer, timeshift: false, windowMinutes: 0, media: !item.live, forceRemux: opts.forceRemux });
+      await loadEngines(info);
       if (get().token === token) set({ info, loading: false });
     } catch (e) {
       if (get().token === token) set({ loading: false, error: errorMessage(e) });

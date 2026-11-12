@@ -1,7 +1,7 @@
 import { BufferChoice, MEMORY_MAX_MINUTES } from "./BufferChoice";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import Hls from "hls.js";
-import mpegts from "mpegts.js";
+import type HlsType from "hls.js";
+import { Hls, mpegts } from "../lib/engines";
 import { usePlayer } from "../store/player";
 import { useLibrary } from "../store/library";
 import { useActiveProfile, useSettings } from "../store/settings";
@@ -19,7 +19,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { MascotFigure } from "./Mascot";
 import { useRecordings } from "../store/recordings";
 
-type Engine = { destroy(): void; hls?: Hls; playingDate?: () => Date | null };
+type Engine = { destroy(): void; hls?: HlsType; playingDate?: () => Date | null };
 
 interface Clock {
   playing: boolean;
@@ -36,8 +36,9 @@ interface Clock {
 const MINI_W = 360;
 
 function attach(video: HTMLVideoElement, url: string, kind: string, opts: { timeshift: boolean; live: boolean }, onFatal: (msg: string) => void, onTracks: () => void): Engine {
-  if (kind === "hls" && Hls.isSupported()) {
-    const hls = new Hls({
+  const H = Hls;
+  if (kind === "hls" && H?.isSupported()) {
+    const hls = new H({
       liveSyncDurationCount: opts.timeshift ? 2 : 3,
       // Ne jamais ramener de force au direct : c'est l'utilisateur qui décide (pause du direct).
       liveMaxLatencyDurationCount: Infinity,
@@ -49,13 +50,13 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       renderTextTracksNatively: true,
     });
     let recovered = false;
-    hls.on(Hls.Events.ERROR, (_e, d) => {
+    hls.on(H.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
       // Playlist refusée ou absente : relancer ne sert à rien, on explique.
       const code = d.response?.code ?? 0;
       if (d.details.startsWith("manifest") || d.details.startsWith("level") || code >= 400) {
         onFatal(
-          code === 0 && !isTauri && d.type === Hls.ErrorTypes.NETWORK_ERROR
+          code === 0 && !isTauri && d.type === H.ErrorTypes.NETWORK_ERROR
             ? "Cette chaîne n'autorise pas la lecture depuis un navigateur. Elle fonctionne dans l'application de bureau ou sur TV."
             : code === 403 || code === 401
             ? "Accès refusé par la chaîne (restriction géographique ou d'accès probable)."
@@ -67,24 +68,24 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
         );
         return;
       }
-      if (d.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
+      if (d.type === H.ErrorTypes.MEDIA_ERROR && !recovered) {
         recovered = true;
         hls.recoverMediaError();
-      } else if (d.type === Hls.ErrorTypes.NETWORK_ERROR && !recovered) {
+      } else if (d.type === H.ErrorTypes.NETWORK_ERROR && !recovered) {
         recovered = true;
         hls.startLoad();
       } else onFatal(d.details === "manifestLoadError" ? "La source ne répond pas." : `Lecture impossible (${d.details}).`);
     });
-    hls.on(Hls.Events.ERROR, (_e, d) => {
+    hls.on(H.Events.ERROR, (_e, d) => {
       if (!d.fatal) console.info(`[lecteur] hls non bloquant : ${d.details}`);
     });
-    for (const ev of [Hls.Events.MANIFEST_PARSED, Hls.Events.AUDIO_TRACKS_UPDATED, Hls.Events.SUBTITLE_TRACKS_UPDATED, Hls.Events.LEVEL_SWITCHED, Hls.Events.AUDIO_TRACK_SWITCHED, Hls.Events.SUBTITLE_TRACK_SWITCH])
+    for (const ev of [H.Events.MANIFEST_PARSED, H.Events.AUDIO_TRACKS_UPDATED, H.Events.SUBTITLE_TRACKS_UPDATED, H.Events.LEVEL_SWITCHED, H.Events.AUDIO_TRACK_SWITCHED, H.Events.SUBTITLE_TRACK_SWITCH])
       hls.on(ev, onTracks);
     hls.loadSource(url);
     hls.attachMedia(video);
     return { hls, destroy: () => hls.destroy(), playingDate: () => hls.playingDate };
   }
-  if (kind === "mpegts" && mpegts.getFeatureList().mseLivePlayback) {
+  if (kind === "mpegts" && mpegts?.getFeatureList().mseLivePlayback) {
     const p = mpegts.createPlayer({ type: "mpegts", isLive: opts.live, url }, { enableStashBuffer: !opts.live, lazyLoad: false, liveBufferLatencyChasing: false });
     p.on(mpegts.Events.ERROR, (_t: string, detail: string) => onFatal(`Lecture impossible (${detail}).`));
     p.attachMediaElement(video);

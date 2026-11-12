@@ -12,8 +12,11 @@ thread_local! {
     static EPG: RefCell<Epg> = RefCell::new(Epg::default());
 }
 
+/// Passage par une chaîne JSON : le `JSON.parse` du moteur JavaScript construit les
+/// gros tableaux (dizaines de milliers de chaînes) plus vite qu'objet par objet.
 fn to_js<T: serde::Serialize>(v: &T) -> Result<JsValue, JsValue> {
-    v.serialize(&serde_wasm_bindgen::Serializer::json_compatible()).map_err(|e| JsValue::from_str(&e.to_string()))
+    let text = serde_json::to_string(v).map_err(err)?;
+    js_sys::JSON::parse(&text)
 }
 
 fn err(e: impl ToString) -> JsValue {
@@ -101,3 +104,4 @@ pub fn share_open(code: &str, data: &[u8]) -> Result<String, JsValue> {
     let plain = crate::share::open(code, data).map_err(err)?;
     String::from_utf8(plain).map_err(err)
 }
+

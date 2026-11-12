@@ -9,7 +9,7 @@ crate-type = ["rlib", "cdylib"]
 
 [features]
 default = []
-wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen"]
+wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -21,3 +21,4 @@ aes-gcm = { version = "0.10", default-features = false, features = ["aes", "allo
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 wasm-bindgen = { version = "0.2", optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }
+js-sys = { version = "0.3", optional = true }

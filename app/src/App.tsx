@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { useActiveProfile, useSettings, themeFor } from "./store/settings";
 import { useLibrary } from "./store/library";
 import { usePlayer } from "./store/player";
@@ -8,20 +8,23 @@ import { installSpatialNavigation } from "./lib/spatial";
 import { channelAccess } from "./lib/parental";
 import { Nav } from "./components/Nav";
 import { LiveView } from "./components/LiveView";
-import { GuideView } from "./components/GuideView";
-import { SearchView } from "./components/SearchView";
-import { SourcesView } from "./components/SourcesView";
-import { SettingsView } from "./components/SettingsView";
 import { ProfilePicker } from "./components/ProfilePicker";
 import { Player } from "./components/Player";
 import { PinDialog, Toasts } from "./components/Dialogs";
 import { VodView } from "./components/VodView";
-import { RecordingsView } from "./components/RecordingsView";
 import { useRecordings } from "./store/recordings";
 import { DetailView, PersonDialog } from "./components/DetailView";
 import { FunLayer, Mascot } from "./components/Mascot";
 import { installEasterEggs } from "./lib/fun";
+import { preloadEngines } from "./lib/engines";
 import type { VodKind } from "./types";
+
+// Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
+const GuideView = lazy(() => import("./components/GuideView").then((m) => ({ default: m.GuideView })));
+const SearchView = lazy(() => import("./components/SearchView").then((m) => ({ default: m.SearchView })));
+const SourcesView = lazy(() => import("./components/SourcesView").then((m) => ({ default: m.SourcesView })));
+const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
+const RecordingsView = lazy(() => import("./components/RecordingsView").then((m) => ({ default: m.RecordingsView })));
 
 export default function App() {
   const profile = useActiveProfile();
@@ -35,6 +38,8 @@ export default function App() {
   useEffect(() => {
     useLibrary.getState().loadAll();
   }, [sourcesKey]);
+
+  useEffect(preloadEngines, []);
 
   // Reprise de la dernière chaîne du profil.
   const resumed = useRef<string | null>(null);
@@ -101,12 +106,14 @@ export default function App() {
       <main className="main">
         {view === "live" && <LiveView scope="all" />}
         {view === "favorites" && <LiveView scope="favorites" />}
+        <Suspense fallback={null}>
         {view === "guide" && <GuideView />}
         {view === "search" && <SearchView />}
         {view === "sources" && <SourcesView />}
         {view === "settings" && <SettingsView />}
         {view.startsWith("vod:") && <VodView kind={view.slice(4) as VodKind} />}
         {view === "recordings" && <RecordingsView />}
+        </Suspense>
       </main>
       <Player />
       <DetailView />
