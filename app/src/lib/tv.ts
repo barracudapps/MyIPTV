@@ -18,7 +18,7 @@ export function installTvRemote() {
     }
   }
   // Codes Tizen des touches multimédia -> noms standard, pour réutiliser les raccourcis du lecteur.
-  const map: Record<number, string> = { 10252: "MediaPlayPause", 415: "MediaPlayPause", 19: "MediaPlayPause", 427: "ChannelUp", 428: "ChannelDown", 33: "ChannelUp", 34: "ChannelDown" };
+  const map: Record<number, string> = { 10252: "MediaPlayPause", 415: "MediaPlay", 19: "MediaPause", 417: "MediaFastForward", 412: "MediaRewind", 413: "MediaStop", 427: "ChannelUp", 428: "ChannelDown", 33: "ChannelUp", 34: "ChannelDown" };
   window.addEventListener(
     "keydown",
     (e) => {

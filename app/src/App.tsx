@@ -51,17 +51,20 @@ export default function App() {
   // Télécommande / clavier : flèches, retour, recherche rapide.
   useEffect(
     () =>
-      installSpatialNavigation(() => {
+      installSpatialNavigation((): boolean => {
         const ui = useUi.getState();
-        if (ui.pin) return;
+        if (ui.pin) return true;
         const player = usePlayer.getState();
-        if (!document.fullscreenElement && player.mode === "docked" && !player.channel && player.media && !["radio", "music", "podcast", "audiobook"].includes(player.media.item.kind ?? "")) return player.setMode("mini");
-        if (ui.person) useUi.setState({ person: null });
-        else if (ui.detailId) useUi.setState({ detailId: null });
-        else if (document.fullscreenElement) document.exitFullscreen();
+        if (document.fullscreenElement) document.exitFullscreen();
         else if (document.querySelector("[data-modal]")) (document.querySelector("[data-modal] header .icon-btn") as HTMLElement | null)?.click();
-        else if (usePlayer.getState().mode === "mini" && ui.view === "live") usePlayer.getState().setMode("docked");
+        else if (document.querySelector("[data-player-scope]")) player.setMode("mini");
+        else if (ui.person) useUi.setState({ person: null });
+        else if (ui.detailId) useUi.setState({ detailId: null });
+        else if (player.mode === "mini" && player.channel && ui.view === "live") player.setMode("docked");
         else if (ui.view !== "live") ui.setView("live");
+        // Écran d'accueil : Retour rend la main au système (sortie de l'application sur Android).
+        else return false;
+        return true;
       }),
     [],
   );

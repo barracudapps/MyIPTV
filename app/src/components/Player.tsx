@@ -184,6 +184,13 @@ export function Player() {
   const wantsTheater = mode === "docked" && channel == null && media != null && !isAudio;
   const effective = !active || mode === "hidden" ? "hidden" : compact ? "compact" : wantsTheater ? "theater" : wantsDocked ? "docked" : mode === "docked" && !autoMini ? "hidden-keep" : "mini";
 
+  // Télécommande : en grand lecteur, le focus part des commandes (OK = lecture / pause).
+  useEffect(() => {
+    if (effective !== "theater") return;
+    const t = setTimeout(() => boxRef.current?.querySelector<HTMLElement>(".player-controls .icon-btn.big")?.focus(), 50);
+    return () => clearTimeout(t);
+  }, [effective]);
+
   // Changer d'écran depuis la navigation réduit le grand lecteur sans couper la lecture.
   const lastView = useRef(view);
   useEffect(() => {
@@ -486,6 +493,21 @@ export function Player() {
         case "MediaPlayPause":
           togglePlay();
           break;
+        case "MediaPlay":
+          videoRef.current?.play();
+          break;
+        case "MediaPause":
+          videoRef.current?.pause();
+          break;
+        case "MediaFastForward":
+        case "MediaRewind":
+          if (!seekable) return;
+          seekBy(e.key === "MediaRewind" ? -30 : 30);
+          break;
+        case "MediaStop":
+          if (compact) exitCompact();
+          stop();
+          break;
         case " ":
           if (!inPlayer || t.tagName === "BUTTON") return;
           togglePlay();
@@ -576,6 +598,7 @@ export function Player() {
       onFocusCapture={poke}
       aria-hidden={hiddenKeep}
       data-own-arrows={fullscreen || compact ? "" : undefined}
+      data-player-scope={effective === "theater" && !fullscreen ? "" : undefined}
     >
       <div className="video-wrap">
         <video

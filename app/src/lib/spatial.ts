@@ -15,7 +15,9 @@ function visible(el: HTMLElement) {
 function scope(): ParentNode {
   // Les boîtes de dialogue capturent la navigation.
   const dialogs = document.querySelectorAll<HTMLElement>("[data-modal]");
-  return dialogs.length ? dialogs[dialogs.length - 1] : document;
+  if (dialogs.length) return dialogs[dialogs.length - 1];
+  // Grand lecteur d'un film : le focus reste sur ses commandes, l'écran dessous est masqué.
+  return document.querySelector<HTMLElement>("[data-player-scope]") ?? document;
 }
 
 export function moveFocus(dir: Dir): boolean {
@@ -75,7 +77,12 @@ export function moveFocus(dir: Dir): boolean {
   return false;
 }
 
-export function installSpatialNavigation(onBack: () => void) {
+/**
+ * `onBack` renvoie `false` quand il n'y a plus rien à fermer. Le bouton Retour d'Android
+ * n'arrive pas en touche clavier : l'activité appelle `window.__myiptvBack()`.
+ */
+export function installSpatialNavigation(onBack: () => boolean) {
+  (window as unknown as { __myiptvBack?: () => boolean }).__myiptvBack = onBack;
   const handler = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement;
     const typing = t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT";
