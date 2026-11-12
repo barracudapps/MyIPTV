@@ -698,3 +698,22 @@ html.disco body { animation: disco 1.2s linear infinite; }
 .share-code dd { margin: 0; font-size: 1.6em; font-weight: 800; font-variant-numeric: tabular-nums; grid-column: 2; }
 .share-code dd.small { font-size: .9em; font-weight: 500; }
 .share-code .code { letter-spacing: .12em; font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent); }
+
+/* Menu en barre d'icônes (thèmes Studio) : libellés en infobulle. */
+[data-nav="rail"] { --nav-w: 72px; }
+[data-nav="rail"] .mascot { left: calc(var(--nav-w) + 14px); }
+@media (min-width: 861px) {
+  [data-nav="rail"] .nav { padding: 14px 10px; align-items: center; }
+  [data-nav="rail"] .nav-brand { padding: 4px 0 16px; justify-content: center; }
+  [data-nav="rail"] .nav-brand span,
+  [data-nav="rail"] .nav-item > span:not(.avatar),
+  [data-nav="rail"] .nav-count,
+  [data-nav="rail"] .nav-foot .clock small { display: none; }
+  [data-nav="rail"] .nav-items { width: 100%; }
+  [data-nav="rail"] .nav-item { justify-content: center; padding: 12px 0; width: 100%; }
+  [data-nav="rail"] .nav-item.active { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  [data-nav="rail"] .nav-items { padding-right: 0; }
+  [data-nav="rail"] .nav-item.active::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+  [data-nav="rail"] .nav-foot { align-items: center; width: 100%; }
+  [data-nav="rail"] .nav-foot .clock { text-align: center; font-size: .85em; }
+}

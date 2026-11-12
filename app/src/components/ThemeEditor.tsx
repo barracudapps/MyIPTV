@@ -114,7 +114,7 @@ function Editor({ initial, onClose }: { initial: Theme; onClose(): void }) {
         <Range label="Arrondi des angles" value={t.radius} min={0} max={28} step={1} fmt={(v) => `${v} px`} onChange={(v) => setT({ ...t, radius: v })} />
 
         <h3>Disposition</h3>
-        <Segmented label="Menu" value={t.layout.nav} options={[["left", "À gauche"], ["top", "En haut"], ["bottom", "En bas"]]} onChange={(v) => lay("nav", v)} />
+        <Segmented label="Menu" value={t.layout.nav} options={[["left", "À gauche"], ["rail", "Icônes"], ["top", "En haut"], ["bottom", "En bas"]]} onChange={(v) => lay("nav", v)} />
         <Segmented label="Lecteur" value={t.layout.playerPosition} options={[["right", "À droite"], ["left", "À gauche"], ["top", "En haut"]]} onChange={(v) => lay("playerPosition", v)} />
         <Range label="Taille du lecteur" value={t.layout.playerSize} min={25} max={75} step={1} fmt={(v) => `${v} %`} onChange={(v) => lay("playerSize", v)} />
         <Segmented label="Chaînes" value={t.layout.channelView} options={[["list", "Liste"], ["grid", "Mosaïque"]]} onChange={(v) => lay("channelView", v)} />

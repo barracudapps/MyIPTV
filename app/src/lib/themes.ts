@@ -11,7 +11,7 @@ export interface ThemeColors {
   danger: string;
 }
 
-export type NavPosition = "left" | "top" | "bottom";
+export type NavPosition = "left" | "rail" | "top" | "bottom";
 export type Density = "compact" | "comfortable" | "tv";
 export type ChannelView = "list" | "grid";
 export type PlayerPosition = "right" | "left" | "top";
@@ -240,6 +240,27 @@ export const BUILTIN_THEMES: Theme[] = [
     fontScale: 1.4,
     layout: { ...baseLayout, nav: "top", density: "tv", channelView: "grid", playerPosition: "top", playerSize: 60, logoSize: 72 },
   },
+  {
+    // Style « lecteur moderne » : barre d'icônes, gris neutres, cartes arrondies, accent bleu.
+    id: "studio",
+    name: "Studio",
+    builtin: true,
+    colors: { bg: "#111318", surface: "#181b22", surface2: "#232731", border: "#2b303b", text: "#eceef3", textDim: "#8b92a1", accent: "#4c8dff", accentText: "#ffffff", live: "#ef4444", danger: "#ef4444" },
+    radius: 12,
+    font: "system",
+    fontScale: 1,
+    layout: { ...baseLayout, nav: "rail", channelView: "grid", logoSize: 44 },
+  },
+  {
+    id: "studio-clair",
+    name: "Studio clair",
+    builtin: true,
+    colors: { bg: "#f6f7f9", surface: "#ffffff", surface2: "#eceef2", border: "#e1e4ea", text: "#1a1d24", textDim: "#6b7280", accent: "#2f6fec", accentText: "#ffffff", live: "#e11d48", danger: "#dc2626" },
+    radius: 12,
+    font: "system",
+    fontScale: 1,
+    layout: { ...baseLayout, nav: "rail", channelView: "grid", logoSize: 44 },
+  },
 ];
 
 const FONTS: Record<FontFamily, string> = {
@@ -255,7 +276,6 @@ const DENSITY_ROW: Record<Density, number> = { compact: 44, comfortable: 60, tv:
 export function applyTheme(t: Theme) {
   const s = document.documentElement.style;
   for (const [k, v] of Object.entries(t.colors)) {
-    // surface2 -> --surface-2 : chiffres et majuscules séparés comme dans la feuille de style.
     s.setProperty(`--${k.replace(/[A-Z]|\d+/g, (c) => "-" + c.toLowerCase())}`, v);
   }
   s.setProperty("--radius", `${t.radius}px`);
