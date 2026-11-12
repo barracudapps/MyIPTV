@@ -682,3 +682,8 @@ html.disco body { animation: disco 1.2s linear infinite; }
 .mascot-option.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
 .mascot-option .mascot-svg { filter: none; }
 .mascot-svg .clapper { transform-origin: 8px 23px; }
+
+/* Import groupé : listes suspectes */
+.risk-lists { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.badge-danger { background: var(--danger); color: #fff; }
+.badge-warn { background: #f59e0b; color: #1a1204; }

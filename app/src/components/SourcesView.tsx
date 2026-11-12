@@ -187,8 +187,11 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
   const [epg, setEpg] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Sources suspectes en attente de la double confirmation, présentées une par une. */
-  const [riskQueue, setRiskQueue] = useState<{ source: Source; report: RiskReport }[]>([]);
+  /**
+   * Import en attente de la double confirmation : une seule pour tout le lot,
+   * listes saines comprises, dès qu'une liste au moins est suspecte.
+   */
+  const [batch, setBatch] = useState<{ clean: Source[]; risky: { source: Source; report: RiskReport }[] } | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const toast = useUi((s) => s.toast);
@@ -236,29 +239,27 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
       }
     };
     await Promise.all([worker(), worker(), worker()]);
-    for (const src of added) useSettings.getState().addSource(src);
-    if (added.length) {
-      useLibrary.getState().loadAll();
-      toast(added.length === 1 ? `« ${added[0].name} » ajoutée.` : `${added.length} sources ajoutées.`, "success");
-    }
+    // Ordre de saisie conservé malgré les vérifications en parallèle.
+    const order = (x: Source) => sources.findIndex((y) => y.id === x.id);
+    added.sort((a, b) => order(a) - order(b));
+    risky.sort((a, b) => order(a.source) - order(b.source));
     setBusy(false);
     setProgress(null);
     setFailures(failed);
-    setRiskQueue(risky);
     // Seuls les liens en échec restent dans le champ, à corriger ou relancer.
     if (sources.some((x) => x.kind === "m3uUrl")) setUrl(retry.join("\n"));
-    if (!failed.length && !risky.length) onClose();
+    if (risky.length) setBatch({ clean: added, risky });
+    else finishBatch(added, failed.length > 0);
   };
 
-  const nextRisk = (confirmed: boolean) => {
-    const [head, ...rest] = riskQueue;
-    if (confirmed && head) {
-      useSettings.getState().addSource(head.source);
+  const finishBatch = (list: Source[], keepOpen: boolean) => {
+    for (const src of list) useSettings.getState().addSource(src);
+    if (list.length) {
       useLibrary.getState().loadAll();
-      toast(`« ${head.source.name} » ajoutée.`, "success");
+      toast(list.length === 1 ? `« ${list[0].name} » ajoutée.` : `${list.length} sources ajoutées.`, "success");
     }
-    setRiskQueue(rest);
-    if (!rest.length && !failures.length) onClose();
+    setBatch(null);
+    if (!keepOpen) onClose();
   };
 
   /** Télécharge et analyse la source avant de l'enregistrer. */
@@ -278,7 +279,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
       const preview = await (await getBackend()).previewSource(source);
       if (preview.risk.total === 0) throw new Error("Aucune chaîne trouvée dans cette source.");
       if (preview.risk.level === "low") commit(source);
-      else setRiskQueue([{ source: { ...source, risk: preview.risk.level }, report: preview.risk }]);
+      else setBatch({ clean: [], risky: [{ source: { ...source, risk: preview.risk.level }, report: preview.risk }] });
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -288,8 +289,19 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
 
   const addCatalog = (e: CatalogEntry) => submit({ kind: "m3uUrl", url: e.url }, `Gratuit · ${e.name}`, true);
 
-  if (riskQueue.length) {
-    return <RiskDialog key={riskQueue[0].source.id} report={riskQueue[0].report} onCancel={() => nextRisk(false)} onConfirm={() => nextRisk(true)} />;
+  if (batch) {
+    const keepOpen = failures.length > 0;
+    const single = batch.risky.length === 1 && !batch.clean.length;
+    return (
+      <RiskDialog
+        report={single ? batch.risky[0].report : mergeReports(batch.risky.map((r) => r.report))}
+        lists={single ? undefined : batch.risky.map((r) => ({ name: r.source.name, report: r.report }))}
+        cleanCount={batch.clean.length}
+        onCancel={() => (keepOpen ? setBatch(null) : onClose())}
+        onCleanOnly={batch.clean.length ? () => finishBatch(batch.clean, keepOpen) : undefined}
+        onConfirm={() => finishBatch([...batch.clean, ...batch.risky.map((r) => r.source)], keepOpen)}
+      />
+    );
   }
 
   const links = [...new Set(url.split(/[\s,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\/\S+$/i.test(u)))];
@@ -500,8 +512,52 @@ function CatalogGroup({ title, entries, onPick }: { title: string; entries: Cata
  * Double validation avant l'import d'une liste suspecte : l'utilisateur doit
  * cocher l'attestation, puis confirmer une seconde fois après un court délai.
  */
-function RiskDialog({ report, onCancel, onConfirm }: { report: RiskReport; onCancel(): void; onConfirm(): void }) {
+/** Analyse globale d'un import groupé : niveau le plus grave, totaux cumulés, motifs dédoublonnés. */
+function mergeReports(reports: RiskReport[]): RiskReport {
+  const rank = { low: 0, medium: 1, high: 2 } as const;
+  return {
+    level: reports.reduce<RiskReport["level"]>((l, r) => (rank[r.level] > rank[l] ? r.level : l), "low"),
+    premiumCount: reports.reduce((n, r) => n + r.premiumCount, 0),
+    vodCount: reports.reduce((n, r) => n + r.vodCount, 0),
+    resellerUrlCount: reports.reduce((n, r) => n + r.resellerUrlCount, 0),
+    total: reports.reduce((n, r) => n + r.total, 0),
+    examples: [...new Set(reports.flatMap((r) => r.examples))].slice(0, 8),
+    reasons: sumReasons(reports.flatMap((r) => r.reasons)),
+  };
+}
+
+/** « 14 chaîne(s)… » + « 14 chaîne(s)… » -> « 28 chaîne(s)… » : même motif, compteurs additionnés. */
+function sumReasons(reasons: string[]): string[] {
+  const totals = new Map<string, number | null>();
+  for (const r of reasons) {
+    const m = r.match(/^(\d+)(.*)$/s);
+    const key = m ? m[2] : r;
+    const prev = totals.get(key);
+    totals.set(key, m ? (prev ?? 0) + Number(m[1]) : null);
+  }
+  return [...totals].map(([text, n]) => (n == null ? text : `${n}${text}`));
+}
+
+function RiskDialog({
+  report,
+  lists,
+  cleanCount = 0,
+  onCancel,
+  onCleanOnly,
+  onConfirm,
+}: {
+  report: RiskReport;
+  /** Import groupé : listes suspectes concernées, chacune avec sa propre analyse. */
+  lists?: { name: string; report: RiskReport }[];
+  /** Listes saines du même lot, importées avec la confirmation. */
+  cleanCount?: number;
+  onCancel(): void;
+  onCleanOnly?(): void;
+  onConfirm(): void;
+}) {
   const [attested, setAttested] = useState(false);
+  const many = !!lists && lists.length > 1;
+  const total = (lists?.length ?? 1) + cleanCount;
   const [step, setStep] = useState<1 | 2>(1);
   const [countdown, setCountdown] = useState(0);
   const high = report.level === "high";
@@ -513,7 +569,31 @@ function RiskDialog({ report, onCancel, onConfirm }: { report: RiskReport; onCan
   };
 
   return (
-    <Modal title={high ? "Cette liste semble illégale" : "Cette liste présente des signes suspects"} onClose={onCancel} wide>
+    <Modal
+      title={
+        many
+          ? high ? `${lists!.length} listes semblent illégales` : `${lists!.length} listes présentent des signes suspects`
+          : high ? "Cette liste semble illégale" : "Cette liste présente des signes suspects"
+      }
+      onClose={onCancel}
+      wide
+    >
+      {lists && (
+        <div className="card">
+          <p>
+            Vérification de l'ensemble de l'import : {total} liste{total > 1 ? "s" : ""}, dont {lists.length} suspecte{lists.length > 1 ? "s" : ""}
+            {cleanCount ? ` et ${cleanCount} sans signe suspect` : ""}. Une seule confirmation vaut pour tout l'import.
+          </p>
+          <ul className="risk-lists">
+            {lists.map((l) => (
+              <li key={l.name}>
+                <span className={`badge ${l.report.level === "high" ? "badge-danger" : "badge-warn"}`}>{l.report.level === "high" ? "illégale probable" : "suspecte"}</span> {l.name}{" "}
+                <span className="dim small">({l.report.total} entrées)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className={`risk ${high ? "risk-high" : "risk-medium"}`}>
         <Icon name="alert" size={32} />
         <div>
@@ -548,12 +628,19 @@ function RiskDialog({ report, onCancel, onConfirm }: { report: RiskReport; onCan
         <>
           <label className="check">
             <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} />
-            J'atteste disposer d'un abonnement légal auprès du fournisseur de cette liste et des droits nécessaires pour la lire.
+            {lists
+              ? "J'atteste disposer d'un abonnement légal auprès du fournisseur de chacune de ces listes et des droits nécessaires pour les lire."
+              : "J'atteste disposer d'un abonnement légal auprès du fournisseur de cette liste et des droits nécessaires pour la lire."}
           </label>
           <div className="actions">
             <button className="btn btn-primary" onClick={onCancel}>
-              Ne pas importer
+              {lists ? "Ne rien importer" : "Ne pas importer"}
             </button>
+            {onCleanOnly && (
+              <button className="btn" onClick={onCleanOnly}>
+                Importer seulement {cleanCount > 1 ? `les ${cleanCount} listes sans signe suspect` : "la liste sans signe suspect"}
+              </button>
+            )}
             <button className="btn" disabled={!attested} onClick={toStep2}>
               Continuer
             </button>
@@ -565,7 +652,7 @@ function RiskDialog({ report, onCancel, onConfirm }: { report: RiskReport; onCan
             Annuler l'import
           </button>
           <button className="btn btn-danger" disabled={countdown > 0} onClick={onConfirm}>
-            {countdown > 0 ? `Confirmer définitivement (${countdown})` : "Confirmer définitivement"}
+            {(lists ? `Tout importer : ${total} listes` : "Confirmer définitivement") + (countdown > 0 ? ` · ${countdown} s` : "")}
           </button>
         </div>
       )}
