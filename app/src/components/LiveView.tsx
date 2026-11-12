@@ -11,7 +11,8 @@ import { ChannelLogo } from "./ChannelLogo";
 import { fun } from "../lib/fun";
 import { LangBadge, LangBar, langMatch } from "./Filters";
 import { CatchupBrowser, ReplayBadge } from "./Catchup";
-import { countryOrLang, langFlag } from "../lib/languages";
+import { Dropdown } from "./Dropdown";
+import { countryFlag, countryName, countryOrLang, langFlag } from "../lib/languages";
 import { historyProgress, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
 
@@ -28,6 +29,8 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
   const [group, setGroup] = useState(ALL);
   const langFilter = useUi((s) => s.langFilter);
   const [replayOnly, setReplayOnly] = useState(false);
+  const [country, setCountry] = useState("");
+  const [sortBy, setSortBy] = useState<"languages" | "country" | "name">("languages");
   const [filter, setFilter] = useState("");
   const [view, setChannelView] = useState(layout.channelView);
   useEffect(() => setChannelView(layout.channelView), [layout.channelView]);
@@ -51,9 +54,24 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
         (group === ALL || (c.group ?? "Sans catégorie").split(";").some((g) => g.trim() === group)) &&
         langMatch(langFilter, profile.languages, c.languages) &&
         (!replayOnly || !!c.catchup) &&
+        (!country || !!c.countries?.includes(country)) &&
         (!q || normalize(c.name).includes(q)),
     );
-  }, [base, group, filter, langFilter, profile.languages, replayOnly]);
+  }, [base, group, filter, langFilter, profile.languages, replayOnly, country]);
+  // `base` est déjà trié par langues favorites ; les autres tris s'appliquent par-dessus.
+  const sorted = useMemo(() => {
+    if (sortBy === "name") return [...list].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    if (sortBy === "country") {
+      const key = (c: Channel) => (c.countries?.[0] ? countryName(c.countries[0]) : "\uffff");
+      return [...list].sort((a, b) => key(a).localeCompare(key(b), "fr") || a.name.localeCompare(b.name, "fr"));
+    }
+    return list;
+  }, [list, sortBy]);
+  const countries = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const c of base) for (const k of c.countries ?? []) n.set(k, (n.get(k) ?? 0) + 1);
+    return [...n.entries()].sort((a, b) => countryName(a[0]).localeCompare(countryName(b[0]), "fr"));
+  }, [base]);
   const replayCount = useMemo(() => base.filter((c) => c.catchup).length, [base]);
 
   // Langues présentes, les favorites en tête.
@@ -104,13 +122,34 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
           </button>
         </div>
         <LangBar available={languages} />
-        {replayCount > 0 && (
-          <div className="chips">
+        <div className="chips filters-row">
+          {countries.length > 1 && (
+            <Dropdown<string>
+              ariaLabel="Pays"
+              icon="globe"
+              value={country}
+              active={!!country}
+              onChange={setCountry}
+              options={[{ value: "", label: "Tous les pays" }, ...countries.map(([c, n]) => ({ value: c, label: countryName(c), prefix: countryFlag(c), hint: String(n) }))]}
+            />
+          )}
+          <Dropdown<"languages" | "country" | "name">
+            ariaLabel="Tri des chaînes"
+            label="Tri :"
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { value: "languages", label: "Mes langues d'abord" },
+              { value: "country", label: "Par pays" },
+              { value: "name", label: "Nom (A-Z)" },
+            ]}
+          />
+          {replayCount > 0 && (
             <button className={`chip replay-chip ${replayOnly ? "active" : ""}`} onClick={() => setReplayOnly(!replayOnly)} title="Chaînes dont on peut revoir les émissions passées">
               <Icon name="replay" size={14} /> Avec replay <span>{replayCount}</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
         {scope === "favorites" && (
           <>
             <VodRow title="Ma liste" items={vodFavorites} />
@@ -142,14 +181,14 @@ export function LiveView({ scope }: { scope: "all" | "favorites" }) {
             </div>
           </div>
         )}
-        {loading && !list.length ? (
+        {loading && !sorted.length ? (
           <div className="empty-state small">
             <div className="spinner" /> Chargement des chaînes…
           </div>
-        ) : list.length === 0 ? (
+        ) : sorted.length === 0 ? (
           scope === "favorites" && (vodFavorites.length || historyItems.length) ? null : <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film." : "Aucune chaîne ne correspond."}</div>
         ) : (
-          <ChannelCollection channels={list} mode={view} showNowNext={layout.showNowNext} showProgress={layout.showProgress} />
+          <ChannelCollection channels={sorted} mode={view} showNowNext={layout.showNowNext} showProgress={layout.showProgress} />
         )}
       </section>
       <section className="live-side">

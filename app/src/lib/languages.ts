@@ -138,3 +138,22 @@ export function builtinSources(langs: string[]): Source[] {
     { ...base, id: "builtin:librivox", name: "Livres audio du domaine public (LibriVox)", kind: "librivox", languages: langs.slice(0, 4) },
   ] as Source[];
 }
+
+/** Drapeau emoji d'un code pays ISO 3166-1 alpha-2. */
+export function countryFlag(code: string): string {
+  const c = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return "🏳️";
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+let regionNames: Intl.DisplayNames | null = null;
+
+/** Nom du pays en français (« FR » -> « France »). */
+export function countryName(code: string): string {
+  try {
+    regionNames ??= new Intl.DisplayNames(["fr"], { type: "region" });
+    return regionNames.of(code.toUpperCase()) ?? code;
+  } catch {
+    return code;
+  }
+}

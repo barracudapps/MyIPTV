@@ -10,6 +10,8 @@ import type { HistoryEntry } from "../lib/parental";
 import type { SearchField, VodFacets, VodItem, VodKind, VodSort } from "../types";
 import { Icon } from "./Icon";
 import { CategoryBar, LangBadge, LangBar, langQuery } from "./Filters";
+import { Dropdown } from "./Dropdown";
+import { countryFlag, countryName } from "../lib/languages";
 
 const PAGE = 60;
 
@@ -108,6 +110,7 @@ export function VodView({ kind }: { kind: VodKind }) {
   const [sort, setSort] = useState<VodSort>("default");
   const [text, setText] = useState("");
   const [field, setField] = useState<SearchField>("all");
+  const [country, setCountry] = useState<string>("");
   const [items, setItems] = useState<VodItem[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -126,6 +129,7 @@ export function VodView({ kind }: { kind: VodKind }) {
   useEffect(() => {
     setCategory(undefined);
     setGenre(undefined);
+    setCountry("");
   }, [kind]);
 
   useEffect(() => {
@@ -138,9 +142,9 @@ export function VodView({ kind }: { kind: VodKind }) {
   const query = useCallback(
     (offset: number) =>
       getBackend().then((b) =>
-        b.vodQuery({ kind, category, genre, ...langQuery(langFilter, profile.languages), sort, text: text.trim() || undefined, field, preferLanguages: profile.languages, includeAdult, offset, limit: PAGE }),
+        b.vodQuery({ kind, category, genre, country: country || undefined, ...langQuery(langFilter, profile.languages), sort, text: text.trim() || undefined, field, preferLanguages: profile.languages, includeAdult, offset, limit: PAGE }),
       ),
-    [kind, category, genre, langFilter, sort, text, field, profile.languages, includeAdult],
+    [kind, category, genre, country, langFilter, sort, text, field, profile.languages, includeAdult],
   );
 
   useEffect(() => {
@@ -181,7 +185,9 @@ export function VodView({ kind }: { kind: VodKind }) {
   const resume = useItemsByIds(historyIds, kind);
   const favorites = useItemsByIds(profile.vodFavorites, kind);
   const progress = useMemo(() => historyProgress(profile.history), [profile.history]);
-  const filtered = !!(category || genre || text);
+  const filtered = !!(category || genre || text || country);
+  // Contenus masqués par le filtre de langue : proposés plutôt qu'un écran vide.
+  const hiddenByLanguage = facets && langFilter !== "all" ? Math.max(0, facets.total - total) : 0;
 
   const surprise = async () => {
     const b = await getBackend();
@@ -212,23 +218,49 @@ export function VodView({ kind }: { kind: VodKind }) {
           <Icon name="search" size={18} />
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Rechercher dans ${meta.label.toLowerCase()}…`} aria-label="Rechercher" />
         </div>
-        <select value={field} onChange={(e) => setField(e.target.value as SearchField)} aria-label="Critère">
-          <option value="all">Tout critère</option>
-          <option value="title">Titre</option>
-          <option value="actor">{kind === "music" ? "Artiste" : "Acteur / voix"}</option>
-          <option value="director">{kind === "audiobook" ? "Auteur" : kind === "podcast" ? "Éditeur" : "Réalisation"}</option>
-          <option value="genre">Genre</option>
-          <option value="year">Année</option>
-          <option value="category">Catégorie</option>
-          <option value="plot">Résumé</option>
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value as VodSort)} aria-label="Tri">
-          <option value="default">Mes langues d'abord</option>
-          <option value="added">Ajouts récents</option>
-          <option value="rating">Mieux notés</option>
-          <option value="title">Titre (A-Z)</option>
-          <option value="year">Année</option>
-        </select>
+        <Dropdown<SearchField>
+          ariaLabel="Critère de recherche"
+          icon="search"
+          value={field}
+          active={field !== "all"}
+          onChange={setField}
+          options={[
+            { value: "all", label: "Tout critère" },
+            { value: "title", label: "Titre" },
+            { value: "actor", label: kind === "music" ? "Artiste" : "Acteur / voix" },
+            { value: "director", label: kind === "audiobook" ? "Auteur" : kind === "podcast" ? "Éditeur" : "Réalisation" },
+            { value: "genre", label: "Genre" },
+            { value: "year", label: "Année" },
+            { value: "category", label: "Catégorie" },
+            { value: "plot", label: "Résumé" },
+          ]}
+        />
+        {facets && facets.countries.length > 1 && (
+          <Dropdown<string>
+            ariaLabel="Pays"
+            icon="globe"
+            value={country}
+            active={!!country}
+            onChange={setCountry}
+            options={[
+              { value: "", label: "Tous les pays" },
+              ...facets.countries.map((c) => ({ value: c.name, label: countryName(c.name), prefix: countryFlag(c.name), hint: String(c.count) })),
+            ]}
+          />
+        )}
+        <Dropdown<VodSort>
+          ariaLabel="Tri"
+          label="Tri :"
+          value={sort}
+          onChange={setSort}
+          options={[
+            { value: "default", label: "Mes langues d'abord" },
+            { value: "added", label: "Ajouts récents" },
+            { value: "rating", label: "Mieux notés" },
+            { value: "title", label: "Titre (A-Z)" },
+            { value: "year", label: "Année" },
+          ]}
+        />
       </div>
 
       <LangBar available={facets?.languages} />
@@ -252,7 +284,16 @@ export function VodView({ kind }: { kind: VodKind }) {
       )}
 
       {total === 0 && !busy && !loading ? (
-        <div className="empty-state small">{filtered ? "Aucun résultat." : meta.empty}</div>
+        hiddenByLanguage > 0 && !filtered ? (
+          <div className="empty-state small column">
+            <span>Aucun contenu dans la langue choisie, mais {hiddenByLanguage.toLocaleString("fr-FR")} dans d'autres langues.</span>
+            <button className="btn btn-primary" onClick={() => useUi.setState({ langFilter: "all" })}>
+              <Icon name="globe" /> Tout afficher
+            </button>
+          </div>
+        ) : (
+          <div className="empty-state small">{filtered ? "Aucun résultat." : meta.empty}</div>
+        )
       ) : (
         <>
           {filtered && <p className="dim">{total.toLocaleString("fr-FR")} résultat(s)</p>}

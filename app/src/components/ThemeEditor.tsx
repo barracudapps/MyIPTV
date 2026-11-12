@@ -99,15 +99,17 @@ function Editor({ initial, onClose }: { initial: Theme; onClose(): void }) {
         </div>
 
         <h3>Texte et formes</h3>
-        <label className="field">
-          Police
-          <select value={t.font} onChange={(e) => setT({ ...t, font: e.target.value as Theme["font"] })}>
-            <option value="system">Système</option>
-            <option value="rounded">Arrondie</option>
-            <option value="serif">Avec empattements</option>
-            <option value="mono">Chasse fixe</option>
-          </select>
-        </label>
+        <Segmented<Theme["font"]>
+          label="Police"
+          value={t.font}
+          options={[
+            ["system", "Système"],
+            ["rounded", "Arrondie"],
+            ["serif", "Classique"],
+            ["mono", "Machine"],
+          ]}
+          onChange={(v) => setT({ ...t, font: v })}
+        />
         <Range label="Taille du texte" value={t.fontScale} min={0.85} max={1.6} step={0.05} fmt={(v) => `${Math.round(v * 100)} %`} onChange={(v) => setT({ ...t, fontScale: v })} />
         <Range label="Arrondi des angles" value={t.radius} min={0} max={28} step={1} fmt={(v) => `${v} px`} onChange={(v) => setT({ ...t, radius: v })} />
 

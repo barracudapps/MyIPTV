@@ -381,6 +381,8 @@ function ChannelPicker({ title, exclude, onPick, onClose }: { title: string; exc
 
 function PlaybackSettings() {
   const pb = useSettings((s) => s.playback);
+  const testMode = useSettings((s) => s.testMode);
+  const isAdmin = useActiveProfile()?.kind === "admin";
   const set = useSettings((s) => s.setPlayback);
   const [diskTs, setDiskTs] = useState<boolean | null>(null);
   getBackend().then((b) => setDiskTs(b.diskTimeshift));
@@ -395,6 +397,14 @@ function PlaybackSettings() {
       />
       {diskTs && (
         <Range label="Durée enregistrée" value={pb.windowMinutes} min={15} max={360} step={15} fmt={(v) => (v >= 60 ? `${Math.floor(v / 60)} h ${v % 60 ? `${v % 60} min` : ""}` : `${v} min`)} onChange={(v) => set({ windowMinutes: v })} />
+      )}
+      {isAdmin && (
+        <Toggle
+          label="Mode test"
+          hint="Ajoute un onglet « Test » dans Sources › Ajouter : une liste légale d'exemple et une liste suspecte simulée, pour vérifier l'analyse et la double confirmation."
+          checked={testMode}
+          onChange={(v) => useSettings.getState().setTestMode(v)}
+        />
       )}
       <Toggle label="Reprendre la dernière chaîne au démarrage" checked={pb.resumeLastChannel} onChange={(v) => set({ resumeLastChannel: v })} />
       <Toggle label="Mini-lecteur automatique" hint="La vidéo continue en petit quand vous allez sur le guide, la recherche ou les réglages." checked={pb.autoMiniPlayer} onChange={(v) => set({ autoMiniPlayer: v })} />

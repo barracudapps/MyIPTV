@@ -39,6 +39,9 @@ struct CachedSource {
 }
 
 const SOURCE_TTL: i64 = 24 * 3600;
+/// À incrémenter quand le traitement des sources change (regroupement, filtres, détection…) :
+/// le cache est alors renouvelé au lieu de resservir l'ancien résultat pendant 24 h.
+const SOURCE_CACHE_VERSION: &str = "5";
 const EPG_TTL: u64 = 12 * 3600;
 
 async fn get_text(st: &AppState, url: &str) -> Res<String> {
@@ -164,7 +167,7 @@ async fn fetch_playlist(st: &AppState, src: &Source) -> Res<Playlist> {
 /// Charge une source (depuis le cache si récent). Renvoie aussi l'analyse de risque.
 #[tauri::command]
 pub async fn load_source(st: St<'_>, source: Source, force: bool) -> Res<SourceResult> {
-    let key = stable_key(&[&serde_json::to_string(&source.kind).unwrap_or_default()]);
+    let key = stable_key(&[SOURCE_CACHE_VERSION, &serde_json::to_string(&source.kind).unwrap_or_default()]);
     let path = st.cache_dir.join("sources").join(format!("{}.json", stable_key(&[&source.id])));
     let cached: Option<CachedSource> = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).filter(|c: &CachedSource| c.key == key);
 

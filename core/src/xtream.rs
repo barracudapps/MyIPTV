@@ -84,7 +84,9 @@ pub fn live_channels(acc: &XtreamAccount, source_id: &str, categories: &Value, s
             let adult = flagged || crate::parental::is_adult(&name, group.as_deref());
             let days = s.get("tv_archive_duration").and_then(as_u64).unwrap_or(0) as u32;
             let languages = crate::lang::detect(&name, group.as_deref(), None, None);
+            let countries = crate::lang::detect_countries(&name, group.as_deref(), None, None);
             Some(Channel {
+                countries,
                 id: format!("{}:{}", source_id, stable_key(&[&stream_id.to_string()])),
                 languages,
                 source_id: source_id.to_string(),

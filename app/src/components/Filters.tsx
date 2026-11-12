@@ -6,6 +6,7 @@ import { normalize } from "../lib/util";
 import type { Facet } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { Dropdown } from "./Dropdown";
 
 /** Drapeaux de langue posés sur une vignette (affiche, logo). */
 export function LangBadge({ langs, max = 2 }: { langs?: string[]; max?: number }) {
@@ -61,19 +62,15 @@ export function LangBar({ available }: { available?: Facet[] }) {
         </button>
       ))}
       {others.length > 0 && (
-        <select
+        <Dropdown<string>
+          ariaLabel="Autre langue"
+          placeholder="Autre langue"
+          icon="globe"
           value={others.some((o) => o.name === value) ? value : ""}
-          onChange={(e) => e.target.value && set(e.target.value)}
-          aria-label="Autre langue"
-          className={others.some((o) => o.name === value) ? "active" : ""}
-        >
-          <option value="">Autre langue…</option>
-          {others.map((o) => (
-            <option key={o.name} value={o.name}>
-              {langFlag(o.name)} {langName(o.name)} ({o.count})
-            </option>
-          ))}
-        </select>
+          active={others.some((o) => o.name === value)}
+          onChange={set}
+          options={others.map((o) => ({ value: o.name, label: langName(o.name), prefix: langFlag(o.name), hint: String(o.count) }))}
+        />
       )}
     </div>
   );

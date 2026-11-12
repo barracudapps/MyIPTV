@@ -31,6 +31,9 @@ pub struct Channel {
     /// Langues détectées (ISO 639-1), la plus probable d'abord.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub languages: Vec<String>,
+    /// Pays (ISO 3166-1 alpha-2).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub countries: Vec<String>,
     /// Chaîne explicitement destinée aux adultes (nom, groupe ou indicateur de la source).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub adult: bool,

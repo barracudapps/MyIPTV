@@ -295,6 +295,7 @@ pub fn radio_items(json: &Value, source_id: &str) -> Vec<VodItem> {
                 poster: s(&r["favicon"]),
                 category: s(&r["country"]),
                 genres: list(&r["tags"]).into_iter().take(4).collect(),
+                countries: s(&r["countrycode"]).map(|c| vec![c.to_uppercase()]).unwrap_or_default(),
                 languages,
                 live: true,
                 ..Default::default()

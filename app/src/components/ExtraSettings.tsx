@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { useActiveProfile, useSettings, type Chattiness } from "../store/settings";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
@@ -8,6 +8,7 @@ import { Range, Segmented, Toggle } from "./ThemeEditor";
 import { MascotFigure } from "./Mascot";
 import { NAV_ITEMS } from "./Nav";
 import { Icon } from "./Icon";
+import { Dropdown } from "./Dropdown";
 
 export function ExtraSettings({ section }: { section: "languages" | "meta" | "fun" | "menu" }) {
   if (section === "languages") return <LanguageSettings />;
@@ -21,7 +22,6 @@ function LanguageSettings() {
   const profile = useActiveProfile()!;
   const langs = profile.languages;
   const set = (l: string[]) => useSettings.getState().setLanguages(l);
-  const [adding, setAdding] = useState("");
   const move = (i: number, d: number) => {
     const next = [...langs];
     const [x] = next.splice(i, 1);
@@ -54,26 +54,14 @@ function LanguageSettings() {
         ))}
       </ol>
       {!langs.length && <p className="dim">Aucune langue favorite : les contenus gardent l'ordre de leurs sources.</p>}
-      <div className="row">
-        <select value={adding} onChange={(e) => setAdding(e.target.value)} aria-label="Langue à ajouter">
-          <option value="">Ajouter une langue…</option>
-          {LANGUAGES.filter((l) => !langs.includes(l.code)).map((l) => (
-            <option key={l.code} value={l.code}>
-              {l.flag} {l.name}
-            </option>
-          ))}
-        </select>
-        <button
-          className="btn btn-primary"
-          disabled={!adding}
-          onClick={() => {
-            set([...langs, adding]);
-            setAdding("");
-          }}
-        >
-          <Icon name="plus" /> Ajouter
-        </button>
-      </div>
+      <Dropdown<string>
+        ariaLabel="Ajouter une langue"
+        placeholder="Ajouter une langue"
+        icon="plus"
+        value=""
+        onChange={(l) => set([...langs, l])}
+        options={LANGUAGES.filter((l) => !langs.includes(l.code)).map((l) => ({ value: l.code, label: l.name, prefix: l.flag }))}
+      />
       <p className="dim small">Les guides et sources intégrées (radios, podcasts, livres audio) suivent ces langues au prochain actualisation des sources.</p>
       <h3>Lecture</h3>
       <Toggle

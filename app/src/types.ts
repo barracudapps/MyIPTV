@@ -19,6 +19,7 @@ export interface Channel {
   catchup?: Catchup;
   adult?: boolean;
   languages?: string[];
+  countries?: string[];
 }
 
 export interface Programme {
@@ -194,6 +195,7 @@ export interface VodQuery {
   genre?: string;
   language?: string;
   anyLanguages?: string[];
+  country?: string;
   includeUnknownLanguage?: boolean;
   preferLanguages: string[];
   text?: string;
@@ -222,6 +224,7 @@ export interface VodFacets {
   categories: Facet[];
   genres: Facet[];
   languages: Facet[];
+  countries: Facet[];
 }
 
 export interface MetaKeys {

@@ -11,6 +11,7 @@ import type { Episode, Person, PersonView as PersonData, VodDetail } from "../ty
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { fmtRuntime, openItem, VodCard } from "./VodView";
+import { Dropdown } from "./Dropdown";
 
 function Stars({ value, onChange }: { value: number; onChange(v: number): void }) {
   const [hover, setHover] = useState(0);
@@ -232,13 +233,7 @@ export function DetailView() {
             {detail.seasons.length > 0 && (
               <section>
                 {detail.seasons.length > 1 && (
-                  <div className="chips">
-                    {detail.seasons.map((s, i) => (
-                      <button key={s.number} className={`chip ${season === i ? "active" : ""}`} onClick={() => setSeason(i)}>
-                        {s.name} <span>{s.episodes.length}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <SeasonPicker seasons={detail.seasons} value={season} onChange={setSeason} currentEpisodeId={history?.episodeId} finished={!!history?.finished} />
                 )}
                 {detail.seasons.length === 1 && <h3>{detail.seasons[0].name}</h3>}
                 <ol className="episodes">
@@ -348,6 +343,51 @@ export function PersonDialog() {
         </div>
       )}
     </Modal>
+  );
+}
+
+/**
+ * Sélecteur de saison : menu déroulant avec le nombre d'épisodes et la progression,
+ * flèches précédente / suivante. La progression suppose un visionnage dans l'ordre :
+ * les saisons avant l'épisode en cours sont considérées comme vues.
+ */
+function SeasonPicker({ seasons, value, onChange, currentEpisodeId, finished }: { seasons: import("../types").Season[]; value: number; onChange(i: number): void; currentEpisodeId?: string; finished: boolean }) {
+  const currentSeason = currentEpisodeId ? seasons.findIndex((s) => s.episodes.some((e) => e.id === currentEpisodeId)) : -1;
+  const progress = (i: number) => {
+    if (currentSeason < 0 || i > currentSeason) return "";
+    if (i < currentSeason) return "✓ vue";
+    const eps = seasons[i].episodes;
+    const at = eps.findIndex((e) => e.id === currentEpisodeId) + (finished ? 1 : 0);
+    return at >= eps.length ? "✓ vue" : `${at}/${eps.length}`;
+  };
+  return (
+    <div className="season-picker">
+      <button className="icon-btn" title="Saison précédente" disabled={value === 0} onClick={() => onChange(value - 1)}>
+        <Icon name="prev" size={16} />
+      </button>
+      <Dropdown<string>
+        ariaLabel="Saison"
+        value={String(value)}
+        onChange={(v) => onChange(Number(v))}
+        options={seasons.map((s, i) => ({
+          value: String(i),
+          label: s.name,
+          hint: [progress(i) || `${s.episodes.length} ép.`, i === currentSeason ? "en cours" : ""].filter(Boolean).join(" · "),
+        }))}
+      />
+      <button className="icon-btn" title="Saison suivante" disabled={value === seasons.length - 1} onClick={() => onChange(value + 1)}>
+        <Icon name="next" size={16} />
+      </button>
+      <span className="dim small">
+        {seasons[value].episodes.length} épisode{seasons[value].episodes.length > 1 ? "s" : ""}
+        {progress(value) ? ` · ${progress(value)}` : ""}
+      </span>
+      {currentSeason >= 0 && currentSeason !== value && (
+        <button className="link" onClick={() => onChange(currentSeason)}>
+          Aller à la saison en cours
+        </button>
+      )}
+    </div>
   );
 }
 

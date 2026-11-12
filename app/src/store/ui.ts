@@ -49,7 +49,8 @@ export const useUi = create<UiState>()((set) => ({
   detailId: null,
   person: null,
   vodFilter: null,
-  langFilter: "mine",
+  // « Toutes » par défaut : rien n'est masqué, les langues favorites passent en tête par le tri.
+  langFilter: "all",
   setView: (view) => set({ view }),
   setSearch: (searchQuery) => set({ searchQuery }),
   toast(text, tone = "info") {

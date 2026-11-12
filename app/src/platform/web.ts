@@ -120,7 +120,7 @@ export async function createWebBackend(): Promise<Backend> {
       return { total: 0, items: [] };
     },
     async vodFacets() {
-      return { total: 0, categories: [], genres: [], languages: [] };
+      return { total: 0, categories: [], genres: [], languages: [], countries: [] };
     },
     async vodSearch() {
       return {};

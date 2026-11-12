@@ -142,6 +142,7 @@ pub fn parse_m3u(text: &str, source_id: &str) -> Playlist {
                 ch.name = ch.tvg_id.clone().unwrap_or_else(|| url.to_string());
             }
             ch.adult = crate::parental::is_adult(&ch.name, ch.group.as_deref());
+            ch.countries = crate::lang::detect_countries(&ch.name, ch.group.as_deref(), ch.country.as_deref(), ch.tvg_id.as_deref());
             ch.languages = crate::lang::detect(&ch.name, ch.group.as_deref(), ch.language.as_deref(), ch.country.as_deref());
             ch.catchup = catchup_from_attrs(&pending_attrs, header_catchup.as_ref());
             ch.id = format!("{}:{}", source_id, stable_key(&[ch.tvg_id.as_deref().unwrap_or(""), &ch.name, &ch.url]));

@@ -83,6 +83,9 @@ pub struct VodItem {
     pub genres: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub languages: Vec<String>,
+    /// Pays d'origine (ISO 3166-1 alpha-2), quand la source l'indique.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub countries: Vec<String>,
     /// Note sur 10.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rating: Option<f32>,
@@ -221,6 +224,7 @@ pub fn parse_title(raw: &str) -> ParsedTitle {
     let lower = s.to_lowercase();
     let b = lower.as_bytes();
     let mut cut: Option<usize> = None;
+    let mut marker_end = 0;
     for i in 0..b.len() {
         let at_word = i == 0 || !b[i - 1].is_ascii_alphanumeric();
         if !at_word {
@@ -246,6 +250,7 @@ pub fn parse_title(raw: &str) -> ParsedTitle {
                         out.season = Some(season);
                         out.episode = lower[k + 1..m].parse().ok();
                         cut = Some(i);
+                        marker_end = m;
                         break;
                     }
                 }
@@ -264,13 +269,21 @@ pub fn parse_title(raw: &str) -> ParsedTitle {
                     out.season = lower[i..j].parse().ok();
                     out.episode = lower[j + 1..m].parse().ok();
                     cut = Some(i);
+                    marker_end = m;
                     break;
                 }
             }
         }
     }
-    if let Some(c) = cut {
-        s.truncate(c);
+    match cut {
+        // Marqueur en tête (« s01e19-Titre ») : le titre est ce qui suit.
+        Some(0) => s = s[marker_end..].trim_start_matches(|c: char| " -_.:".contains(c)).to_string(),
+        Some(c) => s.truncate(c),
+        None => {}
+    }
+    // Noms de fichiers « THE_CAPTAIN_S_GUEST » : les tirets bas séparent les mots.
+    if s.contains('_') && s.matches(' ').count() < s.matches('_').count() {
+        s = s.replace('_', " ");
     }
 
     // Année : (2019), [2019], - 2019 en fin de titre.
@@ -502,6 +515,8 @@ pub struct VodQuery {
     pub language: Option<String>,
     /// « Mes langues » : au moins une de ces langues.
     pub any_languages: Option<Vec<String>>,
+    /// Filtre sur un pays (ISO 3166-1 alpha-2).
+    pub country: Option<String>,
     /// Avec `any_languages` : garder aussi les contenus dont la langue n'a pas pu être identifiée.
     #[serde(default)]
     pub include_unknown_language: bool,
@@ -548,6 +563,7 @@ pub fn query(items: &[VodItem], q: &VodQuery) -> VodPage {
             q.any_languages.as_ref().map_or(true, |ls| i.languages.iter().any(|l| ls.contains(l)) || (q.include_unknown_language && i.languages.is_empty()))
         })
         .filter(|i| ids.as_ref().map_or(true, |m| m.contains_key(i.id.as_str())))
+        .filter(|i| q.country.as_ref().map_or(true, |c| i.countries.contains(c)))
         .filter_map(|i| match &text {
             None => Some((i, 0)),
             Some(t) => Some((i, score(i, t, q.field))).filter(|(_, s)| *s > 0),
@@ -596,6 +612,7 @@ pub struct VodFacets {
     pub categories: Vec<Facet>,
     pub genres: Vec<Facet>,
     pub languages: Vec<Facet>,
+    pub countries: Vec<Facet>,
 }
 
 /// Catégories, genres et langues disponibles, les langues favorites en tête.
@@ -604,6 +621,7 @@ pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], includ
     let mut cat_langs: HashMap<&str, HashMap<&str, usize>> = HashMap::new();
     let mut genres: HashMap<String, usize> = HashMap::new();
     let mut langs: HashMap<&str, usize> = HashMap::new();
+    let mut countries: HashMap<&str, usize> = HashMap::new();
     let mut total = 0;
     for i in items.iter().filter(|i| kind.map_or(true, |k| i.kind == Some(k)) && (include_adult || !i.adult)) {
         total += 1;
@@ -620,6 +638,9 @@ pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], includ
         }
         for l in &i.languages {
             *langs.entry(l).or_default() += 1;
+        }
+        for c in &i.countries {
+            *countries.entry(c).or_default() += 1;
         }
     }
     let mut categories: Vec<_> = cats
@@ -639,7 +660,10 @@ pub fn facets(items: &[VodItem], kind: Option<VodKind>, prefs: &[String], includ
         let rb = prefs.iter().position(|p| p == &b.name).unwrap_or(usize::MAX);
         ra.cmp(&rb).then(b.count.cmp(&a.count))
     });
-    VodFacets { total, categories: categories.into_iter().map(|(_, f)| f).collect(), genres, languages }
+    let mut countries: Vec<_> = countries.into_iter().map(|(n, c)| Facet { name: n.to_string(), count: c, label: n.to_string(), language: lang::lang_from_country(n).map(str::to_string) }).collect();
+    // Pays des langues favorites d'abord, puis par nombre de contenus.
+    countries.sort_by(|a, b| lang::rank(&a.language.clone().into_iter().collect::<Vec<_>>(), prefs).cmp(&lang::rank(&b.language.clone().into_iter().collect::<Vec<_>>(), prefs)).then(b.count.cmp(&a.count)));
+    VodFacets { total, categories: categories.into_iter().map(|(_, f)| f).collect(), genres, languages, countries }
 }
 
 /// Contenus de la bibliothèque correspondant à une filmographie (TMDB ou titre + année).
@@ -673,6 +697,7 @@ mod tests {
         assert_eq!(parse_title("Blade Runner 2049").year, None, "un nombre dans le titre n'est pas une année isolée en fin");
         assert_eq!(parse_title("Nosferatu - 1922").year, Some(1922));
         assert_eq!(parse_title("1917 (2019)").title, "1917");
+        assert_eq!(parse_title("s01e19-THE_CAPTAIN_S_GUEST"), ParsedTitle { title: "THE CAPTAIN S GUEST".into(), season: Some(1), episode: Some(19), ..Default::default() });
         assert_eq!(parse_title("New Job! ( Charles Chaplin-1915)"), ParsedTitle { title: "New Job! (Charles Chaplin)".into(), year: Some(1915), ..Default::default() });
     }
 

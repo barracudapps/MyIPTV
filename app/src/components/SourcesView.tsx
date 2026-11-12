@@ -5,11 +5,12 @@ import { useSettings } from "../store/settings";
 import { useUi } from "../store/ui";
 import { CATALOG_ALL, CATALOG_CATEGORIES, CATALOG_COUNTRIES, CATALOG_LANGUAGES, type CatalogEntry } from "../lib/catalog";
 import { errorMessage, uid } from "../lib/util";
+import { LEGAL_TEST_LIST, SUSPICIOUS_TEST_LIST } from "../lib/testLists";
 import type { RiskReport, Source, SourceKind } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 
-type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin";
+type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin" | "test";
 
 export function SourcesView() {
   const sources = useSettings((s) => s.sources);
@@ -174,6 +175,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
   const [error, setError] = useState<string | null>(null);
   const [pendingRisk, setPendingRisk] = useState<{ source: Source; report: RiskReport } | null>(null);
   const toast = useUi((s) => s.toast);
+  const testMode = useSettings((s) => s.testMode);
 
   const commit = (source: Source) => {
     useSettings.getState().addSource(source);
@@ -223,6 +225,7 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
             ["file", "Fichier M3U"],
             ["xtream", "Xtream Codes"],
             ["jellyfin", "Jellyfin / Emby"],
+            ...(testMode ? [["test", "🧪 Test"]] : []),
           ] as [Tab, string][]
         ).map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
@@ -231,7 +234,23 @@ function AddSourceDialog({ onClose }: { onClose(): void }) {
         ))}
       </div>
 
-      {tab === "catalog" ? (
+      {tab === "test" ? (
+        <div className="catalog">
+          <p className="dim">
+            Mode test : deux listes d'exemple pour essayer le parcours d'ajout. La liste suspecte est simulée (adresses factices <code>example.invalid</code>) : elle ne
+            contient aucun flux réel et sert uniquement à déclencher l'avertissement et la double confirmation.
+          </p>
+          {error && <p className="error-text">{error}</p>}
+          <div className="row">
+            <button className="btn btn-primary" disabled={busy} onClick={() => submit({ kind: "m3uText", content: LEGAL_TEST_LIST }, "Test · liste légale")}>
+              <Icon name="check" /> Ajouter une liste légale
+            </button>
+            <button className="btn" disabled={busy} onClick={() => submit({ kind: "m3uText", content: SUSPICIOUS_TEST_LIST }, "Test · liste suspecte (simulée)")}>
+              <Icon name="alert" /> Ajouter une liste suspecte simulée
+            </button>
+          </div>
+        </div>
+      ) : tab === "catalog" ? (
         <div className="catalog">
           <p className="dim">
             Chaînes diffusées gratuitement par leurs éditeurs (télévisions publiques, chaînes en clair, chaînes gratuites financées par la publicité), recensées

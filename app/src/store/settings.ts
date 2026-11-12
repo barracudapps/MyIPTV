@@ -87,6 +87,9 @@ interface SettingsState {
   fun: FunSettings;
   /** Sections masquées du menu. */
   hiddenSections: string[];
+  /** Mode test : listes d'exemple pour essayer l'ajout de sources. */
+  testMode: boolean;
+  setTestMode(v: boolean): void;
   lastChannelId: Record<string, string>;
   stats: Record<string, ProfileStats>;
   achievements: Record<string, Record<string, number>>;
@@ -160,6 +163,8 @@ export const useSettings = create<SettingsState>()(
         meta: { tmdb: "", omdb: "" },
         fun: DEFAULT_FUN,
         hiddenSections: [],
+        testMode: false,
+        setTestMode: (testMode) => set({ testMode }),
         lastChannelId: {},
         stats: {},
         achievements: {},

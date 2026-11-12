@@ -147,6 +147,47 @@ pub fn detect(name: &str, group: Option<&str>, tvg_language: Option<&str>, count
     out
 }
 
+/// Pays (ISO 3166-1 alpha-2, majuscules) d'une chaîne : `tvg-country`, suffixe du `tvg-id`
+/// (« France24.fr@SD »), puis préfixe du nom ou du groupe (« FR| »).
+pub fn detect_countries(name: &str, group: Option<&str>, tvg_country: Option<&str>, tvg_id: Option<&str>) -> Vec<String> {
+    let norm = |c: &str| -> Option<String> {
+        let c = c.trim().to_uppercase();
+        let c = if c == "UK" { "GB".to_string() } else { c };
+        (c.len() == 2 && c.chars().all(|x| x.is_ascii_alphabetic())).then_some(c)
+    };
+    let mut out: Vec<String> = Vec::new();
+    fn add(out: &mut Vec<String>, c: Option<String>) {
+        if let Some(c) = c {
+            if !out.contains(&c) {
+                out.push(c);
+            }
+        }
+    }
+    if let Some(t) = tvg_country {
+        for part in t.split([';', ',', ' ']) {
+            add(&mut out, norm(part));
+        }
+    }
+    if out.is_empty() {
+        if let Some(id) = tvg_id {
+            let id = id.split('@').next().unwrap_or(id);
+            if let Some((_, suffix)) = id.rsplit_once('.') {
+                add(&mut out, norm(suffix).filter(|c| COUNTRY_LANG.iter().any(|(k, _)| k.eq_ignore_ascii_case(c) || (c == "GB" && *k == "gb"))));
+            }
+        }
+    }
+    if out.is_empty() {
+        for text in [Some(name), group].into_iter().flatten() {
+            if let Some(p) = leading_prefix(text) {
+                if p.len() == 2 && COUNTRY_LANG.iter().any(|(k, _)| *k == p) && p != "ar" {
+                    add(&mut out, norm(&p));
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Rang d'un contenu selon les langues favorites (0 = première langue favorite).
 /// Les contenus sans langue favorite passent après, dans l'ordre d'origine.
 pub fn rank(langs: &[String], prefs: &[String]) -> usize {
@@ -167,6 +208,15 @@ mod tests {
         assert_eq!(detect("AR: قناة", Some("Arabic"), None, None), vec!["ar"]);
         assert!(detect("Frozen Planet", None, None, None).is_empty(), "un mot ordinaire n'est pas un préfixe");
         assert_eq!(detect("Eurosport", None, Some("English;French"), None), vec!["en", "fr"]);
+    }
+
+    #[test]
+    fn detects_countries() {
+        assert_eq!(detect_countries("X", None, Some("FR;BE"), None), vec!["FR", "BE"]);
+        assert_eq!(detect_countries("France 24", None, None, Some("France24.fr@SD")), vec!["FR"]);
+        assert_eq!(detect_countries("UK: BBC News", None, None, None), vec!["GB"]);
+        assert!(detect_countries("AR: قناة", None, None, None).is_empty(), "AR = arabe, pas l'Argentine");
+        assert!(detect_countries("Some.Channel", None, None, Some("Some.Channel")).is_empty());
     }
 
     #[test]
