@@ -102,7 +102,11 @@ async fn fetch_playlist(st: &AppState, src: &Source) -> Res<Playlist> {
         }
         SourceKind::Archive { collection, mediatype, content, rows } => {
             let j = get_json(st, &cat::archive_search_url(collection, mediatype, *rows), None).await?;
-            Ok(Playlist { vod: cat::archive_items(&j, *content, sid), ..Default::default() })
+            let mut vod = cat::archive_items(&j, *content, sid);
+            if *content == iptv_core::VodKind::Show {
+                vod = cat::group_series(vod, sid);
+            }
+            Ok(Playlist { vod, ..Default::default() })
         }
         SourceKind::RadioBrowser { countries } => {
             let mut urls: Vec<String> = countries.iter().take(8).map(|c| cat::radio_search_url(Some(c), 300)).collect();
@@ -383,9 +387,14 @@ fn guess_kind(url: &str, content_type: Option<&str>) -> &'static str {
 }
 
 #[tauri::command]
-pub async fn play(st: St<'_>, req: PlayRequest) -> Res<PlayInfo> {
+pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     // Arrête la lecture précédente (supprime son enregistrement).
     st.session.lock().await.take();
+    // Épisode Internet Archive : le fichier vidéo est choisi au moment de la lecture.
+    if let Some(identifier) = req.url.strip_prefix("archive:") {
+        let meta = get_json(&st, &format!("https://archive.org/metadata/{identifier}"), None).await?;
+        req.url = iptv_core::catalogs::archive_files(&meta, true).first().map(|f| f.url.clone()).ok_or("Aucune version lisible de cet épisode.")?;
+    }
     let up = Upstream { url: req.url.clone(), user_agent: req.user_agent.clone(), referrer: req.referrer.clone() };
 
     let mut ts_error = None;
@@ -623,6 +632,7 @@ mod live_tests {
         let src = |kind: SourceKind| Source { id: "t".into(), name: "t".into(), kind, epg_urls: vec![] };
         let cases = vec![
             ("films", src(SourceKind::Archive { collection: "feature_films".into(), mediatype: "movies".into(), content: VodKind::Movie, rows: 50 })),
+            ("tv", src(SourceKind::Archive { collection: "classic_tv".into(), mediatype: "movies".into(), content: VodKind::Show, rows: 2000 })),
             ("radio", src(SourceKind::RadioBrowser { countries: vec!["FR".into()] })),
             ("podcasts", src(SourceKind::Podcasts { countries: vec!["fr".into()] })),
             ("livres", src(SourceKind::Librivox { languages: vec!["fr".into()] })),
@@ -630,7 +640,8 @@ mod live_tests {
         for (name, s) in cases {
             let p = fetch_playlist(&st, &s).await.unwrap_or_else(|e| panic!("{name}: {e}"));
             let first = p.vod.first().map(|i| (i.title.clone(), i.languages.clone()));
-            println!("{name}: {} contenus, ex. {first:?}", p.vod.len());
+            let series: Vec<_> = p.vod.iter().filter(|i| i.kind == Some(VodKind::Series)).map(|i| format!("{} ({})", i.title, i.episodes.len())).take(8).collect();
+            println!("{name}: {} contenus, ex. {first:?}, séries : {series:?}", p.vod.len());
             assert!(!p.vod.is_empty(), "{name} vide");
         }
     }

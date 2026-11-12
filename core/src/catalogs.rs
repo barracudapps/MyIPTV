@@ -1,6 +1,8 @@
 //! Catalogues légaux et gratuits intégrés : conversion de leurs réponses en contenus.
 //!
-//! - Internet Archive : films, télévision classique, musique sous licence libre (domaine public / Creative Commons) ;
+//! - Internet Archive : films, télévision classique, musique — uniquement les éléments dont la
+//!   licence déclarée est le domaine public ou Creative Commons (les collections contiennent aussi
+//!   des dépôts de particuliers sans droits) ;
 //! - Radio Browser : annuaire ouvert des flux diffusés par les radios elles-mêmes ;
 //! - Apple Podcasts (classement et annuaire) + flux RSS publics des éditeurs ;
 //! - LibriVox (via Internet Archive) : livres audio du domaine public.
@@ -51,9 +53,12 @@ fn strip_html(t: &str) -> String {
 
 pub const ARCHIVE_FIELDS: &[&str] = &["identifier", "title", "year", "language", "subject", "creator", "description", "downloads", "addeddate"];
 
+/// Filtre de licence : domaine public ou Creative Commons déclarés.
+pub const ARCHIVE_LICENSED: &str = "(licenseurl:*publicdomain* OR licenseurl:*creativecommons*)";
+
 /// URL de recherche Internet Archive pour une collection (triée par popularité).
 pub fn archive_search_url(collection: &str, mediatype: &str, rows: usize) -> String {
-    archive_query_url(&format!("collection:{collection} AND mediatype:{mediatype}"), rows)
+    archive_query_url(&format!("collection:{collection} AND mediatype:{mediatype} AND {ARCHIVE_LICENSED}"), rows)
 }
 
 pub fn archive_query_url(query: &str, rows: usize) -> String {
@@ -67,7 +72,80 @@ pub fn librivox_archive_url(language: Option<&str>, rows: usize) -> String {
         .and_then(|l| crate::lang::aliases(l))
         .map(|a| format!(" AND language:({})", a.iter().filter(|x| x.is_ascii() && x.len() > 2).map(|x| x.to_string()).collect::<Vec<_>>().join(" OR ")))
         .unwrap_or_default();
-    archive_query_url(&format!("collection:librivoxaudio{lang_q}"), rows)
+    archive_query_url(&format!("collection:librivoxaudio{lang_q} AND {ARCHIVE_LICENSED}"), rows)
+}
+
+/// Nom de série d'un épisode : « Série - Titre », « Série : Titre », « Série: S3 E23, Titre ».
+fn series_key(raw: &str) -> Option<(String, String)> {
+    let p = crate::vod::parse_title(raw);
+    if p.episode.is_some() && p.title.len() >= 3 {
+        return Some((p.title.trim_end_matches([':', ',', '-', ' ']).trim().trim_matches(['"', '\'']).trim().to_string(), raw.to_string()));
+    }
+    for sep in [" - ", " : ", ": ", " – "] {
+        if let Some((left, right)) = raw.split_once(sep) {
+            let left = left.trim().trim_matches(['"', '\'', ' ']);
+            if left.chars().count() >= 3 && !right.trim().is_empty() && !left.chars().all(|c| c.is_ascii_digit()) {
+                return Some((left.to_string(), right.trim().to_string()));
+            }
+        }
+    }
+    None
+}
+
+/// Regroupe en séries les épisodes publiés séparément (au moins deux par série).
+/// Les épisodes pointent vers `archive:<identifiant>`, résolu au moment de la lecture.
+pub fn group_series(items: Vec<VodItem>, source_id: &str) -> Vec<VodItem> {
+    use std::collections::HashMap;
+    let mut keyed: HashMap<String, Vec<(String, VodItem)>> = HashMap::new();
+    let mut rest = Vec::new();
+    for it in items {
+        match series_key(&it.raw_name) {
+            Some((k, ep_title)) => keyed.entry(crate::vod::fold(&k)).or_default().push((ep_title, VodItem { title: k, ..it })),
+            None => rest.push(it),
+        }
+    }
+    for (key, mut eps) in keyed {
+        if eps.len() < 2 {
+            rest.extend(eps.into_iter().map(|(_, i)| VodItem { title: i.raw_name.clone(), ..i }));
+            continue;
+        }
+        eps.sort_by(|a, b| a.0.cmp(&b.0));
+        let first = &eps[0].1;
+        let mut series = VodItem {
+            id: format!("{source_id}:serie:{}", stable_key(&[&key])),
+            source_id: source_id.into(),
+            kind: Some(VodKind::Series),
+            title: first.title.clone(),
+            raw_name: first.title.clone(),
+            year: eps.iter().filter_map(|(_, i)| i.year).min(),
+            poster: first.poster.clone(),
+            genres: first.genres.clone(),
+            languages: first.languages.clone(),
+            plot: eps.iter().find_map(|(_, i)| i.plot.clone()),
+            directors: first.directors.clone(),
+            added: eps.iter().filter_map(|(_, i)| i.added).max(),
+            ..Default::default()
+        };
+        let mut n = 0;
+        for (ep_title, it) in eps {
+            let VodRef::Archive { identifier } = &it.source_ref else { continue };
+            let p = crate::vod::parse_title(&it.raw_name);
+            n += 1;
+            series.episodes.push(Episode {
+                id: format!("{}:{identifier}", series.id),
+                season: p.season.unwrap_or(1),
+                episode: p.episode.unwrap_or(n),
+                title: ep_title,
+                url: format!("archive:{identifier}"),
+                plot: it.plot.clone(),
+                still: it.poster.clone(),
+                ..Default::default()
+            });
+        }
+        series.episodes.sort_by_key(|e| (e.season, e.episode));
+        rest.push(series);
+    }
+    rest
 }
 
 pub fn archive_items(json: &Value, kind: VodKind, source_id: &str) -> Vec<VodItem> {
@@ -374,6 +452,31 @@ mod tests {
         let f = archive_files(&meta, true);
         assert_eq!(f[0].url, "https://archive.org/download/nosferatu/nosferatu.mp4");
         assert_eq!(f[0].duration, Some(5640));
+    }
+
+    #[test]
+    fn groups_archive_episodes_into_series() {
+        let mk = |id: &str, title: &str| VodItem { id: id.into(), title: title.into(), raw_name: title.into(), kind: Some(VodKind::Show), source_ref: VodRef::Archive { identifier: id.into() }, ..Default::default() };
+        let items = vec![
+            mk("a", "Sherlock Holmes - The Case of Lady Beryl"),
+            mk("b", "Sherlock Holmes - The Case of the Shy Ballerina"),
+            mk("c", "The Andy Griffith Show: S3 E23, Andy Discovers America"),
+            mk("d", "The Andy Griffith Show: S1 E2, Manhunt"),
+            mk("e", "Lucy meets John Wayne"),
+            mk("f", "Tales: one-off"),
+            mk("g", "''Burns and Allen'' - Episode A"),
+            mk("h", "''Burns and Allen'' - Episode B"),
+        ];
+        let out = group_series(items, "ia");
+        let series: Vec<_> = out.iter().filter(|i| i.kind == Some(VodKind::Series)).collect();
+        assert_eq!(series.len(), 3);
+        assert!(series.iter().any(|s| s.title == "Burns and Allen"));
+        let andy = series.iter().find(|s| s.title == "The Andy Griffith Show").unwrap();
+        assert_eq!(andy.episodes.iter().map(|e| (e.season, e.episode)).collect::<Vec<_>>(), vec![(1, 2), (3, 23)]);
+        assert_eq!(andy.episodes[0].url, "archive:d");
+        assert!(out.iter().any(|i| i.title == "Lucy meets John Wayne" && i.kind == Some(VodKind::Show)));
+        assert!(out.iter().any(|i| i.title == "Tales: one-off"), "une seule occurrence : reste une émission");
+        assert!(archive_search_url("classic_tv", "movies", 10).contains("licenseurl"));
     }
 
     #[test]
