@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+## [0.4.0] - 2026-11-12
+
 ### Ajouté
 - Bibliothèque (films, séries, émissions, musique, radio, podcasts, livres audio) dans la version web et TV, avec les mêmes analyseurs que l'application de bureau.
 - Synchronisation Trakt par profil : connexion par code, lecture signalée, contenus vus et reprises importés.
