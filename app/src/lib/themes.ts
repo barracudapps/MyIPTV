@@ -31,6 +31,8 @@ export interface ThemeLayout {
   showGroups: boolean;
   /** Vitrine façon plateforme de streaming : bannière, rangées par genre, grandes affiches. */
   showcase?: boolean;
+  /** Disposition de l'écran Direct : classique, salon immersif, programme TV ou magazine. */
+  experience?: "classic" | "immersive" | "guide" | "magazine";
 }
 
 export interface Theme {
@@ -291,6 +293,37 @@ export const BUILTIN_THEMES: Theme[] = [
     layout: { ...baseLayout, nav: "top", channelView: "grid", logoSize: 48, showcase: true },
   },
   {
+    // Dispositions radicalement différentes de l'écran Direct.
+    id: "immersif",
+    name: "Immersif",
+    builtin: true,
+    colors: { bg: "#000000", surface: "#0d0f14", surface2: "#1a1d26", border: "#262a35", text: "#f5f7fa", textDim: "#9aa3b2", accent: "#7c5cff", accentText: "#ffffff", live: "#ff3b5c", danger: "#ff3b5c" },
+    radius: 14,
+    font: "rounded",
+    fontScale: 1.1,
+    layout: { ...baseLayout, nav: "rail", density: "tv", logoSize: 56, experience: "immersive" },
+  },
+  {
+    id: "programme-tv",
+    name: "Programme TV",
+    builtin: true,
+    colors: { bg: "#f3f1ec", surface: "#ffffff", surface2: "#e9e6de", border: "#d8d3c7", text: "#1b1a17", textDim: "#6f6a5f", accent: "#d9480f", accentText: "#ffffff", live: "#d9480f", danger: "#c92a2a" },
+    radius: 6,
+    font: "system",
+    fontScale: 1,
+    layout: { ...baseLayout, nav: "top", density: "compact", experience: "guide" },
+  },
+  {
+    id: "magazine",
+    name: "Magazine",
+    builtin: true,
+    colors: { bg: "#faf7f2", surface: "#ffffff", surface2: "#f0ebe2", border: "#e3dccf", text: "#161412", textDim: "#7a7266", accent: "#b42318", accentText: "#ffffff", live: "#b42318", danger: "#b42318" },
+    radius: 2,
+    font: "serif",
+    fontScale: 1.05,
+    layout: { ...baseLayout, nav: "top", experience: "magazine" },
+  },
+  {
     // Style « lecteur moderne » : barre d'icônes, gris neutres, cartes arrondies, accent bleu.
     id: "studio",
     name: "Studio",
@@ -336,6 +369,7 @@ export function applyTheme(t: Theme) {
   s.setProperty("--player-size", `${t.layout.playerSize}%`);
   document.documentElement.dataset.nav = t.layout.nav;
   document.documentElement.dataset.density = t.layout.density;
+  document.documentElement.dataset.experience = t.layout.experience ?? "classic";
   if (t.layout.showcase) document.documentElement.dataset.showcase = "on";
   else delete document.documentElement.dataset.showcase;
   if (t.fx) document.documentElement.dataset.fx = t.fx;

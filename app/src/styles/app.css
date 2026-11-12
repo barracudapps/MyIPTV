@@ -1044,3 +1044,60 @@ html[data-motion="off"] .hero, html[data-motion="off"][data-showcase] .vod-card,
 .cast-overlay svg { color: var(--accent); }
 .cast-seek { display: flex; align-items: center; gap: 10px; width: min(460px, 80vw); font-variant-numeric: tabular-nums; }
 .cast-seek input { flex: 1; accent-color: var(--accent); }
+
+/* ===================================================================
+   Dispositions de l'écran Direct
+   =================================================================== */
+.xp-card { position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; padding: 10px 12px 14px; min-width: 0; text-align: left; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); color: var(--text); overflow: hidden; transition: transform .2s var(--ease-out), border-color .2s, background-color .2s; }
+.xp-card:hover, .xp-card:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
+.xp-card.playing { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.xp-card-text { display: grid; gap: 2px; min-width: 0; }
+.xp-card-text strong, .xp-card-prog { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xp-card-prog { color: var(--text-dim); font-size: .88em; }
+.xp-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.xp-progress span { display: block; height: 100%; background: var(--accent); }
+
+/* Salon : la chaîne occupe tout l'écran, la bande de chaînes flotte en bas. */
+.xp-immersive { position: relative; flex: 1; min-height: 0; background: #000; }
+.xp-immersive .xp-stage { position: absolute; inset: 0; width: auto; height: auto; aspect-ratio: auto; border-radius: 0; }
+.xp-strip { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; padding: 40px clamp(12px, 3vw, 40px) 18px; background: linear-gradient(0deg, rgba(0,0,0,.92) 25%, rgba(0,0,0,.55) 70%, transparent); transform: translateY(105%); opacity: 0; transition: transform .45s var(--ease-out), opacity .35s; pointer-events: none; }
+.xp-strip.shown, .xp-strip:focus-within { transform: none; opacity: 1; pointer-events: auto; }
+.xp-strip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: #fff; }
+.xp-strip-row { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(220px, 22vw, 300px); gap: 12px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.xp-strip-row .xp-card { background: rgba(26,29,38,.82); backdrop-filter: blur(10px); border-color: rgba(255,255,255,.08); scroll-snap-align: center; }
+.xp-strip-row .xp-card.playing { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+[data-experience="immersive"] .main { padding: 0; }
+/* Menu en icônes escamotable : il glisse depuis le bord gauche. */
+@media (min-width: 861px) {
+  [data-experience="immersive"] .nav { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; transform: translateX(calc(-100% + 6px)); transition: transform .35s var(--ease-out); background: rgba(10,11,16,.92); backdrop-filter: blur(12px); }
+  [data-experience="immersive"] .nav:hover, [data-experience="immersive"] .nav:focus-within { transform: none; }
+}
+
+/* Programme TV : lecteur et programme en cours en haut, grille du guide dessous. */
+.xp-guide { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.xp-guide-top { display: grid; grid-template-columns: minmax(280px, 42%) 1fr; gap: var(--gap); padding: var(--gap) var(--gap) 0; max-height: 40vh; }
+.xp-guide-top .player-slot { width: 100%; max-height: 40vh; }
+.xp-guide-top .now-panel { overflow: auto; }
+.xp-guide-grid { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.xp-guide-grid > .page { padding-top: 12px; }
+@media (max-width: 860px) {
+  .xp-guide-top { grid-template-columns: 1fr; max-height: none; }
+}
+
+/* Magazine : une scène en tête, puis des rangées de grandes cartes par catégorie. */
+.xp-magazine { flex: 1; overflow: auto; padding: 0 clamp(16px, 3vw, 40px) 40px; }
+.xp-mag-stage { display: grid; grid-template-columns: minmax(300px, 55%) 1fr; gap: clamp(16px, 2.5vw, 32px); align-items: start; padding: clamp(16px, 3vh, 32px) 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.xp-mag-now .prog-card h2 { font-size: clamp(1.5em, 2.6vw, 2.4em); line-height: 1.1; }
+.xp-mag-now .eyebrow { color: var(--accent); }
+.xp-mag-hint { color: var(--text-dim); font-style: italic; }
+.xp-mag-row { padding: 18px 0 6px; }
+.xp-mag-row h3 { font-size: 1.35em; text-transform: none; letter-spacing: 0; color: var(--text); margin-bottom: 10px; font-family: var(--font); }
+.xp-mag-scroll { display: grid; grid-auto-flow: column; grid-auto-columns: clamp(260px, 26vw, 340px); gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.xp-card.wide { grid-template-columns: auto 1fr; padding: 16px 16px 20px; min-height: 110px; scroll-snap-align: start; box-shadow: 0 1px 0 var(--border); }
+.xp-card.wide .xp-card-prog { color: var(--text); font-size: 1em; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+@media (max-width: 860px) {
+  .xp-mag-stage { grid-template-columns: 1fr; }
+}
+html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-motion="off"][data-experience="immersive"] .nav { transition: none !important; }
+/* Mode immersif : rien ne recouvre l'image, la mascotte se retire. */
+[data-experience="immersive"] .mascot { display: none; }

@@ -1,3 +1,4 @@
+import { GuideLive, ImmersiveLive, MagazineLive } from "./LiveExperiences";
 import { channelIds, displayName } from "../lib/variants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -20,6 +21,20 @@ import { Icon } from "./Icon";
 const ALL = "__all__";
 
 export function LiveView({ scope }: { scope: "all" | "favorites" }) {
+  const profile = useActiveProfile()!;
+  const customThemes = useSettings((s) => s.customThemes);
+  const experience = themeFor(profile, customThemes).layout.experience ?? "classic";
+  const hasSources = useSettings((s) => s.sources.length > 0);
+  // Dispositions alternatives du thème (l'écran Favoris garde la disposition classique).
+  if (scope === "all" && hasSources) {
+    if (experience === "immersive") return <ImmersiveLive />;
+    if (experience === "guide") return <GuideLive />;
+    if (experience === "magazine") return <MagazineLive />;
+  }
+  return <ClassicLive scope={scope} />;
+}
+
+function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
   const profile = useActiveProfile()!;
   const customThemes = useSettings((s) => s.customThemes);
   const layout = themeFor(profile, customThemes).layout;
@@ -375,7 +390,7 @@ function ChannelTile({ channel, list }: { channel: Channel; list: Channel[] }) {
 }
 
 /** Fiche de la chaîne en cours : programme, à suivre, replay. */
-function NowPanel() {
+export function NowPanel() {
   const channel = usePlayer((s) => s.channel);
   const catchup = usePlayer((s) => s.catchup);
   const progs = useLibrary((s) => (channel ? s.programmes[channel.id] : undefined));
