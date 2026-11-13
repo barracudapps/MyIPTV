@@ -15,7 +15,7 @@ import { FilterTabs, LangBadge, LangSelect, langMatch } from "./Filters";
 import { CatchupBrowser, ReplayBadge } from "./Catchup";
 import { Dropdown } from "./Dropdown";
 import { countryFlag, countryName, countryOrLang } from "../lib/languages";
-import { historyProgress, useItemsByIds, VodRow } from "./VodView";
+import { ConfirmButton, historyProgress, itemIds, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
 
 const ALL = "__all__";
@@ -173,7 +173,13 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
         {scope === "favorites" && (
           <>
             <VodRow title="Ma liste" items={vodFavorites} />
-            <VodRow title="Historique" items={historyItems} progress={historyProgress(profile.history)} />
+            <VodRow
+              title="Historique"
+              items={historyItems}
+              progress={historyProgress(profile.history)}
+              onRemove={(i) => useSettings.getState().removeHistory(itemIds(i))}
+              onClear={() => useSettings.getState().clearHistory()}
+            />
           </>
         )}
         {layout.showGroups && groups.length > 1 && (
@@ -181,13 +187,21 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
         )}
         {recent.length > 0 && (
           <div className="recent">
-            <h3>Récemment regardées</h3>
+            <div className="vod-row-head">
+              <h3>Récemment regardées</h3>
+              <ConfirmButton label="Tout effacer" confirm="Confirmer l'effacement ?" onConfirm={() => useSettings.getState().clearRecent()} />
+            </div>
             <div className="recent-row">
               {recent.map((c) => (
-                <button key={c.id} className="recent-item" onClick={() => usePlayer.getState().play(c, { zapList: recent })} title={c.name}>
-                  <ChannelLogo channel={c} size={48} />
-                  <span>{c.name}</span>
-                </button>
+                <div key={c.id} className="vod-card-wrap">
+                  <button className="recent-item" onClick={() => usePlayer.getState().play(c, { zapList: recent })} title={c.name}>
+                    <ChannelLogo channel={c} size={48} />
+                    <span>{c.name}</span>
+                  </button>
+                  <button type="button" className="vod-remove" title={`Retirer ${c.name} des chaînes récentes`} aria-label={`Retirer ${c.name} des chaînes récentes`} onClick={() => useSettings.getState().removeRecent(channelIds(c))}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

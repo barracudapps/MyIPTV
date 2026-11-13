@@ -59,16 +59,51 @@ export function VodCard({ item, progress }: { item: VodItem; progress?: number }
   );
 }
 
-/** Rangée horizontale (Reprendre, Ma liste…). */
-export function VodRow({ title, items, progress }: { title: string; items: VodItem[]; progress?: Record<string, number> }) {
+/**
+ * Bouton à confirmer : un premier appui demande confirmation, un second (dans les
+ * 4 secondes) agit. Utilisable à la télécommande, sans fenêtre.
+ */
+export function ConfirmButton({ label, confirm, onConfirm, className = "link" }: { label: string; confirm: string; onConfirm(): void; className?: string }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button type="button" className={`${className} ${armed ? "danger armed" : ""}`} onClick={() => (armed ? (setArmed(false), onConfirm()) : setArmed(true))}>
+      {armed ? confirm : label}
+    </button>
+  );
+}
+
+/** Identifiants d'un contenu et de ses copies regroupées (l'historique peut viser l'une d'elles). */
+export function itemIds(item: VodItem): string[] {
+  return [item.id, ...(item.alternates ?? []).map((a) => a.id)];
+}
+
+/** Rangée horizontale (Reprendre, Ma liste…) ; `onRemove` et `onClear` la rendent modifiable. */
+export function VodRow({ title, items, progress, onRemove, onClear }: { title: string; items: VodItem[]; progress?: Record<string, number>; onRemove?(item: VodItem): void; onClear?(): void }) {
   if (!items.length) return null;
   return (
     <section className="vod-row">
-      <h3>{title}</h3>
+      <div className="vod-row-head">
+        <h3>{title}</h3>
+        {onClear && <ConfirmButton label="Tout effacer" confirm="Confirmer l'effacement ?" onConfirm={onClear} />}
+      </div>
       <div className="vod-row-scroll">
-        {items.map((i) => (
-          <VodCard key={i.id} item={i} progress={progress?.[i.id]} />
-        ))}
+        {items.map((i) =>
+          onRemove ? (
+            <div key={i.id} className="vod-card-wrap">
+              <VodCard item={i} progress={progress?.[i.id]} />
+              <button type="button" className="vod-remove" title={`Retirer « ${i.title} » de l'historique`} aria-label={`Retirer ${i.title} de l'historique`} onClick={() => onRemove(i)}>
+                <Icon name="close" size={14} />
+              </button>
+            </div>
+          ) : (
+            <VodCard key={i.id} item={i} progress={progress?.[i.id]} />
+          ),
+        )}
       </div>
     </section>
   );
@@ -281,7 +316,13 @@ export function VodView({ kind }: { kind: VodKind }) {
       {!filtered && showcase && facets && <Showcase part="rows" kind={kind} genres={facets.genres.map((g) => g.name)} />}
       {!filtered && (
         <>
-          <VodRow title={kind === "radio" ? "Écoutées récemment" : "Reprendre"} items={resume} progress={progress} />
+          <VodRow
+            title={kind === "radio" ? "Écoutées récemment" : "Reprendre"}
+            items={resume}
+            progress={progress}
+            onRemove={(i) => useSettings.getState().removeHistory(itemIds(i))}
+            onClear={() => useSettings.getState().clearHistory(kind)}
+          />
           <VodRow title="Ma liste" items={favorites} />
         </>
       )}

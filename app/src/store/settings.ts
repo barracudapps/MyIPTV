@@ -119,8 +119,12 @@ interface SettingsState {
   toggleVodFavorite(itemId: string): void;
   rate(itemId: string, stars: number): void;
   recordProgress(entry: Omit<HistoryEntry, "updatedAt">): void;
-  removeHistory(itemId: string): void;
-  clearHistory(): void;
+  /** Retire un contenu de l'historique (et ses copies d'autres sources). */
+  removeHistory(itemId: string | string[]): void;
+  /** Vide l'historique, ou seulement celui d'une section (films, séries…). */
+  clearHistory(kind?: string): void;
+  removeRecent(channelIds: string[]): void;
+  clearRecent(): void;
   setPlayerPrefs(patch: Partial<PlayerPrefs>): void;
 
   saveTheme(t: Theme): void;
@@ -302,8 +306,13 @@ export const useSettings = create<SettingsState>()(
             ...p,
             history: [{ ...entry, updatedAt: Date.now() }, ...p.history.filter((h) => h.itemId !== entry.itemId)].slice(0, 300),
           })),
-        removeHistory: (itemId) => updateActive((p) => ({ ...p, history: p.history.filter((h) => h.itemId !== itemId) })),
-        clearHistory: () => updateActive((p) => ({ ...p, history: [] })),
+        removeHistory: (itemId) => {
+          const ids = new Set(Array.isArray(itemId) ? itemId : [itemId]);
+          updateActive((p) => ({ ...p, history: p.history.filter((h) => !ids.has(h.itemId)) }));
+        },
+        clearHistory: (kind) => updateActive((p) => ({ ...p, history: kind ? p.history.filter((h) => h.kind !== kind) : [] })),
+        removeRecent: (channelIds) => updateActive((p) => ({ ...p, recent: p.recent.filter((r) => !channelIds.includes(r)) })),
+        clearRecent: () => updateActive((p) => ({ ...p, recent: [] })),
         setPlayerPrefs: (patch) => updateActive((p) => ({ ...p, player: { ...p.player, ...patch } })),
 
         saveTheme: (t) => set((s) => ({ customThemes: [...s.customThemes.filter((x) => x.id !== t.id), { ...t, builtin: false }] })),

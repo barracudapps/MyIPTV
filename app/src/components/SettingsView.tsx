@@ -6,13 +6,15 @@ import { useLibrary } from "../store/library";
 import { getBackend } from "../platform";
 import { hashPin, maxAge, type Profile, type ProfileKind } from "../lib/parental";
 import { normalize } from "../lib/util";
-import type { Channel } from "../types";
+import type { Channel, VodKind } from "../types";
 import { AppearanceSettings, Range, Segmented, Toggle } from "./ThemeEditor";
 import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { ExtraSettings } from "./ExtraSettings";
 import { ShareSettings } from "./ShareSettings";
+import { ConfirmButton } from "./VodView";
+import { sectionOf } from "../lib/sections";
 import { TraktCard } from "./TraktCard";
 
 type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "share" | "prevention" | "about";
@@ -428,6 +430,7 @@ function PlaybackSettings() {
       />
       <Toggle label="Reprendre la dernière chaîne au démarrage" checked={pb.resumeLastChannel} onChange={(v) => set({ resumeLastChannel: v })} />
       <Toggle label="Mini-lecteur automatique" hint="La vidéo continue en petit quand vous allez sur le guide, la recherche ou les réglages." checked={pb.autoMiniPlayer} onChange={(v) => set({ autoMiniPlayer: v })} />
+      <HistorySettings />
       <TraktCard />
       <h3>Raccourcis</h3>
       <ul className="shortcuts">
@@ -438,6 +441,44 @@ function PlaybackSettings() {
         <li><kbd>/</kbd> rechercher · <kbd>Échap</kbd> ou Retour : revenir</li>
         <li><kbd>Ctrl</kbd> + <kbd>Maj</kbd> + <kbd>H</kbd> mode Hacker (mesures techniques)</li>
       </ul>
+    </div>
+  );
+}
+
+/** Historique du profil actif : effacement par section ou complet. */
+function HistorySettings() {
+  const profile = useActiveProfile()!;
+  const set = useSettings.getState();
+  const kinds = [...new Set(profile.history.map((h) => h.kind).filter(Boolean) as string[])];
+  const label = (k: string) => sectionOf(k as VodKind).label;
+  return (
+    <div className="card">
+      <h3>Historique de {profile.name}</h3>
+      <p className="dim small">
+        {profile.history.length
+          ? `${profile.history.length} contenu${profile.history.length > 1 ? "s" : ""} vus ou commencés, ${profile.recent.length} chaîne${profile.recent.length > 1 ? "s" : ""} récente${profile.recent.length > 1 ? "s" : ""}. Les positions de reprise disparaissent avec l'historique.`
+          : profile.recent.length
+            ? `${profile.recent.length} chaîne${profile.recent.length > 1 ? "s" : ""} récente${profile.recent.length > 1 ? "s" : ""}.`
+            : "Aucun historique pour ce profil."}
+        {profile.trakt ? " L'historique enregistré sur Trakt n'est pas modifié." : ""}
+      </p>
+      <div className="row wrap">
+        {kinds.map((k) => (
+          <ConfirmButton key={k} className="btn" label={`Effacer : ${label(k)}`} confirm="Confirmer ?" onConfirm={() => set.clearHistory(k)} />
+        ))}
+        {profile.recent.length > 0 && <ConfirmButton className="btn" label="Effacer les chaînes récentes" confirm="Confirmer ?" onConfirm={() => set.clearRecent()} />}
+        {(profile.history.length > 0 || profile.recent.length > 0) && (
+          <ConfirmButton
+            className="btn btn-danger"
+            label="Tout effacer"
+            confirm="Confirmer l'effacement complet ?"
+            onConfirm={() => {
+              set.clearHistory();
+              set.clearRecent();
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
