@@ -481,12 +481,13 @@ export function Player() {
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = Math.max(clock.start, clock.end - 6);
-    v.play();
+    v.play().catch(() => undefined);
   };
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play();
+    // Lecture interrompue par un changement de chaîne : rejet attendu, sans conséquence.
+    if (v.paused) v.play().catch(() => undefined);
     else v.pause();
     poke();
   };
@@ -532,7 +533,7 @@ export function Player() {
           togglePlay();
           break;
         case "MediaPlay":
-          videoRef.current?.play();
+          videoRef.current?.play().catch(() => undefined);
           break;
         case "MediaPause":
           videoRef.current?.pause();
