@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b0d12">
+<title>Télécommande MyIPTV</title>
+<style>
+  :root { --bg: #0b0d12; --surface: #161a24; --surface-2: #1f2433; --border: #2a3142; --text: #eef1f7; --dim: #98a2b8; --accent: #6d5dfc; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); max-width: 440px; margin: 0 auto; user-select: none; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; min-height: 56px; }
+  header img { width: 48px; height: 48px; object-fit: contain; border-radius: 10px; background: var(--surface); }
+  header .t { min-width: 0; }
+  header strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header small { color: var(--dim); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status { margin-left: auto; width: 10px; height: 10px; border-radius: 50%; background: #e5484d; flex: none; }
+  .status.on { background: #30a46c; }
+  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+  button { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 0; cursor: pointer; touch-action: manipulation; }
+  button:active { transform: scale(.96); background: var(--accent); }
+  .send { padding: 0 16px; background: var(--accent); border-color: var(--accent); }
+  .pad { position: relative; width: 240px; height: 240px; margin: 8px auto 20px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); }
+  .pad button { position: absolute; width: 72px; height: 72px; border-radius: 50%; background: transparent; border: 0; font-size: 26px; }
+  .pad .up { top: 6px; left: 84px; } .pad .down { bottom: 6px; left: 84px; }
+  .pad .left { left: 6px; top: 84px; } .pad .right { right: 6px; top: 84px; }
+  .pad .ok { top: 72px; left: 72px; width: 96px; height: 96px; background: var(--accent); font-size: 18px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+  .grid button { height: 56px; font-size: 15px; }
+  .grid button span { display: block; font-size: 22px; line-height: 1; }
+  .views { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .views button { flex: none; padding: 10px 14px; font-size: 14px; }
+  p.note { color: var(--dim); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+  <header>
+    <img id="logo" alt="" hidden>
+    <div class="t"><strong id="title">MyIPTV</strong><small id="sub">Télécommande</small></div>
+    <span class="status" id="status" title="Connexion"></span>
+  </header>
+
+  <form id="search">
+    <input id="q" placeholder="Rechercher une chaîne, un film…" autocomplete="off" enterkeyhint="search">
+    <button class="send" aria-label="Rechercher">🔍</button>
+  </form>
+
+  <div class="pad">
+    <button class="up" data-key="ArrowUp" aria-label="Haut">▲</button>
+    <button class="left" data-key="ArrowLeft" aria-label="Gauche">◀</button>
+    <button class="ok" data-key="Enter">OK</button>
+    <button class="right" data-key="ArrowRight" aria-label="Droite">▶</button>
+    <button class="down" data-key="ArrowDown" aria-label="Bas">▼</button>
+  </div>
+
+  <div class="grid">
+    <button data-key="Escape"><span>↩</span>Retour</button>
+    <button data-action="playpause"><span>⏯</span>Lecture</button>
+    <button data-action="fullscreen"><span>⛶</span>Plein écran</button>
+    <button data-action="chdown"><span>−</span>Chaîne</button>
+    <button data-action="mute"><span>🔇</span>Muet</button>
+    <button data-action="chup"><span>+</span>Chaîne</button>
+    <button data-action="back30"><span>⏪</span>−30 s</button>
+    <button data-action="voldown"><span>🔉</span>Volume</button>
+    <button data-action="fwd30"><span>⏩</span>+30 s</button>
+    <button data-action="stop"><span>⏹</span>Arrêt</button>
+    <button data-action="volup"><span>🔊</span>Volume</button>
+    <button data-action="live"><span>●</span>Direct</button>
+  </div>
+
+  <div class="views">
+    <button data-view="live">Direct</button>
+    <button data-view="guide">Guide</button>
+    <button data-view="vod:movie">Films</button>
+    <button data-view="vod:series">Séries</button>
+    <button data-view="favorites">Favoris</button>
+    <button data-view="search">Recherche</button>
+  </div>
+  <p class="note">Gardez cette page ouverte pendant que vous regardez.</p>
+
+<script>
+  const base = location.pathname.replace(/\/$/, "");
+  const status = document.getElementById("status");
+  async function send(type, value) {
+    if (navigator.vibrate) navigator.vibrate(12);
+    try {
+      const r = await fetch(base + "/cmd", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type, value }) });
+      status.classList.toggle("on", r.ok);
+    } catch { status.classList.remove("on"); }
+  }
+  document.querySelectorAll("[data-key]").forEach((b) => b.addEventListener("click", () => send("key", b.dataset.key)));
+  document.querySelectorAll("[data-action]").forEach((b) => b.addEventListener("click", () => send("action", b.dataset.action)));
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => send("view", b.dataset.view)));
+  document.getElementById("search").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = document.getElementById("q");
+    if (q.value.trim()) send("text", q.value.trim());
+    q.blur();
+  });
+  async function poll() {
+    try {
+      const r = await fetch(base + "/state", { cache: "no-store" });
+      status.classList.toggle("on", r.ok);
+      if (r.ok) {
+        const s = await r.json();
+        document.getElementById("title").textContent = s.title || "MyIPTV";
+        document.getElementById("sub").textContent = s.subtitle || (s.title ? "" : "Rien en lecture");
+        const logo = document.getElementById("logo");
+        if (s.logo) { logo.src = s.logo; logo.hidden = false; } else logo.hidden = true;
+      }
+    } catch { status.classList.remove("on"); }
+    setTimeout(poll, document.hidden ? 8000 : 2500);
+  }
+  poll();
+</script>
+</body>
+</html>

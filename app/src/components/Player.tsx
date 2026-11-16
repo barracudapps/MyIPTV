@@ -588,7 +588,17 @@ export function Player() {
           toggleFullscreen();
           break;
         case "m":
+        case "AudioVolumeMute":
           setMuted((m) => !m);
+          break;
+        case "AudioVolumeUp":
+        case "AudioVolumeDown":
+          setMuted(false);
+          setVolume((v) => Math.min(1, Math.max(0, Math.round((v + (e.key === "AudioVolumeUp" ? 0.1 : -0.1)) * 10) / 10)));
+          break;
+        case "l":
+          if (!isLiveStream) return;
+          goLive();
           break;
         case "ArrowLeft":
         case "ArrowRight":

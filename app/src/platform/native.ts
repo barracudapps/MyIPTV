@@ -36,6 +36,12 @@ export function createNativeBackend(): Backend {
       stop: () => invoke("share_stop"),
     },
     sysStats: () => invoke("sys_stats"),
+    remote: {
+      start: () => invoke("remote_start"),
+      stop: () => invoke("remote_stop"),
+      active: () => invoke("remote_active"),
+      publish: (state) => invoke("remote_publish", { state }),
+    },
     saveFile: (name, content) => invoke("save_file", { name, content }),
     cast: {
       discover: () => invoke("cast_discover"),

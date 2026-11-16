@@ -21,6 +21,7 @@ import { importHistory } from "./lib/trakt";
 import { ActivityBar } from "./components/ActivityIndicator";
 import { UpdateBanner } from "./components/Updates";
 import { ReminderAlerts } from "./components/Reminders";
+import { installRemote } from "./lib/remote";
 import type { VodKind } from "./types";
 
 // Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
@@ -50,6 +51,7 @@ export default function App() {
   }, [sourcesKey]);
 
   useEffect(preloadEngines, []);
+  useEffect(installRemote, []);
 
   // Mode Hacker : Ctrl (ou Cmd) + Maj + H.
   useEffect(() => {

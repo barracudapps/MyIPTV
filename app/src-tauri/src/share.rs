@@ -60,7 +60,7 @@ fn now() -> u64 {
 }
 
 /// Adresse locale de l'interface qui sort vers le réseau (aucun paquet n'est envoyé).
-fn local_addresses() -> Vec<String> {
+pub(crate) fn local_addresses() -> Vec<String> {
     let mut out = Vec::new();
     for probe in ["192.168.0.1:9", "10.0.0.1:9", "8.8.8.8:9"] {
         if let Ok(sock) = std::net::UdpSocket::bind("0.0.0.0:0") {

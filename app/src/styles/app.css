@@ -1405,3 +1405,32 @@ html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-m
   color: var(--text);
   font: inherit;
 }
+
+/* Télécommande sur téléphone */
+.remote-card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.remote-qr {
+  flex: none;
+  background: #fff;
+  padding: 8px;
+  border-radius: var(--radius);
+  line-height: 0;
+}
+.remote-qr svg {
+  width: 200px;
+  height: 200px;
+}
+.remote-card > div:last-child {
+  flex: 1;
+  min-width: 220px;
+}
+.remote-url {
+  display: block;
+  word-break: break-all;
+  margin: 4px 0 8px;
+  user-select: all;
+}

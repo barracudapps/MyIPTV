@@ -60,6 +60,19 @@ export interface ShareStatus {
   closedReason?: string | null;
 }
 
+export interface RemoteInfo {
+  url: string;
+  addresses: string[];
+  port: number;
+  qrSvg: string;
+}
+
+export interface RemoteNowPlaying {
+  title?: string;
+  subtitle?: string;
+  logo?: string;
+}
+
 /** Services fournis par la plateforme : natif (Tauri + Rust) ou web/TV (WASM). */
 export interface Backend {
   readonly name: "native" | "web";
@@ -89,6 +102,13 @@ export interface Backend {
     start(payload: string): Promise<ShareInfo>;
     status(): Promise<ShareStatus>;
     stop(): Promise<void>;
+  };
+  /** Télécommande sur téléphone (page servie sur le réseau local) : appareils natifs seulement. */
+  remote?: {
+    start(): Promise<RemoteInfo>;
+    stop(): Promise<void>;
+    active(): Promise<RemoteInfo | null>;
+    publish(state: RemoteNowPlaying): Promise<void>;
   };
   /** Diffusion vers un écran du réseau (Chromecast, DLNA) : appareils natifs seulement. */
   cast?: {

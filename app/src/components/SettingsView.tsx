@@ -13,12 +13,13 @@ import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { ExtraSettings } from "./ExtraSettings";
 import { ShareSettings } from "./ShareSettings";
+import { RemoteSettings } from "./RemoteSettings";
 import { UpdateCard } from "./Updates";
 import { ConfirmButton } from "./VodView";
 import { sectionOf } from "../lib/sections";
 import { TraktCard } from "./TraktCard";
 
-type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "share" | "prevention" | "about";
+type Section = "appearance" | "languages" | "profiles" | "parental" | "playback" | "meta" | "fun" | "menu" | "share" | "remote" | "prevention" | "about";
 
 export function SettingsView() {
   const profile = useActiveProfile()!;
@@ -34,6 +35,7 @@ export function SettingsView() {
     ["fun", "Fun & succès", "trophy", true],
     ["menu", "Menu", "list", true],
     ["share", "Partage et sauvegarde", "upload", isAdmin],
+    ["remote", "Télécommande", "phone", true],
     ["prevention", "Reconnaître une offre illégale", "alert", true],
     ["about", "À propos", "info", true],
   ];
@@ -56,6 +58,7 @@ export function SettingsView() {
         {section === "playback" && <PlaybackSettings />}
         {(section === "languages" || section === "meta" || section === "fun" || section === "menu") && <ExtraSettings section={section} />}
         {section === "share" && isAdmin && <ShareSettings />}
+        {section === "remote" && <RemoteSettings />}
         {section === "prevention" && <Prevention />}
         {section === "about" && <About />}
       </div>

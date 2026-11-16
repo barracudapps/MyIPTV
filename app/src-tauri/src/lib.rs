@@ -1,6 +1,7 @@
 mod commands;
 mod library;
 mod recorder;
+mod remote;
 mod cast;
 mod server;
 mod share;
@@ -43,6 +44,7 @@ pub fn run() {
             });
             app.manage(state);
             app.manage(Arc::new(share::ShareState::default()));
+            app.manage(Arc::new(remote::RemoteState::default()));
             app.manage(Arc::new(cast::CastState::default()));
             app.manage(stats::StatsState::default());
             Ok(())
@@ -83,6 +85,10 @@ pub fn run() {
             share::share_status,
             share::share_stop,
             share::share_fetch,
+            remote::remote_start,
+            remote::remote_stop,
+            remote::remote_active,
+            remote::remote_publish,
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de MyIPTV");

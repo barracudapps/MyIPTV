@@ -18,6 +18,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 - Guide automatique : guides gratuits par pays (epgshare01) ajoutés pour les chaînes sans programme, identifiants rapprochés malgré les écritures différentes (`France2.fr@SD`, `France.2.fr`) ; visuel des programmes quand le guide en fournit.
 - Collections personnelles (« Soirées d'hiver », « Pour les enfants »…) depuis la fiche d'un contenu, en rangées dans chaque section ; retrait d'un contenu de « Ma liste » en un clic.
 - Recommandations calculées sur l'appareil à partir de l'historique et de « Ma liste » : « Recommandé pour vous » et « Parce que vous avez regardé… ».
+- Télécommande sur téléphone : QR code dans Réglages › Télécommande, page web avec flèches et OK, lecture, chaînes, volume, accès direct aux écrans et recherche au clavier du téléphone (réseau local, adresse à code secret).
 - Mode Hacker : images par seconde, images perdues, tampon, débit, codecs, processeur et mémoire par-dessus le lecteur (Ctrl+Maj+H).
 
 ## [0.4.0] - 2026-11-12
