@@ -25,7 +25,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  font-size: calc(15px * var(--font-scale));
+  font-size: calc(15px * var(--font-scale) * var(--a11y-scale, 1));
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -1433,4 +1433,32 @@ html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-m
   word-break: break-all;
   margin: 4px 0 8px;
   user-select: all;
+}
+
+/* Contraste élevé (Réglages › Apparence › Accessibilité) : prioritaire sur le thème. */
+html[data-contrast="high"] {
+  --text: #ffffff !important;
+  --text-dim: #e2e6ef !important;
+  --border: #9aa3b8 !important;
+}
+html[data-contrast="high"] body {
+  background: #000;
+}
+html[data-contrast="high"] .card,
+html[data-contrast="high"] .btn,
+html[data-contrast="high"] input,
+html[data-contrast="high"] select {
+  border-width: 2px;
+  border-color: var(--border);
+}
+html[data-contrast="high"] a,
+html[data-contrast="high"] .link {
+  text-decoration: underline;
+}
+html[data-contrast="high"] :focus-visible {
+  outline: 4px solid #ffd60a;
+  outline-offset: 3px;
+}
+html[data-contrast="high"] .dim {
+  opacity: 1;
 }

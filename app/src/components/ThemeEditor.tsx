@@ -15,6 +15,8 @@ export function AppearanceSettings() {
   const [draft, setDraft] = useState<Theme | null>(null);
   const [io, setIo] = useState(false);
   const animations = useSettings((s) => s.fun.animations !== false);
+  const textScale = useSettings((s) => s.fun.textScale ?? 1);
+  const highContrast = useSettings((s) => !!s.fun.highContrast);
 
   const pick = (th: Theme) => useSettings.getState().updateProfile(profile.id, { themeId: th.id });
 
@@ -56,6 +58,22 @@ export function AppearanceSettings() {
         hint={t("Ouverture des menus, fenêtres et écrans. À couper sur une TV peu puissante ; le réglage « réduire les animations » du système est toujours respecté.")}
         checked={animations}
         onChange={(v) => useSettings.getState().setFun({ animations: v })}
+      />
+      <h3>{t("Accessibilité")}</h3>
+      <Range
+        label={t("Agrandir le texte")}
+        value={textScale}
+        min={1}
+        max={1.6}
+        step={0.1}
+        fmt={(v) => `${Math.round(v * 100)} %`}
+        onChange={(v) => useSettings.getState().setFun({ textScale: v })}
+      />
+      <Toggle
+        label={t("Contraste élevé")}
+        hint={t("Textes plus lumineux, bordures marquées et liens soulignés, quel que soit le thème.")}
+        checked={highContrast}
+        onChange={(v) => useSettings.getState().setFun({ highContrast: v })}
       />
       {draft && <Editor initial={draft} onClose={() => setDraft(null)} />}
       {io && <ThemeIO active={active} onClose={() => setIo(false)} />}

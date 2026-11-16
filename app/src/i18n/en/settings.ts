@@ -1,5 +1,9 @@
 /** Traductions anglaises (clé : texte français du code). */
 const EN: Record<string, string> = {
+  "Accessibilité": "Accessibility",
+  "Agrandir le texte": "Larger text",
+  "Contraste élevé": "High contrast",
+  "Textes plus lumineux, bordures marquées et liens soulignés, quel que soit le thème.": "Brighter text, stronger borders and underlined links, whatever the theme.",
   "Lecture|settings": "Playback",
   "Langue de l'interface": "Interface language",
 
@@ -213,7 +217,6 @@ const EN: Record<string, string> = {
   "OLED noir": "OLED black",
   "Océan": "Ocean",
   "Salon TV": "Living room TV",
-  "Contraste élevé": "High contrast",
   "Enfants": "Kids",
   "Cinéma": "Cinema",
   "Forêt": "Forest",

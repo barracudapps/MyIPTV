@@ -101,6 +101,13 @@ export default function App() {
 
   const animations = useSettings((s) => s.fun.animations !== false);
   useEffect(() => void (document.documentElement.dataset.motion = animations ? "on" : "off"), [animations]);
+  const textScale = useSettings((s) => s.fun.textScale ?? 1);
+  const highContrast = useSettings((s) => !!s.fun.highContrast);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--a11y-scale", String(textScale));
+    root.dataset.contrast = highContrast ? "high" : "normal";
+  }, [textScale, highContrast]);
 
   // Reprise de la dernière chaîne du profil.
   const resumed = useRef<string | null>(null);

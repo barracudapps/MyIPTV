@@ -66,6 +66,9 @@ export interface FunSettings {
   easterEggs: boolean;
   /** Animations de l'interface ; absent des réglages enregistrés avant son ajout (= activées). */
   animations?: boolean;
+  /** Accessibilité (cet appareil) : agrandissement du texte, contraste renforcé. */
+  textScale?: number;
+  highContrast?: boolean;
 }
 
 export const DEFAULT_FUN: FunSettings = {
