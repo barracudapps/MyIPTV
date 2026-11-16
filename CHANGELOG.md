@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+## [0.5.0] - 2026-11-16
+
 ### Ajouté
 - Diffusion vers un autre écran du réseau : Chromecast et Google TV, téléviseurs DLNA, AirPlay et diffusion du navigateur quand ils sont disponibles.
 - Thèmes vitrine façon plateformes de streaming (Rouge cinéma, Nuit étoilée, Bleu océan) : bannière à la une, rangées par genre, grandes affiches.
