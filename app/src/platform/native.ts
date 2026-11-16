@@ -47,6 +47,7 @@ export function createNativeBackend(): Backend {
     shareFetch: (address, code) => invoke("share_fetch", { address, code }),
     probeStream: (s, timeoutMs) => invoke("probe_stream", { url: s.url, userAgent: s.userAgent, referrer: s.referrer, timeoutMs }),
     play: (req) => invoke("play", { req }),
+    openStream: (s) => invoke("open_stream", { url: s.url, userAgent: s.userAgent, referrer: s.referrer }),
     stop: () => invoke("stop_playback"),
   };
 }

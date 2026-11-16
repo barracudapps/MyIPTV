@@ -107,6 +107,8 @@ export interface Backend {
   /** Test rapide d'un flux : répond-il, et en combien de temps ? */
   probeStream(stream: { url: string; userAgent?: string; referrer?: string }, timeoutMs: number): Promise<StreamProbe>;
   play(req: PlayRequest): Promise<PlayInfo>;
+  /** Flux secondaire (multivue) : n'interrompt pas la lecture principale. */
+  openStream(stream: { url: string; userAgent?: string; referrer?: string }): Promise<PlayInfo>;
   stop(): Promise<void>;
 }
 

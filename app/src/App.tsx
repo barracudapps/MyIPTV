@@ -28,6 +28,7 @@ const GuideView = lazy(() => import("./components/GuideView").then((m) => ({ def
 const SearchView = lazy(() => import("./components/SearchView").then((m) => ({ default: m.SearchView })));
 const SourcesView = lazy(() => import("./components/SourcesView").then((m) => ({ default: m.SourcesView })));
 const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
+const MultiView = lazy(() => import("./components/MultiView").then((m) => ({ default: m.MultiView })));
 const RecordingsView = lazy(() => import("./components/RecordingsView").then((m) => ({ default: m.RecordingsView })));
 
 let startupDedupeDone = false;
@@ -165,6 +166,7 @@ export default function App() {
         {view === "favorites" && <LiveView scope="favorites" />}
         <Suspense fallback={null}>
         {view === "guide" && <GuideView />}
+        {view === "multiview" && <MultiView />}
         {view === "search" && <SearchView />}
         {view === "sources" && <SourcesView />}
         {view === "settings" && <SettingsView />}

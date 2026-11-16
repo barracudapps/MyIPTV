@@ -530,6 +530,20 @@ pub async fn play(st: St<'_>, mut req: PlayRequest) -> Res<PlayInfo> {
     Ok(PlayInfo::simple(crate::server::proxy_url(&st.base_url(), &req.url, &up), kind, false, warning))
 }
 
+/// Flux d'une tuile de la multivue : relais local sans timeshift ni conversion, et sans
+/// toucher à la lecture principale (une seule session de `play` à la fois).
+#[tauri::command]
+pub async fn open_stream(st: St<'_>, url: String, user_agent: Option<String>, referrer: Option<String>) -> Res<PlayInfo> {
+    let up = Upstream { url: url.clone(), user_agent, referrer };
+    let kind = match sniff(&st, &up).await {
+        Some(k @ ("hls" | "mpegts" | "native")) => k,
+        Some("html") => return Err("Cette chaîne se regarde sur son site.".into()),
+        Some(other) => return Err(format!("Format {other} non pris en charge en multivue.")),
+        None => guess_kind(&url, None),
+    };
+    Ok(PlayInfo::simple(crate::server::proxy_url(&st.base_url(), &url, &up), kind, false, None))
+}
+
 /// Reconnaît le format réel d'un flux d'après son type MIME et ses premiers octets.
 /// Renvoie `hls`, `mpegts`, `native`, ou le nom d'un format qui nécessite ffmpeg (`dash`, `flv`, `inconnu`).
 async fn sniff(st: &AppState, up: &Upstream) -> Option<&'static str> {

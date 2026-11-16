@@ -13,6 +13,7 @@ export const NAV_ITEMS: [View, string, string][] = [
   ["search", "Recherche", "search"],
   ["live", "Direct", "live"],
   ["guide", "Guide", "guide"],
+  ["multiview", "Multivue", "grid"],
   ...SECTIONS.map((s) => [`vod:${s.kind}`, s.label, s.icon] as [View, string, string]),
   ["favorites", "Favoris", "star"],
   ["recordings", "Enregistrements", "rec"],

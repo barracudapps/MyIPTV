@@ -416,6 +416,10 @@ export async function createWebBackend(): Promise<Backend> {
       if (w.isYoutube(req.url)) return { url: w.youtubeEmbed(req.url) ?? req.url, kind: "youtube", timeshift: false };
       return { url: req.url, kind: guessKind(req.url), timeshift: false };
     },
+    async openStream(s): Promise<PlayInfo> {
+      if (w.isYoutube(s.url)) throw new Error("Les directs YouTube ne s'affichent pas en multivue.");
+      return { url: s.url, kind: guessKind(s.url), timeshift: false };
+    },
     async stop() {},
   };
 }

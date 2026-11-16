@@ -72,6 +72,7 @@ pub fn run() {
             commands::rec_info,
             commands::probe_stream,
             commands::save_file,
+            commands::open_stream,
             share::share_start,
             stats::sys_stats,
             cast::cast_discover,
