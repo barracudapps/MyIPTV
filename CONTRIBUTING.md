@@ -71,6 +71,13 @@ la partie publique est dans `tauri.conf.json` (`plugins.updater.pubkey`).
 - La release créée par le tag est un brouillon : la publier rend la mise à jour visible.
 - Perdre la clé privée empêche toute mise à jour automatique des versions installées.
 
+Signature macOS (évite l'avertissement de Gatekeeper au premier lancement) : nécessite
+un compte Apple Developer. Ajouter en secrets du dépôt `APPLE_CERTIFICATE` (certificat
+« Developer ID Application » exporté en .p12, encodé en base64), `APPLE_CERTIFICATE_PASSWORD`,
+`APPLE_SIGNING_IDENTITY` (« Developer ID Application: Nom (TEAMID) »), `APPLE_ID`,
+`APPLE_PASSWORD` (mot de passe d'application) et `APPLE_TEAM_ID`. Sans eux, l'intégration
+continue produit une application non signée, comme aujourd'hui.
+
 ## Branches
 
 `main` contient les releases ; développement sur `dev`, sujets sur
