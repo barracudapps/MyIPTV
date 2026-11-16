@@ -7,6 +7,7 @@ import { useLibrary } from "../store/library";
 import { startTask, track } from "../store/activity";
 import { Toggle } from "./ThemeEditor";
 import { Icon } from "./Icon";
+import { BackupCard } from "./BackupCard";
 
 const LAST_ADDRESS_KEY = "myiptv-share-address";
 
@@ -23,13 +24,14 @@ export function ShareSettings() {
   useEffect(() => void getBackend().then(setBackend), []);
   return (
     <div className="settings-section">
-      <h2>Partage en réseau</h2>
+      <h2>Partage et sauvegarde</h2>
       <p className="dim">
         Copiez vos sources, comptes et réglages vers un autre appareil du même réseau (TV, téléphone, autre ordinateur) sans rien ressaisir. Le
         transfert est chiffré par un code à usage limité, valable 10 minutes.
       </p>
       {backend?.share ? <SendCard backend={backend} /> : backend && <p className="card dim">L'envoi se fait depuis l'application de bureau ou Android ; cet appareil peut recevoir.</p>}
       {backend && <ReceiveCard backend={backend} />}
+      <BackupCard />
     </div>
   );
 }
@@ -204,7 +206,7 @@ function ReceiveCard({ backend }: { backend: Backend }) {
   );
 }
 
-function ReceivePreview({ payload, onDone }: { payload: SharePayload; onDone(): void }) {
+export function ReceivePreview({ payload, onDone }: { payload: SharePayload; onDone(): void }) {
   const toast = useUi((s) => s.toast);
   const currentPin = useSettings((s) => s.parental.pinHash);
   const [sources, setSources] = useState(true);
@@ -237,7 +239,7 @@ function ReceivePreview({ payload, onDone }: { payload: SharePayload; onDone(): 
       )}
       {payload.meta && <Toggle label="Clés de métadonnées" checked={meta} onChange={setMeta} />}
       {!!payload.profiles?.length && (
-        <Toggle label={`Profils (${payload.profiles.length})`} hint={payload.profiles.map((p) => `${p.avatar} ${p.name}`).join(" · ")} checked={profiles} onChange={setProfiles} />
+        <Toggle label={`Profils (${payload.profiles.length})${payload.profiles.some((p) => p.history.length) ? ", avec leur historique" : ""}`} hint={payload.profiles.map((p) => `${p.avatar} ${p.name}`).join(" · ")} checked={profiles} onChange={setProfiles} />
       )}
       {!!payload.themes?.length && <Toggle label={`Thèmes personnalisés (${payload.themes.length})`} checked={themes} onChange={setThemes} />}
       {payload.settings && (

@@ -98,6 +98,8 @@ export interface Backend {
     stop(): Promise<void>;
     status(): Promise<CastStatus>;
   };
+  /** Enregistre un fichier exporté et renvoie son emplacement (natif) ; sinon téléchargement du navigateur. */
+  saveFile?(name: string, content: string): Promise<string>;
   /** Processeur et mémoire de l'application (mode Hacker) : appareils natifs seulement. */
   sysStats?(): Promise<SysStats>;
   /** Récupère et déchiffre la configuration partagée par un autre appareil. */

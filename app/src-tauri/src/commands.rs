@@ -722,6 +722,25 @@ pub fn rec_info(st: St<'_>) -> RecInfo {
     RecInfo { dir: st.recorder.dir.to_string_lossy().into(), ffmpeg: crate::transcode::find_tool("ffmpeg").is_some(), base: format!("{}/rec", st.base_url()) }
 }
 
+/// Écrit un fichier exporté (sauvegarde…) dans Téléchargements, ou à défaut dans les
+/// données de l'application (Android), et renvoie son chemin.
+#[tauri::command]
+pub fn save_file(app: tauri::AppHandle, name: String, content: String) -> Res<String> {
+    use tauri::Manager;
+    let safe: String = name.chars().map(|c| if c.is_alphanumeric() || "-_.".contains(c) { c } else { '_' }).collect();
+    let dir = app
+        .path()
+        .download_dir()
+        .ok()
+        .filter(|d| d.is_dir())
+        .or_else(|| app.path().app_data_dir().ok())
+        .ok_or("Aucun dossier où enregistrer le fichier")?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join(safe);
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::classify_head;

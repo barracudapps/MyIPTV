@@ -32,7 +32,7 @@ export function SettingsView() {
     ["meta", "Métadonnées", "info", isAdmin],
     ["fun", "Fun & succès", "trophy", true],
     ["menu", "Menu", "list", true],
-    ["share", "Partage en réseau", "upload", isAdmin],
+    ["share", "Partage et sauvegarde", "upload", isAdmin],
     ["prevention", "Reconnaître une offre illégale", "alert", true],
     ["about", "À propos", "info", true],
   ];

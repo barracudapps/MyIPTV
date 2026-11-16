@@ -27,6 +27,8 @@ export interface ShareChoice {
   profiles: boolean;
   themes: boolean;
   settings: boolean;
+  /** Historique de visionnage : sauvegardes seulement, il reste sinon sur l'appareil. */
+  history?: boolean;
 }
 
 /** Sources ajoutées par l'utilisateur : les sources intégrées existent déjà partout. */
@@ -45,11 +47,21 @@ export async function buildPayload(choice: ShareChoice): Promise<SharePayload> {
     createdAt: Date.now(),
     sources: ids.size ? await Promise.all(s.sources.filter((x) => ids.has(x.id)).map((x) => withContent(x).then(({ ...y }) => (y.kind === "m3uText" ? { ...y, contentStored: false } : y)))) : undefined,
     meta: choice.meta && hasKeys ? s.meta : undefined,
-    // L'historique de visionnage reste sur l'appareil d'origine.
-    profiles: choice.profiles ? s.profiles.map((p) => ({ ...p, history: [] })) : undefined,
+    profiles: choice.profiles ? s.profiles.map((p) => ({ ...p, history: choice.history ? p.history : [] })) : undefined,
     themes: choice.themes && s.customThemes.length ? s.customThemes : undefined,
     settings: choice.settings ? { playback: s.playback, fun: s.fun, hiddenSections: s.hiddenSections, parental } : undefined,
   };
+}
+
+/** Réunit deux historiques en gardant, pour chaque contenu, la reprise la plus récente. */
+function mergeHistory(local: Profile["history"], incoming: Profile["history"] | undefined): Profile["history"] {
+  if (!incoming?.length) return local;
+  const byId = new Map(local.map((h) => [h.itemId, h]));
+  for (const h of incoming) {
+    const known = byId.get(h.itemId);
+    if (!known || h.updatedAt > known.updatedAt) byId.set(h.itemId, h);
+  }
+  return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function parsePayload(text: string): SharePayload {
@@ -84,7 +96,7 @@ export function applyPayload(p: SharePayload, choice: Omit<ShareChoice, "sourceI
     const profiles = [...s.profiles];
     for (const incoming of p.profiles) {
       const i = profiles.findIndex((x) => x.id === incoming.id || (x.name === incoming.name && x.kind === incoming.kind));
-      if (i >= 0) profiles[i] = { ...incoming, id: profiles[i].id, history: profiles[i].history };
+      if (i >= 0) profiles[i] = { ...incoming, id: profiles[i].id, history: mergeHistory(profiles[i].history, incoming.history) };
       else profiles.push(incoming);
       result.profiles++;
     }

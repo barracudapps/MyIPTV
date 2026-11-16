@@ -34,6 +34,7 @@ const PATHS: Record<string, string> = {
   palette: "M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.5 0-1-.8-1.4-.8-2.3 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4c0-4.7-4-8.5-9-8.5zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01",
   download: "M12 4v11M7 10l5 5 5-5M5 20h14",
   upload: "M12 16V5M7 10l5-5 5 5M5 20h14",
+  save: "M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6",
   film: "M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4",
   series: "M3 6h14v11H3zM7 21h6M21 9v8M19 4l-2 2",
   tv: "M3 7h18v12H3zM8 3l4 4 4-4",

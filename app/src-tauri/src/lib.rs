@@ -68,6 +68,7 @@ pub fn run() {
             commands::rec_cancel,
             commands::rec_info,
             commands::probe_stream,
+            commands::save_file,
             share::share_start,
             stats::sys_stats,
             cast::cast_discover,
