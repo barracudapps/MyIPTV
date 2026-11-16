@@ -1,3 +1,4 @@
+import { setUiLanguage, t, UI_LANGUAGES, uiLanguage } from "../lib/t";
 
 import { TraktCard } from "./TraktCard";
 import { useActiveProfile, useSettings, type Chattiness } from "../store/settings";
@@ -31,6 +32,14 @@ function LanguageSettings() {
   };
   return (
     <div className="settings-section">
+      <h2>{t("Langue de l'interface")}</h2>
+      <div className="segmented ui-language">
+        {UI_LANGUAGES.map((l) => (
+          <button key={l.code} className={uiLanguage() === l.code ? "active" : ""} onClick={() => l.code !== uiLanguage() && setUiLanguage(l.code)}>
+            {l.label}
+          </button>
+        ))}
+      </div>
       <h2>Langues favorites de « {profile.name} »</h2>
       <p className="dim">
         Dans cet ordre, elles servent à trier les chaînes, les films, les séries, la musique et les résultats de recherche, à choisir automatiquement la
