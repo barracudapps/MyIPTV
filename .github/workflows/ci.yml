@@ -49,18 +49,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-14
+          # Une seule machine Apple Silicon compile aussi la version Intel (compilation croisée).
+          - platform: macos-latest
             args: --target aarch64-apple-darwin
-          - platform: macos-13
+            rust-target: aarch64-apple-darwin
+          - platform: macos-latest
             args: --target x86_64-apple-darwin
+            rust-target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: ""
           - platform: windows-latest
             args: ""
     runs-on: ${{ matrix.platform }}
+    # La release (brouillon) est créée par le job : écriture sur le contenu du dépôt.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -114,8 +122,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "ndk;27.0.12077973"
+      # Le SDK Android est déjà installé sur les machines Ubuntu de GitHub.
+      - run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.0.12077973" < <(yes) > /dev/null'
       - run: npm ci
         working-directory: app
       - run: npx tauri android build --apk --config src-tauri/tauri.no-updater.json
