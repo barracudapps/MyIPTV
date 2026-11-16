@@ -13,6 +13,7 @@ import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { ExtraSettings } from "./ExtraSettings";
 import { ShareSettings } from "./ShareSettings";
+import { UpdateCard } from "./Updates";
 import { ConfirmButton } from "./VodView";
 import { sectionOf } from "../lib/sections";
 import { TraktCard } from "./TraktCard";
@@ -527,6 +528,7 @@ function About() {
         communautaire de chaînes gratuites iptv-org.
       </p>
       <p className="dim small">MyIPTV ne fournit aucun contenu. Chaque utilisateur est responsable des sources qu'il ajoute.</p>
+      <UpdateCard />
     </div>
   );
 }

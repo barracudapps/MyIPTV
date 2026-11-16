@@ -35,6 +35,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY1RTlGNUM4NjU4OERDNkYKUldSdjNJaGx5UFhwWlRuM25uNTdoTGM4UXVjRVA2NkxjaHgzdlI0Um10Qi9nY0F5Z3owbTg1STAK",
+      "endpoints": [
+        "https://github.com/barracudapps/MyIPTV/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

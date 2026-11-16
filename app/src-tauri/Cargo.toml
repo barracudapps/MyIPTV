@@ -30,3 +30,7 @@ getrandom = "0.2"
 mdns-sd = "0.13"
 sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"

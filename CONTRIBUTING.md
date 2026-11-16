@@ -60,6 +60,17 @@ git commit -am "[REL] various: release X.Y.Z"
 git tag -a vX.Y.Z -m "MyIPTV X.Y.Z"
 ```
 
+Mises à jour automatiques : les applications de bureau lisent `latest.json` dans la
+dernière release publiée de GitHub et n'installent qu'un paquet signé par la clé dont
+la partie publique est dans `tauri.conf.json` (`plugins.updater.pubkey`).
+
+- La clé privée reste hors du dépôt (`~/.tauri/myiptv.key`) ; `npm run build:mac` la
+  lit pour signer. Sans elle, l'application est construite sans fichiers de mise à jour.
+- En intégration continue, elle est fournie par les secrets `TAURI_SIGNING_PRIVATE_KEY`
+  (contenu du fichier) et `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (vide ici).
+- La release créée par le tag est un brouillon : la publier rend la mise à jour visible.
+- Perdre la clé privée empêche toute mise à jour automatique des versions installées.
+
 ## Branches
 
 `main` contient les releases ; développement sur `dev`, sujets sur

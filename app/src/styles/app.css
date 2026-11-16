@@ -1127,3 +1127,26 @@ html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-m
 .link.armed, .btn.armed { color: var(--danger); font-weight: 700; }
 .btn.armed { border-color: var(--danger); }
 .row.wrap { flex-wrap: wrap; }
+
+/* Mise à jour disponible */
+.update-banner {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 16px;
+  border-radius: var(--radius, 12px);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  animation: pop 0.25s ease both;
+}
+.update-notes {
+  white-space: pre-line;
+  max-height: 160px;
+  overflow: auto;
+}

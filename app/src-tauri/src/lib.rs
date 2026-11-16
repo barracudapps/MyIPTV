@@ -15,8 +15,11 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    // Mises à jour automatiques : bureau seulement (Android passe par le store ou l'APK).
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build()).plugin(tauri_plugin_process::init());
+    builder
         .setup(|app| {
             let cache_dir = app.path().app_cache_dir()?;
             // Enregistrements dans le dossier Vidéos de l'utilisateur, faciles à retrouver.

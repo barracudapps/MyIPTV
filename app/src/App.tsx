@@ -19,6 +19,7 @@ import { installEasterEggs } from "./lib/fun";
 import { preloadEngines } from "./lib/engines";
 import { importHistory } from "./lib/trakt";
 import { ActivityBar } from "./components/ActivityIndicator";
+import { UpdateBanner } from "./components/Updates";
 import type { VodKind } from "./types";
 
 // Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
@@ -178,6 +179,7 @@ export default function App() {
       <PinDialog />
       <Toasts />
       <ActivityBar />
+      <UpdateBanner />
     </div>
   );
 }
