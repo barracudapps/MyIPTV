@@ -15,6 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 - Rappels de programmes : « Me rappeler » dans le guide, notification système et alerte « Regarder » 2 minutes avant, liste des rappels dans Enregistrements.
 - Multivue : 2 ou 4 directs en mosaïque, son sur la tuile choisie, passage en grand d'un clic, bascule vers une autre copie en cas d'échec.
 - Sous-titres externes : ouverture d'un fichier .srt ou .vtt pendant la lecture (encodage Windows-1252 reconnu), avec décalage réglable par demi-seconde.
+- Guide automatique : guides gratuits par pays (epgshare01) ajoutés pour les chaînes sans programme, identifiants rapprochés malgré les écritures différentes (`France2.fr@SD`, `France.2.fr`) ; visuel des programmes quand le guide en fournit.
 - Mode Hacker : images par seconde, images perdues, tampon, débit, codecs, processeur et mémoire par-dessus le lecteur (Ctrl+Maj+H).
 
 ## [0.4.0] - 2026-11-12

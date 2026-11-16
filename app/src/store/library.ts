@@ -2,11 +2,11 @@ import { channelIds, groupChannels } from "../lib/variants";
 import { startTask } from "./activity";
 import { withContent } from "../lib/playlists";
 import { create } from "zustand";
-import { getBackend } from "../platform";
+import { getBackend, isTauri } from "../platform";
 import type { Channel, EpgStats, Programme, Source } from "../types";
 import { errorMessage, nowSec } from "../lib/util";
 import { useSettings } from "./settings";
-import { filterEpgUrls } from "../lib/languages";
+import { autoGuideUrls, filterEpgUrls } from "../lib/languages";
 
 interface LibraryState {
   channels: Channel[];
@@ -59,6 +59,11 @@ function sourceSignature(s: Source): string {
   return JSON.stringify(r);
 }
 
+function canFetchGuides(): boolean {
+  const w = window as unknown as { tizen?: unknown; webOS?: unknown; PalmSystem?: unknown };
+  return isTauri || !!w.tizen || !!w.webOS || !!w.PalmSystem || location.protocol === "file:";
+}
+
 /** Assemble les chaînes de toutes les sources chargées, dans l'ordre des sources. */
 function publish(set: (fn: (s: LibraryState) => Partial<LibraryState>) => void, sources: Source[]) {
   const includeUnverified = useSettings.getState().playback.includeUnverified;
@@ -78,6 +83,8 @@ function publish(set: (fn: (s: LibraryState) => Partial<LibraryState>) => void, 
   }
   // Guides limités aux pays des langues favorites de tous les profils.
   const langs = [...new Set(useSettings.getState().profiles.flatMap((p) => p.languages))];
+  // Guides par pays : seulement là où ils sont lisibles (le navigateur seul est bloqué par CORS).
+  const autoGuide = useSettings.getState().playback.autoEpg !== false && canFetchGuides() && all.some((c) => c.tvgId);
   // Copies d'une même chaîne (sources, qualités) regroupées sous une seule entrée.
   const grouped = groupChannels(all);
   const byId = new Map<string, Channel>();
@@ -89,7 +96,7 @@ function publish(set: (fn: (s: LibraryState) => Partial<LibraryState>) => void, 
     loading: false,
     vodCounts,
     libraryVersion: st.libraryVersion + 1,
-    epgUrls: filterEpgUrls([...new Set(epgUrls)], langs),
+    epgUrls: filterEpgUrls([...new Set([...epgUrls, ...(autoGuide ? autoGuideUrls(langs) : [])])], langs),
   }));
 }
 

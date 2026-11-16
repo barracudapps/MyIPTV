@@ -444,6 +444,7 @@ export function NowPanel() {
 function ProgrammeCard({ p, label }: { p: Programme; label: string }) {
   return (
     <div className="prog-card">
+      {p.icon && <img className="prog-image" src={p.icon} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = "none")} />}
       <span className="eyebrow">{label}</span>
       <h2>
         {p.title} {p.age ? <em className="age">-{p.age}</em> : null}

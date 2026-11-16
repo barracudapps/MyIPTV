@@ -127,6 +127,18 @@ export function filterEpgUrls(urls: string[], langs: string[]): string[] {
   });
 }
 
+/** Guides gratuits par pays (epgshare01), pour les chaînes dont la liste n'annonce aucun guide. */
+const EPGSHARE_COUNTRIES = new Set("AE AL AR AT AU BA BE BG BR CA CH CL CO CR CY CZ DE DK DO EC EG ES FI FR GR HK HR HU ID IE IL IN IT JM JP KE KR KZ LT LU LV MN MT MX MY NG NL NO NZ PA PE PH PK PL PT RO RS SA SE SG SK SV TH TR UA UK US UY VN ZA".split(" "));
+const EPGSHARE_FILE: Record<string, string> = { BE: "BE2", CA: "CA2", US: "US2" };
+
+export function autoGuideUrls(langs: string[]): string[] {
+  return countriesFor(langs)
+    .map((c) => (c === "GB" ? "UK" : c))
+    .filter((c) => EPGSHARE_COUNTRIES.has(c))
+    .slice(0, 6)
+    .map((c) => `https://epgshare01.online/epgshare01/epg_ripper_${EPGSHARE_FILE[c] ?? `${c}1`}.xml.gz`);
+}
+
 /** Sources légales et gratuites intégrées par défaut. */
 export function builtinSources(langs: string[]): Source[] {
   const countries = countriesFor(langs);

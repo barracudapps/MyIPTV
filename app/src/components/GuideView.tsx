@@ -166,6 +166,7 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
   return (
     <Modal title={p.title} onClose={onClose}>
       <div className="prog-dialog">
+        {p.icon && <img className="prog-image" src={p.icon} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = "none")} />}
         <div className="row">
           <ChannelLogo channel={ch} size={40} />
           <div>

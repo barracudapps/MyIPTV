@@ -30,12 +30,23 @@ pub struct EpgFilter {
     pub to: i64,
 }
 
+/// Identifiant XMLTV réduit à ses lettres et chiffres, sans variante de flux : rapproche
+/// `France2.fr@SD` (iptv-org) de `France.2.fr` (guides agrégés). Préfixé pour ne jamais
+/// rencontrer une clé de nom normalisé.
+pub fn id_key(id: &str) -> String {
+    let base = id.split('@').next().unwrap_or(id);
+    let mut out = String::from("#");
+    out.extend(base.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase));
+    out
+}
+
 impl EpgFilter {
     pub fn for_channels(channels: &[Channel], from: i64, to: i64) -> Self {
         let mut f = EpgFilter { from, to, ..Default::default() };
         for c in channels {
             if let Some(id) = &c.tvg_id {
                 f.ids.insert(id.to_lowercase());
+                f.ids.insert(id_key(id));
             }
             f.names.insert(normalize_name(c.tvg_name.as_deref().unwrap_or(&c.name)));
             f.names.insert(normalize_name(&c.name));
@@ -49,6 +60,7 @@ impl Epg {
     pub fn resolve(&self, ch: &Channel) -> Option<&str> {
         let candidates = [
             ch.tvg_id.as_ref().map(|s| s.to_lowercase()),
+            ch.tvg_id.as_deref().map(id_key),
             ch.tvg_name.as_deref().map(normalize_name),
             Some(normalize_name(&ch.name)),
         ];
@@ -197,10 +209,11 @@ pub fn parse_xmltv(xml: &[u8], filter: Option<&EpgFilter>) -> Result<Epg, String
                             let lower = id.to_lowercase();
                             let wanted = match filter {
                                 None => true,
-                                Some(f) => f.ids.contains(&lower) || names.iter().any(|n| f.names.contains(&normalize_name(n))),
+                                Some(f) => f.ids.contains(&lower) || f.ids.contains(&id_key(&id)) || names.iter().any(|n| f.names.contains(&normalize_name(n))),
                             };
                             if wanted {
                                 epg.index.insert(lower, id.clone());
+                                epg.index.entry(id_key(&id)).or_insert_with(|| id.clone());
                                 for n in &names {
                                     epg.index.entry(normalize_name(n)).or_insert_with(|| id.clone());
                                 }
@@ -280,6 +293,16 @@ mod tests {
         assert_eq!(parse_xmltv_time("20261112140000 +0100"), Some(1_794_488_400));
         assert_eq!(parse_xmltv_time("20261112130000"), Some(1_794_488_400));
         assert_eq!(parse_xmltv_time("bad"), None);
+    }
+
+    #[test]
+    fn resolves_ids_written_differently() {
+        // iptv-org : variante de flux après « @ » ; guides agrégés : points entre les mots.
+        let ch = Channel { name: "F24 info".into(), tvg_id: Some("France.24.fr@SD".into()), ..Default::default() };
+        let f = EpgFilter::for_channels(std::slice::from_ref(&ch), 0, i64::MAX);
+        let epg = parse_xmltv(XML.as_bytes(), Some(&f)).unwrap();
+        assert_eq!(epg.for_channel(&ch, 0, i64::MAX).len(), 2);
+        assert_eq!(super::id_key("France2.fr@SD"), super::id_key("France.2.fr"));
     }
 
     #[test]

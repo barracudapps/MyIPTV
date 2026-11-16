@@ -424,6 +424,12 @@ function PlaybackSettings() {
         onChange={(v) => (set({ includeUnverified: v }), useLibrary.getState().loadAll())}
       />
       <Toggle
+        label="Guide automatique"
+        hint="Ajoute les guides gratuits (epgshare01) des pays de vos langues, pour les chaînes dont la liste ne fournit pas de programme. Application et TV ; pas dans un simple navigateur."
+        checked={pb.autoEpg !== false}
+        onChange={(v) => (set({ autoEpg: v }), useLibrary.getState().loadAll())}
+      />
+      <Toggle
         label="Mode Hacker"
         hint="Affiche par-dessus le lecteur les mesures techniques : images par seconde, images perdues, tampon, débit réel et estimé, codecs, processeur et mémoire. Raccourci : Ctrl+Maj+H."
         checked={!!pb.hacker}
