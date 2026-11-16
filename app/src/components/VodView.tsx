@@ -8,7 +8,8 @@ import { Showcase } from "./Showcase";
 import { useUi } from "../store/ui";
 import { sectionOf } from "../lib/sections";
 import { fmtDuration } from "../lib/util";
-import type { HistoryEntry } from "../lib/parental";
+import type { Collection, HistoryEntry } from "../lib/parental";
+import { useRecommendations } from "../lib/recommend";
 import type { SearchField, VodFacets, VodItem, VodKind, VodSort } from "../types";
 import { Icon } from "./Icon";
 import { CategorySelect, FilterTabs, LangBadge, LangSelect, langQuery } from "./Filters";
@@ -83,13 +84,27 @@ export function itemIds(item: VodItem): string[] {
 }
 
 /** Rangée horizontale (Reprendre, Ma liste…) ; `onRemove` et `onClear` la rendent modifiable. */
-export function VodRow({ title, items, progress, onRemove, onClear }: { title: string; items: VodItem[]; progress?: Record<string, number>; onRemove?(item: VodItem): void; onClear?(): void }) {
+export function VodRow({
+  title,
+  items,
+  progress,
+  onRemove,
+  onClear,
+  clearLabel = "Tout effacer",
+}: {
+  title: string;
+  items: VodItem[];
+  progress?: Record<string, number>;
+  onRemove?(item: VodItem): void;
+  onClear?(): void;
+  clearLabel?: string;
+}) {
   if (!items.length) return null;
   return (
     <section className="vod-row">
       <div className="vod-row-head">
         <h3>{title}</h3>
-        {onClear && <ConfirmButton label="Tout effacer" confirm="Confirmer l'effacement ?" onConfirm={onClear} />}
+        {onClear && <ConfirmButton label={clearLabel} confirm="Confirmer ?" onConfirm={onClear} />}
       </div>
       <div className="vod-row-scroll">
         {items.map((i) =>
@@ -125,6 +140,20 @@ export function useItemsByIds(ids: string[], kind?: VodKind) {
       .catch(() => setItems([]));
   }, [key, kind, version]); // eslint-disable-line react-hooks/exhaustive-deps
   return items;
+}
+
+/** Collection personnelle : ses contenus de la section affichée. */
+function CollectionRow({ collection, kind }: { collection: Collection; kind: VodKind }) {
+  const items = useItemsByIds(collection.itemIds, kind);
+  return (
+    <VodRow
+      title={collection.name}
+      items={items}
+      onRemove={(i) => useSettings.getState().toggleInCollection(collection.id, i.id)}
+      onClear={() => useSettings.getState().deleteCollection(collection.id)}
+      clearLabel="Supprimer la collection"
+    />
+  );
 }
 
 export function historyProgress(history: HistoryEntry[]) {
@@ -221,6 +250,7 @@ export function VodView({ kind }: { kind: VodKind }) {
   const historyIds = useMemo(() => profile.history.filter((h) => h.kind === kind && !h.finished).map((h) => h.itemId), [profile.history, kind]);
   const resume = useItemsByIds(historyIds, kind);
   const favorites = useItemsByIds(profile.vodFavorites, kind);
+  const recommendations = useRecommendations(kind, profile, includeAdult);
   const progress = useMemo(() => historyProgress(profile.history), [profile.history]);
   const filtered = !!(category || genre || text || country);
   // Thèmes « vitrine » : bannière et rangées par genre pour les films, séries et émissions.
@@ -323,7 +353,13 @@ export function VodView({ kind }: { kind: VodKind }) {
             onRemove={(i) => useSettings.getState().removeHistory(itemIds(i))}
             onClear={() => useSettings.getState().clearHistory(kind)}
           />
-          <VodRow title="Ma liste" items={favorites} />
+          <VodRow title="Ma liste" items={favorites} onRemove={(i) => useSettings.getState().toggleVodFavorite(i.id)} />
+          {(profile.collections ?? []).map((c) => (
+            <CollectionRow key={c.id} collection={c} kind={kind} />
+          ))}
+          {recommendations.map((r) => (
+            <VodRow key={r.title} title={r.title} items={r.items} />
+          ))}
         </>
       )}
       {!filtered && showcase && <h3 className="catalog-title">Tout le catalogue</h3>}

@@ -1355,3 +1355,53 @@ html[data-motion="off"] .xp-strip, html[data-motion="off"] .xp-card, html[data-m
   margin-bottom: 10px;
   background: var(--surface-2);
 }
+
+/* Collections */
+.collection-menu {
+  position: relative;
+}
+.collection-pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: pop 0.18s ease both;
+}
+.collection-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.collection-opt:hover {
+  background: var(--surface);
+}
+.collection-opt span {
+  flex: 1;
+}
+.collection-new {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.collection-new input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}

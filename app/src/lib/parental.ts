@@ -35,6 +35,8 @@ export interface Profile {
   languages: string[];
   /** Films, séries, podcasts… mis en favoris. */
   vodFavorites: string[];
+  /** Collections personnelles de films, séries… */
+  collections?: Collection[];
   /** Note personnelle (1 à 5) par contenu. */
   ratings: Record<string, number>;
   /** Historique de visionnage / écoute, le plus récent d'abord. */
@@ -42,6 +44,13 @@ export interface Profile {
   player: PlayerPrefs;
   /** Connexion Trakt du profil (historique synchronisé). */
   trakt?: import("./trakt").TraktSession;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  /** Contenus, le plus récemment ajouté d'abord. */
+  itemIds: string[];
 }
 
 export interface HistoryEntry {

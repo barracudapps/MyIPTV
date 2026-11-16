@@ -119,6 +119,11 @@ interface SettingsState {
   pushRecent(channelId: string): void;
   setLanguages(langs: string[]): void;
   toggleVodFavorite(itemId: string): void;
+  /** Crée une collection (avec un premier contenu) et renvoie son identifiant. */
+  createCollection(name: string, itemId?: string): string;
+  toggleInCollection(collectionId: string, itemId: string): void;
+  renameCollection(collectionId: string, name: string): void;
+  deleteCollection(collectionId: string): void;
   rate(itemId: string, stars: number): void;
   recordProgress(entry: Omit<HistoryEntry, "updatedAt">): void;
   /** Retire un contenu de l'historique (et ses copies d'autres sources). */
@@ -296,6 +301,21 @@ export const useSettings = create<SettingsState>()(
         setLanguages: (languages) => updateActive((p) => ({ ...p, languages })),
         toggleVodFavorite: (itemId) =>
           updateActive((p) => ({ ...p, vodFavorites: p.vodFavorites.includes(itemId) ? p.vodFavorites.filter((f) => f !== itemId) : [itemId, ...p.vodFavorites] })),
+        createCollection: (name, itemId) => {
+          const id = `col-${Date.now().toString(36)}`;
+          updateActive((p) => ({ ...p, collections: [...(p.collections ?? []), { id, name: name.trim() || "Ma collection", itemIds: itemId ? [itemId] : [] }] }));
+          return id;
+        },
+        toggleInCollection: (collectionId, itemId) =>
+          updateActive((p) => ({
+            ...p,
+            collections: (p.collections ?? []).map((c) =>
+              c.id !== collectionId ? c : { ...c, itemIds: c.itemIds.includes(itemId) ? c.itemIds.filter((i) => i !== itemId) : [itemId, ...c.itemIds] },
+            ),
+          })),
+        renameCollection: (collectionId, name) =>
+          updateActive((p) => ({ ...p, collections: (p.collections ?? []).map((c) => (c.id === collectionId ? { ...c, name: name.trim() || c.name } : c)) })),
+        deleteCollection: (collectionId) => updateActive((p) => ({ ...p, collections: (p.collections ?? []).filter((c) => c.id !== collectionId) })),
         rate: (itemId, stars) =>
           updateActive((p) => {
             const ratings = { ...p.ratings };

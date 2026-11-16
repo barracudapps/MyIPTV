@@ -12,6 +12,7 @@ import { LazyImg } from "./LazyImg";
 import type { Episode, Person, PersonView as PersonData, VodDetail } from "../types";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { CollectionMenu } from "./Collections";
 import { fmtRuntime, openItem, VodCard } from "./VodView";
 import { Dropdown } from "./Dropdown";
 import { translateLabel } from "../lib/i18n";
@@ -198,6 +199,7 @@ export function DetailView() {
                   <button className={`btn ${fav ? "btn-on" : ""}`} onClick={toggleFav}>
                     <Icon name="heart" filled={fav} /> {fav ? "Dans ma liste" : "Ma liste"}
                   </button>
+                  <CollectionMenu itemId={id} />
                   {history && (
                     <button className="btn" onClick={() => useSettings.getState().removeHistory(id)} title="Retirer de l'historique">
                       <Icon name="history" /> Oublier
