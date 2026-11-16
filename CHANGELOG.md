@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 
 ## [Non publié]
 
+## [0.5.1] - 2026-11-16
+
+### Corrigé
+- Publication des versions : la compilation des applications (macOS, Windows, Linux, Android) aboutit de nouveau et crée la release.
+
 ## [0.5.0] - 2026-11-16
 
 ### Ajouté
