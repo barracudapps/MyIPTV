@@ -21,6 +21,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 - Télécommande sur téléphone : QR code dans Réglages › Télécommande, page web avec flèches et OK, lecture, chaînes, volume, accès direct aux écrans et recherche au clavier du téléphone (réseau local, adresse à code secret).
 - Interface en anglais (Réglages › Langues › Langue de l'interface), détectée au premier lancement selon la langue du système.
 - Accessibilité (Réglages › Apparence) : texte agrandi jusqu'à 160 % et contraste élevé, valables quel que soit le thème.
+- Android TV : bannière dans le lanceur, application proposée aux appareils sans écran tactile.
 - Mode Hacker : images par seconde, images perdues, tampon, débit, codecs, processeur et mémoire par-dessus le lecteur (Ctrl+Maj+H).
 
 ## [0.4.0] - 2026-11-12
