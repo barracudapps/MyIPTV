@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions de la fenêtre principale (dont le mini-lecteur flottant)",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "opener:default",
@@ -14,6 +16,7 @@
     "core:window:allow-set-position",
     "core:window:allow-start-dragging",
     "core:window:allow-maximize",
-    "core:window:allow-unmaximize"
+    "core:window:allow-unmaximize",
+    "notification:default"
   ]
 }

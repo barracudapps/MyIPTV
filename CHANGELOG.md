@@ -12,6 +12,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/), ver
 - Historique : retrait d'un élément (croix sur l'affiche ou la chaîne), effacement d'une section, des chaînes récentes ou de tout l'historique, avec confirmation.
 - Sauvegarde de toute la configuration (sources, comptes, profils, favoris, historique, thèmes, réglages) dans un fichier `.myiptv`, chiffré par mot de passe au choix, et restauration par fusion.
 - Mises à jour automatiques des applications de bureau : recherche au démarrage (désactivable), téléchargement et redémarrage en un clic, paquets signés.
+- Rappels de programmes : « Me rappeler » dans le guide, notification système et alerte « Regarder » 2 minutes avant, liste des rappels dans Enregistrements.
 - Mode Hacker : images par seconde, images perdues, tampon, débit, codecs, processeur et mémoire par-dessus le lecteur (Ctrl+Maj+H).
 
 ## [0.4.0] - 2026-11-12

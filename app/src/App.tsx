@@ -20,6 +20,7 @@ import { preloadEngines } from "./lib/engines";
 import { importHistory } from "./lib/trakt";
 import { ActivityBar } from "./components/ActivityIndicator";
 import { UpdateBanner } from "./components/Updates";
+import { ReminderAlerts } from "./components/Reminders";
 import type { VodKind } from "./types";
 
 // Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
@@ -180,6 +181,7 @@ export default function App() {
       <Toasts />
       <ActivityBar />
       <UpdateBanner />
+      <ReminderAlerts />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import type { Channel, Programme } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { ReminderButton } from "./Reminders";
 import { useRecordings } from "../store/recordings";
 import { ReplayBadge } from "./Catchup";
 
@@ -191,7 +192,7 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
             </button>
           )}
           {p.stop > now && <RecordButton ch={ch} p={p} />}
-          {p.start > now && <span className="dim">Diffusion à venir.</span>}
+          {p.start > now && <ReminderButton ch={ch} p={p} />}
           {p.stop <= now && !ch.catchup && <span className="dim">Cette chaîne ne propose pas de replay.</span>}
         </div>
       </div>

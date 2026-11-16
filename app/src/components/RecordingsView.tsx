@@ -8,6 +8,7 @@ import { fmtDay, fmtTime } from "../lib/util";
 import type { Recording, RecStatus } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { Icon } from "./Icon";
+import { ReminderList } from "./Reminders";
 import { fmtRuntime } from "./VodView";
 
 const STATUS: Record<RecStatus, { label: string; tone: string }> = {
@@ -75,6 +76,8 @@ export function RecordingsView() {
       </header>
 
       {!info && <div className="card notice">L'enregistrement n'est disponible que sur l'application de bureau ou Android.</div>}
+
+      <ReminderList />
 
       <h3>À venir et en cours ({upcoming.length})</h3>
       {upcoming.length === 0 ? (

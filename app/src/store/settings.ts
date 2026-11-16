@@ -170,7 +170,7 @@ function withDefaults(p: Partial<Profile> & Pick<Profile, "id" | "name" | "kind"
  * Stockage local qui ne lève pas d'erreur quand il est plein : l'action en cours
  * (ajout de source, réglage…) aboutit, et l'interface prévient l'utilisateur.
  */
-const safeLocalStorage: Storage = {
+export const safeLocalStorage: Storage = {
   get length() {
     return localStorage.length;
   },
