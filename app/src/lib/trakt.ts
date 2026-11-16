@@ -1,6 +1,7 @@
 import { getBackend } from "../platform";
 import { useSettings } from "../store/settings";
 import { startTask } from "../store/activity";
+import { t } from "./t";
 import type { Episode, VodItem } from "../types";
 
 /**
@@ -32,7 +33,7 @@ export interface DeviceCode {
 
 function app() {
   const { traktClientId, traktClientSecret } = useSettings.getState().meta;
-  if (!traktClientId?.trim() || !traktClientSecret?.trim()) throw new Error("Renseignez d'abord l'identifiant et le secret de votre application Trakt.");
+  if (!traktClientId?.trim() || !traktClientSecret?.trim()) throw new Error(t("Renseignez d'abord l'identifiant et le secret de votre application Trakt."));
   return { id: traktClientId.trim(), secret: traktClientSecret.trim() };
 }
 
@@ -55,7 +56,7 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; to
 export async function startDeviceAuth(): Promise<DeviceCode> {
   const { id } = app();
   const r = await call<{ device_code: string; user_code: string; verification_url: string; expires_in: number; interval: number }>("/oauth/device/code", { body: { client_id: id } });
-  if (r.status !== 200 || !r.data) throw new Error(`Trakt a refusé la demande (${r.status}) : vérifiez l'identifiant de l'application.`);
+  if (r.status !== 200 || !r.data) throw new Error(t("Trakt a refusé la demande ({status}) : vérifiez l'identifiant de l'application.", { status: r.status }));
   return { deviceCode: r.data.device_code, userCode: r.data.user_code, verificationUrl: r.data.verification_url, expiresIn: r.data.expires_in, interval: r.data.interval };
 }
 
@@ -70,7 +71,7 @@ export async function waitForDevice(code: DeviceCode, cancelled: () => boolean):
   let interval = code.interval * 1000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, interval));
-    if (cancelled()) throw new Error("Connexion annulée.");
+    if (cancelled()) throw new Error(t("Connexion annulée."));
     const r = await call<TokenReply>("/oauth/device/token", { body: { code: code.deviceCode, client_id: id, client_secret: secret } });
     if (r.status === 200 && r.data) {
       const session = toSession(r.data);
@@ -78,12 +79,12 @@ export async function waitForDevice(code: DeviceCode, cancelled: () => boolean):
       return { ...session, username: me?.data?.user?.username };
     }
     if (r.status === 429) interval += 1000;
-    else if (r.status === 404) throw new Error("Code invalide.");
-    else if (r.status === 409) throw new Error("Ce code a déjà été utilisé.");
-    else if (r.status === 410) throw new Error("Le code a expiré : recommencez.");
-    else if (r.status === 418) throw new Error("Connexion refusée sur Trakt.");
+    else if (r.status === 404) throw new Error(t("Code invalide."));
+    else if (r.status === 409) throw new Error(t("Ce code a déjà été utilisé."));
+    else if (r.status === 410) throw new Error(t("Le code a expiré : recommencez."));
+    else if (r.status === 418) throw new Error(t("Connexion refusée sur Trakt."));
   }
-  throw new Error("Le code a expiré : recommencez.");
+  throw new Error(t("Le code a expiré : recommencez."));
 }
 
 function activeSession(): { profileId: string; session: TraktSession } | null {
@@ -145,15 +146,15 @@ export async function scrobble(action: "start" | "pause" | "stop", item: VodItem
  * bibliothèque (reconnus par identifiant TMDB). Renvoie le nombre de contenus mis à jour.
  */
 export async function importHistory(): Promise<number> {
-  const t = await token();
+  const tok = await token();
   const a = activeSession();
-  if (!t || !a) return 0;
-  const task = startTask("Synchronisation Trakt");
+  if (!tok || !a) return 0;
+  const task = startTask(t("Synchronisation Trakt"));
   try {
     type Ids = { ids?: { tmdb?: number } };
     const [watched, playback] = await Promise.all([
-      call<(Ids & { movie?: Ids })[]>("/sync/watched/movies", { token: t }),
-      call<{ progress: number; type: string; movie?: Ids; show?: Ids; episode?: { season: number; number: number } }[]>("/sync/playback", { token: t }),
+      call<(Ids & { movie?: Ids })[]>("/sync/watched/movies", { token: tok }),
+      call<{ progress: number; type: string; movie?: Ids; show?: Ids; episode?: { season: number; number: number } }[]>("/sync/playback", { token: tok }),
     ]);
     const watchedIds = new Set((watched.data ?? []).map((w) => w.movie?.ids?.tmdb).filter((x): x is number => !!x));
     const resume = new Map<number, { progress: number; episode?: { season: number; number: number } }>();

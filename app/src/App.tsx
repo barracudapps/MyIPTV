@@ -23,6 +23,7 @@ import { UpdateBanner } from "./components/Updates";
 import { ReminderAlerts } from "./components/Reminders";
 import { installRemote } from "./lib/remote";
 import type { VodKind } from "./types";
+import { t } from "./lib/t";
 
 // Écrans secondaires chargés à la première ouverture : démarrage plus rapide sur TV.
 const GuideView = lazy(() => import("./components/GuideView").then((m) => ({ default: m.GuideView })));
@@ -60,7 +61,7 @@ export default function App() {
         e.preventDefault();
         const on = !useSettings.getState().playback.hacker;
         useSettings.getState().setPlayback({ hacker: on });
-        useUi.getState().toast(on ? "Mode Hacker activé." : "Mode Hacker désactivé.", "info");
+        useUi.getState().toast(on ? t("Mode Hacker activé.") : t("Mode Hacker désactivé."), "info");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -83,7 +84,7 @@ export default function App() {
     startupDedupeDone = true;
     removeDuplicateSources().then((names) => {
       if (!names.length) return;
-      useUi.getState().toast(names.length === 1 ? `Source en double retirée : « ${names[0]} ».` : `${names.length} sources en double retirées.`, "info");
+      useUi.getState().toast(names.length === 1 ? t("Source en double retirée : « {name} ».", { name: names[0] }) : t("{n} sources en double retirées.", { n: names.length }), "info");
     });
   }, []);
 
@@ -92,7 +93,7 @@ export default function App() {
     const onFull = () => {
       if (warned) return;
       warned = true;
-      useUi.getState().toast("Stockage plein : vos derniers réglages n'ont pas pu être enregistrés.", "error");
+      useUi.getState().toast(t("Stockage plein : vos derniers réglages n'ont pas pu être enregistrés."), "error");
     };
     window.addEventListener("myiptv-storage-full", onFull);
     return () => window.removeEventListener("myiptv-storage-full", onFull);

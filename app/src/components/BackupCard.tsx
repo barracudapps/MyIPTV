@@ -6,6 +6,7 @@ import { track } from "../store/activity";
 import { ReceivePreview } from "./ShareSettings";
 import { Toggle } from "./ThemeEditor";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 /** Sauvegarde de toute la configuration dans un fichier, et restauration. */
 export function BackupCard() {
@@ -23,8 +24,8 @@ export function BackupCard() {
     setBusy(true);
     setError(null);
     try {
-      const r = await track("Sauvegarde de la configuration", () => exportBackup({ history, password: password || undefined }));
-      toast(`Sauvegarde enregistrée : ${r.where}`, "success");
+      const r = await track(t("Sauvegarde de la configuration"), () => exportBackup({ history, password: password || undefined }));
+      toast(t("Sauvegarde enregistrée : {where}", { where: r.where }), "success");
       setPassword("");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -57,36 +58,36 @@ export function BackupCard() {
 
   return (
     <div className="card">
-      <h3><Icon name="save" /> Sauvegarde dans un fichier</h3>
+      <h3><Icon name="save" /> {t("Sauvegarde dans un fichier")}</h3>
       <p className="dim small">
-        Sources, comptes, profils, favoris, thèmes et réglages dans un fichier <code>.myiptv</code>, à garder ou à ouvrir sur un autre appareil. Le
-        contenu adulte n'est jamais réactivé par une restauration.
+        {t("Sources, comptes, profils, favoris, thèmes et réglages dans un fichier")} <code>.myiptv</code>
+        {t(", à garder ou à ouvrir sur un autre appareil. Le contenu adulte n'est jamais réactivé par une restauration.")}
       </p>
-      <Toggle label="Inclure l'historique de visionnage" hint="Reprises de lecture de chaque profil." checked={history} onChange={setHistory} />
+      <Toggle label={t("Inclure l'historique de visionnage")} hint={t("Reprises de lecture de chaque profil.")} checked={history} onChange={setHistory} />
       {canEncrypt && (
         <label className="field">
-          Mot de passe (facultatif)
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Chiffre le fichier : comptes et clés protégés" autoComplete="new-password" />
+          {t("Mot de passe (facultatif)")}
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("Chiffre le fichier : comptes et clés protégés")} autoComplete="new-password" />
         </label>
       )}
-      {!password && <p className="dim small">Sans mot de passe, les identifiants des comptes sont lisibles dans le fichier.</p>}
+      {!password && <p className="dim small">{t("Sans mot de passe, les identifiants des comptes sont lisibles dans le fichier.")}</p>}
       <div className="row">
         <button className="btn btn-primary" disabled={busy} onClick={save}>
-          <Icon name="download" /> {busy ? "Sauvegarde…" : "Sauvegarder"}
+          <Icon name="download" /> {busy ? t("Sauvegarde…") : t("Sauvegarder")}
         </button>
         <button className="btn" onClick={() => input.current?.click()}>
-          <Icon name="upload" /> Restaurer…
+          <Icon name="upload" /> {t("Restaurer…")}
         </button>
         <input ref={input} type="file" accept=".myiptv,.json,application/json" hidden onChange={(e) => (void pick(e.target.files?.[0]), (e.target.value = ""))} />
       </div>
       {pending && (
         <form className="row" onSubmit={(e) => (e.preventDefault(), void open(pending, unlock))}>
           <label className="field">
-            Mot de passe de la sauvegarde
+            {t("Mot de passe de la sauvegarde")}
             <input type="password" autoFocus value={unlock} onChange={(e) => setUnlock(e.target.value)} autoComplete="current-password" />
           </label>
-          <button className="btn btn-primary" disabled={!unlock}>Ouvrir</button>
-          <button type="button" className="btn" onClick={() => (setPending(null), setError(null))}>Annuler</button>
+          <button className="btn btn-primary" disabled={!unlock}>{t("Ouvrir")}</button>
+          <button type="button" className="btn" onClick={() => (setPending(null), setError(null))}>{t("Annuler")}</button>
         </form>
       )}
       {error && <p className="error-text small">{error}</p>}

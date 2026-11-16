@@ -7,3 +7,9 @@ describe("traduction de l'interface", () => {
     expect(t("Variable {absente}")).toBe("Variable {absente}");
   });
 });
+
+describe("contexte d'une clé", () => {
+  it("n'affiche jamais le contexte", () => {
+    expect(t("Clé inconnue|contexte")).toBe("Clé inconnue");
+  });
+});

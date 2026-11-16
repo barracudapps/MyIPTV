@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useSettings } from "../store/settings";
 import { useUi } from "../store/ui";
 import type { VodItem } from "../types";
+import { t } from "./t";
 
 export type MascotMood = "idle" | "happy" | "surprised" | "sleep" | "dance" | "think" | "wave";
 
@@ -64,7 +65,7 @@ export function playSound(kind: "click" | "zap" | "success" | "fav" | "error") {
   if (!f.sounds) return;
   try {
     ctx ??= new AudioContext();
-    const t = ctx.currentTime;
+    const now = ctx.currentTime;
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     const notes: Record<typeof kind, [number, number][]> = {
@@ -74,7 +75,7 @@ export function playSound(kind: "click" | "zap" | "success" | "fav" | "error") {
       fav: [[660, 0.07], [990, 0.12]],
       error: [[200, 0.15]],
     };
-    let at = t;
+    let at = now;
     for (const [freq, dur] of notes[kind]) {
       const o = ctx.createOscillator();
       o.type = kind === "zap" ? "sawtooth" : "sine";
@@ -115,12 +116,19 @@ export function idleMood(): MascotMood {
 
 export function greeting(name: string) {
   const h = new Date().getHours();
-  const hello = h < 5 ? "Encore debout" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
-  return `${hello} ${name} ! Qu'est-ce qu'on regarde ?`;
+  const hello =
+    h < 5
+      ? "Encore debout {name} ! Qu'est-ce qu'on regarde ?"
+      : h < 12
+        ? "Bonjour {name} ! Qu'est-ce qu'on regarde ?"
+        : h < 18
+          ? "Bon après-midi {name} ! Qu'est-ce qu'on regarde ?"
+          : "Bonsoir {name} ! Qu'est-ce qu'on regarde ?";
+  return t(hello, { name });
 }
 
 export function randomTip() {
-  return TIPS[Math.floor(Math.random() * TIPS.length)];
+  return t(TIPS[Math.floor(Math.random() * TIPS.length)]);
 }
 
 // ------------------------------------------------------------------ Succès
@@ -131,8 +139,8 @@ export function achieve(id: string) {
   if (!a) return;
   celebrate();
   playSound("success");
-  useUi.getState().toast(`${a.icon} Succès débloqué : ${a.title}`, "success");
-  say(`Bravo ! Succès « ${a.title} » débloqué ${a.icon}`, "happy", 0);
+  useUi.getState().toast(t("{icon} Succès débloqué : {title}", { icon: a.icon, title: t(a.title) }), "success");
+  say(t("Bravo ! Succès « {title} » débloqué {icon}", { title: t(a.title), icon: a.icon }), "happy", 0);
 }
 
 export function celebrate() {
@@ -178,7 +186,7 @@ export const fun = {
     celebrate();
     achieve("first_fav");
     if (total >= 20) achieve("fav_20");
-    say(["Bon choix !", "Ajouté à tes favoris ✨", "Je note, je note…"][Math.floor(Math.random() * 3)], "happy", 2);
+    say(t(["Bon choix !", "Ajouté à tes favoris ✨", "Je note, je note…"][Math.floor(Math.random() * 3)]), "happy", 2);
   },
   onSearch() {
     settings().bumpStat("searches");
@@ -202,7 +210,7 @@ export function installEasterEggs() {
     if (pos === KONAMI.length) {
       pos = 0;
       useFun.setState({ disco: true });
-      say("Mode disco activé ! 🪩", "dance", 0);
+      say(t("Mode disco activé ! 🪩"), "dance", 0);
       achieve("secret");
       setTimeout(() => useFun.setState({ disco: false }), 30_000);
     }

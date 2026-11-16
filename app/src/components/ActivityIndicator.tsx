@@ -4,6 +4,7 @@ import { useRecordings } from "../store/recordings";
 import { useUi } from "../store/ui";
 import { useNow } from "../lib/hooks";
 import { Icon } from "./Icon";
+import { t, plural } from "../lib/t";
 
 function elapsed(since: number, now: number): string {
   const s = Math.max(0, Math.round(now - since / 1000));
@@ -78,23 +79,23 @@ export function ActivityButton() {
     };
   }, [open]);
 
-  const label = count ? `${count} traitement${count > 1 ? "s" : ""} en cours` : "Aucun traitement en cours";
+  const label = count ? plural(count, "{n} traitement en cours", "{n} traitements en cours") : t("Aucun traitement en cours");
   return (
     <>
       <button ref={btn} className={`nav-item activity-btn ${count ? "busy" : ""}`} onClick={() => setOpen((o) => !o)} title={label} aria-expanded={open} aria-haspopup="dialog">
         {count ? <span className="spinner tiny" aria-hidden="true" /> : <Icon name="check" />}
-        <span>{count ? `${count} en cours` : "Activité"}</span>
+        <span>{count ? t("{n} en cours", { n: count }) : t("Activité")}</span>
         {count > 0 && <small className="activity-count">{count}</small>}
       </button>
       <span className="sr-only" aria-live="polite">{label}</span>
       {open && (
-        <div ref={pop} className="activity-popover" style={pos} role="dialog" aria-label="Traitements en cours">
+        <div ref={pop} className="activity-popover" style={pos} role="dialog" aria-label={t("Traitements en cours")}>
           <header>
-            <strong>Activité</strong>
+            <strong>{t("Activité")}</strong>
             <span className="dim small">{label}</span>
           </header>
           {count === 0 ? (
-            <p className="dim small activity-empty">Tout est à jour. Les chargements, vérifications, partages et enregistrements apparaîtront ici.</p>
+            <p className="dim small activity-empty">{t("Tout est à jour. Les chargements, vérifications, partages et enregistrements apparaîtront ici.")}</p>
           ) : (
             <ul>
               {tasks.map((t) => <TaskRow key={t.id} task={t} now={now} />)}
@@ -102,8 +103,8 @@ export function ActivityButton() {
                 <li key={r.id} className="activity-task">
                   <button className="activity-rec" onClick={() => (useUi.setState({ view: "recordings" }), setOpen(false))}>
                     <span className="rec-dot" aria-hidden="true" />
-                    <strong>Enregistrement</strong>
-                    <span className="dim small">{r.size ? `${(r.size / 1e6).toFixed(0)} Mo` : ""}</span>
+                    <strong>{t("Enregistrement")}</strong>
+                    <span className="dim small">{r.size ? t("{n} Mo", { n: (r.size / 1e6).toFixed(0) }) : ""}</span>
                   </button>
                   <span className="dim small activity-detail">{r.title} · {r.channel.name}</span>
                   <div className="activity-progress" role="progressbar">

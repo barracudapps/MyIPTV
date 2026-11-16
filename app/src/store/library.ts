@@ -1,5 +1,6 @@
 import { channelIds, groupChannels } from "../lib/variants";
 import { startTask } from "./activity";
+import { t, plural } from "../lib/t";
 import { withContent } from "../lib/playlists";
 import { create } from "zustand";
 import { getBackend, isTauri } from "../platform";
@@ -136,7 +137,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
       return;
     }
     set({ loading: true });
-    const task = startTask(pending.length === sources.length ? "Chargement des sources" : "Chargement des nouvelles sources", { done: 0, total: pending.length });
+    const task = startTask(pending.length === sources.length ? t("Chargement des sources") : t("Chargement des nouvelles sources"), { done: 0, total: pending.length });
     // Quelques sources à la fois : des centaines en même temps saturent le réseau et l'app.
     // Une source en échec n'empêche pas les autres.
     const queue = [...pending];
@@ -170,7 +171,7 @@ export const useLibrary = create<LibraryState>()((set, get) => ({
     }
     lastEpgKey = urls.join();
     set({ epgLoading: true });
-    const task = startTask("Guide des programmes", { detail: `${urls.length} guide${urls.length > 1 ? "s" : ""} à lire` });
+    const task = startTask(t("Guide des programmes"), { detail: plural(urls.length, "{n} guide à lire", "{n} guides à lire") });
     try {
       const backend = await getBackend();
       const stats = await backend.loadEpg(urls, force);

@@ -1,13 +1,15 @@
+import { locale } from "./t";
+
 export const nowSec = () => Math.floor(Date.now() / 1000);
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export function fmtTime(ts: number) {
-  return new Date(ts * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ts * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 export function fmtDay(ts: number) {
-  return new Date(ts * 1000).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(ts * 1000).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
 }
 
 export function fmtDuration(secs: number) {

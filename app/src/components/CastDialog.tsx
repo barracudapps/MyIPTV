@@ -3,6 +3,7 @@ import { getBackend, type CastDevice } from "../platform";
 import { useCast } from "../store/cast";
 import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 type PickerVideo = HTMLVideoElement & {
   webkitShowPlaybackTargetPicker?: () => void;
@@ -31,11 +32,11 @@ export function CastDialog({ video, onClose }: { video: HTMLVideoElement | null;
   useEffect(() => void scan(), []);
 
   return (
-    <Modal title="Diffuser sur un autre écran" onClose={onClose}>
+    <Modal title={t("Diffuser sur un autre écran")} onClose={onClose}>
       <div className="cast-list">
         {native && devices === null && (
           <p className="dim row">
-            <span className="spinner tiny" /> Recherche des écrans sur le réseau…
+            <span className="spinner tiny" /> {t("Recherche des écrans sur le réseau…")}
           </p>
         )}
         {devices?.map((d) => (
@@ -43,7 +44,7 @@ export function CastDialog({ video, onClose }: { video: HTMLVideoElement | null;
             <Icon name={d.kind === "chromecast" ? "cast" : "tv"} />
             <span>
               <strong>{d.name}</strong>
-              <span className="dim small">{[d.kind === "chromecast" ? "Chromecast / Google TV" : "Téléviseur DLNA", d.model].filter(Boolean).join(" · ")}</span>
+              <span className="dim small">{[d.kind === "chromecast" ? "Chromecast / Google TV" : t("Téléviseur DLNA"), d.model].filter(Boolean).join(" · ")}</span>
             </span>
           </button>
         ))}
@@ -52,7 +53,7 @@ export function CastDialog({ video, onClose }: { video: HTMLVideoElement | null;
             <Icon name="tv" />
             <span>
               <strong>AirPlay</strong>
-              <span className="dim small">Apple TV et téléviseurs compatibles</span>
+              <span className="dim small">{t("Apple TV et téléviseurs compatibles")}</span>
             </span>
           </button>
         )}
@@ -60,21 +61,21 @@ export function CastDialog({ video, onClose }: { video: HTMLVideoElement | null;
           <button className="cast-device" onClick={() => void v!.remote!.prompt().catch(() => undefined).then(onClose)}>
             <Icon name="cast" />
             <span>
-              <strong>Écran proposé par le navigateur</strong>
-              <span className="dim small">Chromecast et écrans compatibles</span>
+              <strong>{t("Écran proposé par le navigateur")}</strong>
+              <span className="dim small">{t("Chromecast et écrans compatibles")}</span>
             </span>
           </button>
         )}
         {devices && devices.length === 0 && (
           <p className="dim small">
             {native
-              ? "Aucun écran trouvé. Vérifiez qu'il est allumé et connecté au même réseau Wi-Fi, puis relancez la recherche."
-              : "Depuis le navigateur, seuls AirPlay et la diffusion intégrée au navigateur sont possibles ; l'application de bureau ou Android trouve aussi les Chromecast et téléviseurs DLNA."}
+              ? t("Aucun écran trouvé. Vérifiez qu'il est allumé et connecté au même réseau Wi-Fi, puis relancez la recherche.")
+              : t("Depuis le navigateur, seuls AirPlay et la diffusion intégrée au navigateur sont possibles ; l'application de bureau ou Android trouve aussi les Chromecast et téléviseurs DLNA.")}
           </p>
         )}
         {native && devices !== null && (
           <button className="btn" onClick={() => void scan()}>
-            <Icon name="refresh" /> Relancer la recherche
+            <Icon name="refresh" /> {t("Relancer la recherche")}
           </button>
         )}
       </div>
@@ -91,23 +92,23 @@ export function CastBar() {
   const duration = status.duration ?? 0;
   const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
   return (
-    <div className="cast-overlay" role="region" aria-label="Diffusion en cours">
+    <div className="cast-overlay" role="region" aria-label={t("Diffusion en cours")}>
       <Icon name="cast" size={40} />
-      <strong>Diffusion sur {device.name}</strong>
-      <span className="dim">{status.state === "BUFFERING" ? "Chargement sur l'écran…" : playing ? "Lecture en cours" : status.state === "PAUSED" ? "En pause" : "Connexion…"}</span>
+      <strong>{t("Diffusion sur {name}", { name: device.name })}</strong>
+      <span className="dim">{status.state === "BUFFERING" ? t("Chargement sur l'écran…") : playing ? t("Lecture en cours") : status.state === "PAUSED" ? t("En pause") : t("Connexion…")}</span>
       {duration > 0 && (
         <div className="cast-seek">
           <span>{fmt(status.position)}</span>
-          <input type="range" min={0} max={duration} step={1} value={status.position} onChange={(e) => useCast.getState().control("seek", +e.target.value)} aria-label="Position" />
+          <input type="range" min={0} max={duration} step={1} value={status.position} onChange={(e) => useCast.getState().control("seek", +e.target.value)} aria-label={t("Position")} />
           <span>{fmt(duration)}</span>
         </div>
       )}
       <div className="row">
         <button className="btn btn-primary" onClick={() => useCast.getState().control(playing ? "pause" : "play")}>
-          <Icon name={playing ? "pause" : "play"} /> {playing ? "Pause" : "Lecture"}
+          <Icon name={playing ? "pause" : "play"} /> {playing ? t("Pause") : t("Lecture")}
         </button>
         <button className="btn" onClick={() => useCast.getState().stop()}>
-          <Icon name="close" /> Arrêter la diffusion
+          <Icon name="close" /> {t("Arrêter la diffusion")}
         </button>
       </div>
     </div>

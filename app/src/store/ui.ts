@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { hashPin } from "../lib/parental";
 import { useSettings } from "./settings";
+import { t } from "../lib/t";
 
 import type { VodKind } from "../types";
 
@@ -82,7 +83,7 @@ export async function unlockSettings(): Promise<boolean> {
   // Un profil enfant n'accède jamais aux réglages sans code ; les autres seulement si l'option est active.
   const needed = profile?.kind === "child" || parental.protectSettings;
   if (!needed) return true;
-  const ok = await askPin("Réglages protégés", "Saisissez le code parental pour continuer.");
+  const ok = await askPin(t("Réglages protégés"), t("Saisissez le code parental pour continuer."));
   if (ok) useUi.setState({ settingsUnlocked: true });
   return ok;
 }

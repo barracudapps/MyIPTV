@@ -7,6 +7,7 @@ import { DEFAULT_CHILD_RULES, DEFAULT_PLAYER_PREFS, type HistoryEntry, type Play
 import { builtinSources, deviceLanguage } from "../lib/languages";
 import type { Source } from "../types";
 import { uid } from "../lib/util";
+import { t } from "../lib/t";
 
 /** Empreinte du code parental par défaut « 0000 » (voir `hashPin`). */
 export const DEFAULT_PIN_HASH = "7776507b75cd0a8780238f927f1c4a266e8a77815960f830be228835ffa250dd";
@@ -303,7 +304,7 @@ export const useSettings = create<SettingsState>()(
           updateActive((p) => ({ ...p, vodFavorites: p.vodFavorites.includes(itemId) ? p.vodFavorites.filter((f) => f !== itemId) : [itemId, ...p.vodFavorites] })),
         createCollection: (name, itemId) => {
           const id = `col-${Date.now().toString(36)}`;
-          updateActive((p) => ({ ...p, collections: [...(p.collections ?? []), { id, name: name.trim() || "Ma collection", itemIds: itemId ? [itemId] : [] }] }));
+          updateActive((p) => ({ ...p, collections: [...(p.collections ?? []), { id, name: name.trim() || t("Ma collection"), itemIds: itemId ? [itemId] : [] }] }));
           return id;
         },
         toggleInCollection: (collectionId, itemId) =>

@@ -15,6 +15,7 @@ import { Icon } from "./Icon";
 import { ReminderButton } from "./Reminders";
 import { useRecordings } from "../store/recordings";
 import { ReplayBadge } from "./Catchup";
+import { t } from "../lib/t";
 
 const PX_PER_MIN = 4;
 const ROW_H = 64;
@@ -72,10 +73,10 @@ export function GuideView() {
     return (
       <div className="empty-state">
         <Icon name="guide" size={56} />
-        <h2>Aucun guide des programmes</h2>
-        <p>Ajoutez une URL de guide XMLTV à l'une de vos sources (les comptes Xtream fournissent le leur automatiquement).</p>
+        <h2>{t("Aucun guide des programmes")}</h2>
+        <p>{t("Ajoutez une URL de guide XMLTV à l'une de vos sources (les comptes Xtream fournissent le leur automatiquement).")}</p>
         <button className="btn btn-primary" onClick={() => setView("sources")}>
-          Gérer les sources
+          {t("Gérer les sources")}
         </button>
       </div>
     );
@@ -89,17 +90,17 @@ export function GuideView() {
       <div className="toolbar">
         {(replayOnly ? [-7, -6, -5, -4, -3, -2, -1, 0] : [-3, -2, -1, 0, 1, 2]).map((o) => (
           <button key={o} className={`chip ${dayOffset === o ? "active" : ""}`} onClick={() => setDayOffset(o)}>
-            {o === 0 ? "Aujourd'hui" : o === -1 ? "Hier" : o === 1 ? "Demain" : fmtDay(nowSec() + o * 86400)}
+            {o === 0 ? t("Aujourd'hui") : o === -1 ? t("Hier") : o === 1 ? t("Demain") : fmtDay(nowSec() + o * 86400)}
           </button>
         ))}
         <div className="spacer" />
         <button className={`chip replay-chip ${replayOnly ? "active" : ""}`} onClick={() => setReplayOnly(!replayOnly)}>
-          <Icon name="replay" size={14} /> Avec replay
+          <Icon name="replay" size={14} /> {t("Avec replay")}
         </button>
         <label className="check">
-          <input type="checkbox" checked={onlyWithGuide} onChange={(e) => setOnlyWithGuide(e.target.checked)} /> Chaînes avec programmes
+          <input type="checkbox" checked={onlyWithGuide} onChange={(e) => setOnlyWithGuide(e.target.checked)} /> {t("Chaînes avec programmes")}
         </label>
-        {epgLoading && <span className="dim">Mise à jour du guide…</span>}
+        {epgLoading && <span className="dim">{t("Mise à jour du guide…")}</span>}
       </div>
       <div className="guide-scroll" ref={scrollRef}>
         <div style={{ width: width + CH_COL, height: v.getTotalSize() + 36, position: "relative" }}>
@@ -116,7 +117,7 @@ export function GuideView() {
             const progs = (programmes[ch.id] ?? []).filter((p) => p.stop > dayStart && p.start < dayEnd);
             return (
               <div key={row.key} className="guide-row" style={{ transform: `translateY(${row.start + 36}px)`, height: ROW_H }}>
-                <button className="guide-channel" style={{ width: CH_COL }} onClick={() => usePlayer.getState().play(ch, { zapList: channels })} title={`Regarder ${ch.name}`}>
+                <button className="guide-channel" style={{ width: CH_COL }} onClick={() => usePlayer.getState().play(ch, { zapList: channels })} title={t("Regarder {name}", { name: ch.name })}>
                   <ChannelLogo channel={ch} size={36} />
                   <span>{displayName(ch)}</span>
                   <ReplayBadge channel={ch} compact />
@@ -135,12 +136,12 @@ export function GuideView() {
                         title={`${fmtTime(p.start)} ${p.title}`}
                       >
                         <strong>
-                          {recorded.has(`${ch.id}@${p.start}`) && <span className="rec-dot" title="Enregistrement programmé" />}
+                          {recorded.has(`${ch.id}@${p.start}`) && <span className="rec-dot" title={t("Enregistrement programmé")} />}
                           {p.title}
                         </strong>
                         <span>
                           {fmtTime(p.start)}
-                          {state === "past" && ch.catchup ? " · replay" : ""}
+                          {state === "past" && ch.catchup ? ` · ${t("replay")}` : ""}
                         </span>
                       </button>
                     );
@@ -174,7 +175,7 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
             <div className="dim">
               {fmtDay(p.start)} · {fmtTime(p.start)} – {fmtTime(p.stop)}
               {p.category ? ` · ${p.category}` : ""}
-              {p.age ? ` · déconseillé aux moins de ${p.age} ans` : ""}
+              {p.age ? ` · ${t("déconseillé aux moins de {age} ans", { age: p.age })}` : ""}
             </div>
           </div>
         </div>
@@ -184,17 +185,17 @@ function ProgrammeDialog({ ch, p, onClose }: { ch: Channel; p: Programme; onClos
         <div className="actions">
           {p.start <= now && p.stop > now && (
             <button className="btn btn-primary" disabled={!access.ok} onClick={() => (usePlayer.getState().play(ch), onClose())}>
-              <Icon name="play" /> Regarder en direct
+              <Icon name="play" /> {t("Regarder en direct")}
             </button>
           )}
           {canReplay && inWindow && (
             <button className="btn" disabled={!access.ok} onClick={() => (usePlayer.getState().playCatchup(ch, p), onClose())}>
-              <Icon name="replay" /> {p.stop <= now ? "Revoir" : "Depuis le début"}
+              <Icon name="replay" /> {p.stop <= now ? t("Revoir") : t("Depuis le début")}
             </button>
           )}
           {p.stop > now && <RecordButton ch={ch} p={p} />}
           {p.start > now && <ReminderButton ch={ch} p={p} />}
-          {p.stop <= now && !ch.catchup && <span className="dim">Cette chaîne ne propose pas de replay.</span>}
+          {p.stop <= now && !ch.catchup && <span className="dim">{t("Cette chaîne ne propose pas de replay.")}</span>}
         </div>
       </div>
     </Modal>
@@ -206,13 +207,13 @@ function RecordButton({ ch, p }: { ch: Channel; p: Programme }) {
   if (rec) {
     return (
       <button className="btn" onClick={() => useRecordings.getState().cancel(rec.id, false)}>
-        <span className="rec-dot" /> {rec.status === "recording" ? "Arrêter l'enregistrement" : "Annuler l'enregistrement"}
+        <span className="rec-dot" /> {rec.status === "recording" ? t("Arrêter l'enregistrement") : t("Annuler l'enregistrement")}
       </button>
     );
   }
   return (
     <button className="btn" onClick={() => useRecordings.getState().record(ch, p)}>
-      <span className="rec-dot" /> Enregistrer
+      <span className="rec-dot" /> {t("Enregistrer|record")}
     </button>
   );
 }

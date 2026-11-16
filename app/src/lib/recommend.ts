@@ -3,6 +3,7 @@ import { getBackend } from "../platform";
 import { useLibrary } from "../store/library";
 import type { Profile } from "./parental";
 import type { VodItem, VodKind } from "../types";
+import { t } from "./t";
 
 export interface Suggestion {
   title: string;
@@ -52,13 +53,13 @@ export function useRecommendations(kind: VodKind, profile: Profile, includeAdult
       const shown = new Set<string>();
       const forYou = await pick(genres, shown);
       forYou.forEach((it) => shown.add(it.id));
-      if (forYou.length >= 4) out.push({ title: "Recommandé pour vous", items: forYou });
+      if (forYou.length >= 4) out.push({ title: t("Recommandé pour vous"), items: forYou });
       // Dernier contenu regardé : ses propres genres, pour une rangée distincte.
       const last = seeds[0];
       if (last?.genres?.length && seeds.length > 1) {
         const items = await pick(last.genres, shown);
         const watched = profile.history.some((h) => h.itemId === last.id);
-        if (items.length >= 4) out.push({ title: watched ? `Parce que vous avez regardé « ${last.title} »` : `Parce que « ${last.title} » est dans votre liste`, items });
+        if (items.length >= 4) out.push({ title: watched ? t("Parce que vous avez regardé « {title} »", { title: last.title }) : t("Parce que « {title} » est dans votre liste", { title: last.title }), items });
       }
       if (!cancelled) setRows(out);
     })().catch(() => !cancelled && setRows([]));

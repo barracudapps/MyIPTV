@@ -4,6 +4,7 @@ import { askPin, useUi } from "../store/ui";
 import { usePlayer } from "../store/player";
 import type { Profile } from "../lib/parental";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 /** Écran « Qui regarde ? ». À la première ouverture, crée le profil administrateur. */
 export function ProfilePicker() {
@@ -13,8 +14,8 @@ export function ProfilePicker() {
   if (profiles.length === 0) {
     return (
       <div className="profile-picker">
-        <h1>Bienvenue sur MyIPTV</h1>
-        <p className="dim">Créez votre profil. Il sera administrateur : il gère les sources, les autres profils et le contrôle parental.</p>
+        <h1>{t("Bienvenue sur MyIPTV")}</h1>
+        <p className="dim">{t("Créez votre profil. Il sera administrateur : il gère les sources, les autres profils et le contrôle parental.")}</p>
         <form
           className="row"
           onSubmit={(e) => {
@@ -24,9 +25,9 @@ export function ProfilePicker() {
             useSettings.getState().setActiveProfile(p.id);
           }}
         >
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Votre prénom" aria-label="Votre prénom" />
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t("Votre prénom")} aria-label={t("Votre prénom")} />
           <button className="btn btn-primary" type="submit" disabled={!name.trim()}>
-            Commencer
+            {t("Commencer")}
           </button>
         </form>
       </div>
@@ -35,7 +36,7 @@ export function ProfilePicker() {
 
   const choose = async (p: Profile) => {
     // Un administrateur protégé par code ne s'ouvre pas sans lui (sinon un enfant pourrait y accéder).
-    if (p.kind === "admin" && !(await askPin(`Profil de ${p.name}`, "Ce profil est protégé par le code parental."))) return;
+    if (p.kind === "admin" && !(await askPin(t("Profil de {name}", { name: p.name }), t("Ce profil est protégé par le code parental.")))) return;
     useUi.getState().resetUnlocks();
     useSettings.getState().setActiveProfile(p.id);
     useUi.getState().setView("live");
@@ -43,7 +44,7 @@ export function ProfilePicker() {
 
   return (
     <div className="profile-picker">
-      <h1>Qui regarde ?</h1>
+      <h1>{t("Qui regarde ?")}</h1>
       <div className="profiles">
         {profiles.map((p) => (
           <button key={p.id} className="profile" onClick={() => choose(p)}>
@@ -51,7 +52,7 @@ export function ProfilePicker() {
               {p.avatar}
             </span>
             <span>{p.name}</span>
-            {p.kind === "child" && <small className="dim">{p.child!.age} ans</small>}
+            {p.kind === "child" && <small className="dim">{t("{n} ans", { n: p.child!.age })}</small>}
             {p.kind === "admin" && useSettings.getState().parental.pinHash && <Icon name="lock" size={14} />}
           </button>
         ))}
@@ -64,7 +65,7 @@ export function ProfilePicker() {
 export async function switchProfile() {
   const s = useSettings.getState();
   const current = s.profiles.find((p) => p.id === s.activeProfileId);
-  if (current?.kind === "child" && s.parental.lockChildProfiles && !(await askPin("Changer de profil", "Demandez à un parent de saisir le code."))) return;
+  if (current?.kind === "child" && s.parental.lockChildProfiles && !(await askPin(t("Changer de profil"), t("Demandez à un parent de saisir le code.")))) return;
   await usePlayer.getState().stop();
   useUi.getState().resetUnlocks();
   s.setActiveProfile(null);

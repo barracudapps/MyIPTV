@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { checkPin, useUi } from "../store/ui";
 import { Icon } from "./Icon";
 import { useExit } from "../lib/motion";
+import { t } from "../lib/t";
 
 export function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose?: () => void; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -16,7 +17,7 @@ export function Modal({ title, children, onClose, wide }: { title: string; child
         <header>
           <h2>{title}</h2>
           {onClose && (
-            <button className="icon-btn" onClick={close} title="Fermer">
+            <button className="icon-btn" onClick={close} title={t("Fermer")}>
               <Icon name="close" />
             </button>
           )}
@@ -72,9 +73,9 @@ export function PinDialog() {
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 8))}
           placeholder="••••"
-          aria-label="Code parental"
+          aria-label={t("Code parental")}
         />
-        {error && <p className="error-text">Code incorrect.</p>}
+        {error && <p className="error-text">{t("Code incorrect.")}</p>}
         <div className="pinpad">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "OK"].map((k) => (
             <button

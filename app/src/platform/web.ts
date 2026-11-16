@@ -1,3 +1,4 @@
+import { t } from "../lib/t";
 import type { Backend } from ".";
 import type { Channel, Credit, PlayInfo, SourceResult, StreamKind, VodDetail, VodFacets, VodItem, VodKind, VodPage, VodQuery } from "../types";
 
@@ -84,9 +85,9 @@ export async function createWebBackend(): Promise<Backend> {
 
   async function fetchText(url: string): Promise<string> {
     const r = await fetch(url).catch(() => {
-      throw new Error("Téléchargement impossible (le serveur n'autorise peut-être pas l'accès depuis le navigateur).");
+      throw new Error(t("Téléchargement impossible (le serveur n'autorise peut-être pas l'accès depuis le navigateur)."));
     });
-    if (!r.ok) throw new Error(`Le serveur a répondu ${r.status}`);
+    if (!r.ok) throw new Error(t("Le serveur a répondu {status}", { status: r.status }));
     return r.text();
   }
 
@@ -94,7 +95,7 @@ export async function createWebBackend(): Promise<Backend> {
     const r = await fetch(url, headers ? { headers } : undefined).catch(() => {
       throw new Error("Service injoignable depuis le navigateur.");
     });
-    if (!r.ok) throw new Error(`Le serveur a répondu ${r.status}`);
+    if (!r.ok) throw new Error(t("Le serveur a répondu {status}", { status: r.status }));
     return r.text();
   }
 
@@ -121,7 +122,7 @@ export async function createWebBackend(): Promise<Backend> {
         const [cats, streams, vcats, vstreams, scats, series] = await Promise.all(
           ["get_live_categories", "get_live_streams", "get_vod_categories", "get_vod_streams", "get_series_categories", "get_series"].map(api),
         );
-        if (streams === "[]" && vstreams === "[]" && series === "[]") throw new Error("Serveur Xtream injoignable ou identifiants refusés.");
+        if (streams === "[]" && vstreams === "[]" && series === "[]") throw new Error(t("Serveur Xtream injoignable ou identifiants refusés."));
         return {
           channels: w.xtreamChannels(server, username, password, source.output ?? "m3u8", sid, cats, streams),
           epgUrls: [w.xtreamXmltvUrl(server, username, password)],
@@ -250,7 +251,7 @@ export async function createWebBackend(): Promise<Backend> {
           programmes += w.loadEpg(new Uint8Array(await r.arrayBuffer()), all, now() - 8 * 86400, now() + 4 * 86400);
         } catch (e) {
           // fetch rejette sans détail quand le serveur n'autorise pas les autres sites (CORS).
-          const msg = e instanceof TypeError ? "le serveur de ce guide n'autorise pas la lecture depuis un navigateur (il fonctionne dans l'application de bureau et sur TV)" : e instanceof Error ? e.message : String(e);
+          const msg = e instanceof TypeError ? t("le serveur de ce guide n'autorise pas la lecture depuis un navigateur (il fonctionne dans l'application de bureau et sur TV)") : e instanceof Error ? e.message : String(e);
           errors.push(`${url} : ${msg}`);
         }
       }
@@ -282,7 +283,7 @@ export async function createWebBackend(): Promise<Backend> {
       const cached = details.get(id);
       if (cached) return cached;
       const item = w.vodItem(id);
-      if (!item) throw new Error("Contenu introuvable (source désactivée ?)");
+      if (!item) throw new Error(t("Contenu introuvable (source désactivée ?)"));
       // Plusieurs sources pour ce contenu : si la première ne répond pas, la suivante prend le relais.
       let d: VodDetail | null = null;
       let firstError: unknown;
@@ -290,7 +291,7 @@ export async function createWebBackend(): Promise<Backend> {
         try {
           // Une source qui tarde ne bloque pas la fiche quand d'autres copies existent.
           d = item.alternates?.length
-            ? await Promise.race([sourceDetail(copy), new Promise<never>((_, no) => setTimeout(() => no(new Error("La source ne répond pas.")), 8000))])
+            ? await Promise.race([sourceDetail(copy), new Promise<never>((_, no) => setTimeout(() => no(new Error(t("La source ne répond pas."))), 8000))])
             : await sourceDetail(copy);
           if (copy !== item) d = { ...d, item: { ...item, url: d.item.url ?? item.url } };
           break;
@@ -351,10 +352,10 @@ export async function createWebBackend(): Promise<Backend> {
         headers: { Authorization: w.jellyfinAuthHeader(), "Content-Type": "application/json" },
         body: JSON.stringify({ Username: username, Pw: password }),
       }).catch(() => {
-        throw new Error("Serveur injoignable depuis le navigateur (vérifiez l'adresse et l'autorisation CORS du serveur).");
+        throw new Error(t("Serveur injoignable depuis le navigateur (vérifiez l'adresse et l'autorisation CORS du serveur)."));
       });
       if (r.status === 401) throw new Error("Identifiant ou mot de passe incorrect.");
-      if (!r.ok) throw new Error(`Le serveur a répondu ${r.status}`);
+      if (!r.ok) throw new Error(t("Le serveur a répondu {status}", { status: r.status }));
       const j = await r.json().catch(() => {
         throw new Error("Ce serveur ne semble pas être Jellyfin ou Emby.");
       });
@@ -398,13 +399,13 @@ export async function createWebBackend(): Promise<Backend> {
       const r = await fetch(`${base}/myiptv-share/${w.shareId(code)}`, { cache: "no-store" }).catch(() => {
         throw new Error(
           location.protocol === "https:"
-            ? "Le navigateur bloque l'accès aux appareils du réseau depuis une page sécurisée : utilisez l'application ou la version TV."
-            : "Appareil injoignable : vérifiez l'adresse et que les deux appareils sont sur le même réseau.",
+            ? t("Le navigateur bloque l'accès aux appareils du réseau depuis une page sécurisée : utilisez l'application ou la version TV.")
+            : t("Appareil injoignable : vérifiez l'adresse et que les deux appareils sont sur le même réseau."),
         );
       });
       if (r.status === 404) throw new Error("Code incorrect.");
-      if (r.status === 410) throw new Error("Ce partage est terminé ou a expiré.");
-      if (!r.ok) throw new Error(`L'appareil a répondu ${r.status}.`);
+      if (r.status === 410) throw new Error(t("Ce partage est terminé ou a expiré."));
+      if (!r.ok) throw new Error(t("L'appareil a répondu {status}.", { status: r.status }));
       return w.shareOpen(code, new Uint8Array(await r.arrayBuffer()));
     },
     async recInfo() {

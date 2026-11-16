@@ -15,6 +15,7 @@ import { Icon } from "./Icon";
 import { CategorySelect, FilterTabs, LangBadge, LangSelect, langQuery } from "./Filters";
 import { Dropdown } from "./Dropdown";
 import { countryFlag, countryName } from "../lib/languages";
+import { t, locale } from "../lib/t";
 
 const PAGE = 60;
 
@@ -44,7 +45,7 @@ export function VodCard({ item, progress }: { item: VodItem; progress?: number }
         {fav && <span className="vod-fav"><Icon name="heart" size={14} filled /></span>}
         <LangBadge langs={item.languages} />
         {item.rating ? <span className="vod-rating">★ {item.rating.toFixed(1)}</span> : null}
-        {item.live && <span className="vod-live">EN DIRECT</span>}
+        {item.live && <span className="vod-live">{t("EN DIRECT")}</span>}
         {progress != null && progress > 0 && (
           <span className="vod-progress">
             <span style={{ width: `${Math.min(100, progress * 100)}%` }} />
@@ -90,7 +91,7 @@ export function VodRow({
   progress,
   onRemove,
   onClear,
-  clearLabel = "Tout effacer",
+  clearLabel = t("Tout effacer"),
 }: {
   title: string;
   items: VodItem[];
@@ -104,14 +105,14 @@ export function VodRow({
     <section className="vod-row">
       <div className="vod-row-head">
         <h3>{title}</h3>
-        {onClear && <ConfirmButton label={clearLabel} confirm="Confirmer ?" onConfirm={onClear} />}
+        {onClear && <ConfirmButton label={clearLabel} confirm={t("Confirmer ?")} onConfirm={onClear} />}
       </div>
       <div className="vod-row-scroll">
         {items.map((i) =>
           onRemove ? (
             <div key={i.id} className="vod-card-wrap">
               <VodCard item={i} progress={progress?.[i.id]} />
-              <button type="button" className="vod-remove" title={`Retirer « ${i.title} » de l'historique`} aria-label={`Retirer ${i.title} de l'historique`} onClick={() => onRemove(i)}>
+              <button type="button" className="vod-remove" title={t("Retirer « {title} » de l'historique", { title: i.title })} aria-label={t("Retirer {title} de l'historique", { title: i.title })} onClick={() => onRemove(i)}>
                 <Icon name="close" size={14} />
               </button>
             </div>
@@ -151,7 +152,7 @@ function CollectionRow({ collection, kind }: { collection: Collection; kind: Vod
       items={items}
       onRemove={(i) => useSettings.getState().toggleInCollection(collection.id, i.id)}
       onClear={() => useSettings.getState().deleteCollection(collection.id)}
-      clearLabel="Supprimer la collection"
+      clearLabel={t("Supprimer la collection")}
     />
   );
 }
@@ -271,14 +272,14 @@ export function VodView({ kind }: { kind: VodKind }) {
       <header className="page-head">
         <div>
           <h1>
-            <Icon name={meta.icon} size={26} /> {meta.label}
+            <Icon name={meta.icon} size={26} /> {t(meta.label)}
           </h1>
-          <p className="dim">{facets ? `${facets.total.toLocaleString("fr-FR")} disponibles` : ""}</p>
+          <p className="dim">{facets ? t("{n} disponibles", { n: facets.total.toLocaleString(locale()) }) : ""}</p>
         </div>
         <div className="row">
           {useSettings.getState().fun.surprise && total > 0 && (
-            <button className="btn" onClick={surprise} title="Un contenu au hasard dans vos langues">
-              <Icon name="dice" /> Surprends-moi
+            <button className="btn" onClick={surprise} title={t("Un contenu au hasard dans vos langues")}>
+              <Icon name="dice" /> {t("Surprends-moi")}
             </button>
           )}
         </div>
@@ -287,34 +288,34 @@ export function VodView({ kind }: { kind: VodKind }) {
       <div className="toolbar">
         <div className="search-field">
           <Icon name="search" size={18} />
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder={`Rechercher dans ${meta.label.toLowerCase()}…`} aria-label="Rechercher" />
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Rechercher dans {section}…", { section: t(meta.label).toLowerCase() })} aria-label={t("Rechercher")} />
         </div>
         <Dropdown<SearchField>
-          ariaLabel="Critère de recherche"
+          ariaLabel={t("Critère de recherche")}
           icon="search"
           value={field}
           active={field !== "all"}
           onChange={setField}
           options={[
-            { value: "all", label: "Tout critère" },
-            { value: "title", label: "Titre" },
-            { value: "actor", label: kind === "music" ? "Artiste" : "Acteur / voix" },
-            { value: "director", label: kind === "audiobook" ? "Auteur" : kind === "podcast" ? "Éditeur" : "Réalisation" },
-            { value: "genre", label: "Genre" },
-            { value: "year", label: "Année" },
-            { value: "category", label: "Catégorie" },
-            { value: "plot", label: "Résumé" },
+            { value: "all", label: t("Tout critère") },
+            { value: "title", label: t("Titre") },
+            { value: "actor", label: kind === "music" ? t("Artiste") : t("Acteur / voix") },
+            { value: "director", label: kind === "audiobook" ? t("Auteur") : kind === "podcast" ? t("Éditeur") : t("Réalisation") },
+            { value: "genre", label: t("Genre") },
+            { value: "year", label: t("Année") },
+            { value: "category", label: t("Catégorie") },
+            { value: "plot", label: t("Résumé") },
           ]}
         />
         {facets && facets.countries.length > 1 && (
           <Dropdown<string>
-            ariaLabel="Pays"
+            ariaLabel={t("Pays")}
             icon="globe"
             value={country}
             active={!!country}
             onChange={setCountry}
             options={[
-              { value: "", label: "Tous les pays" },
+              { value: "", label: t("Tous les pays") },
               ...facets.countries.map((c) => ({ value: c.name, label: countryName(c.name), prefix: countryFlag(c.name), hint: String(c.count) })),
             ]}
           />
@@ -322,38 +323,38 @@ export function VodView({ kind }: { kind: VodKind }) {
         <LangSelect available={facets?.languages} />
         {facets && facets.genres.length > 0 && <CategorySelect categories={facets.categories} value={category} onChange={setCategory} langFilter={langFilter} />}
         <Dropdown<VodSort>
-          ariaLabel="Tri"
-          label="Tri :"
+          ariaLabel={t("Tri")}
+          label={t("Tri :")}
           value={sort}
           onChange={setSort}
           options={[
-            { value: "default", label: "Mes langues d'abord" },
-            { value: "added", label: "Ajouts récents" },
-            { value: "rating", label: "Mieux notés" },
-            { value: "title", label: "Titre (A-Z)" },
-            { value: "year", label: "Année" },
+            { value: "default", label: t("Mes langues d'abord") },
+            { value: "added", label: t("Ajouts récents") },
+            { value: "rating", label: t("Mieux notés") },
+            { value: "title", label: t("Titre (A-Z)") },
+            { value: "year", label: t("Année") },
           ]}
         />
       </div>
 
       {/* Genres en onglets ; sans genres (listes IPTV), les catégories prennent leur place. */}
       {facets && facets.genres.length > 0 ? (
-        <FilterTabs items={facets.genres.slice(0, 30)} value={genre} onChange={setGenre} allLabel="Tous les genres" />
+        <FilterTabs items={facets.genres.slice(0, 30)} value={genre} onChange={setGenre} allLabel={t("Tous les genres")} />
       ) : facets ? (
-        <FilterTabs items={facets.categories.slice(0, 40)} value={category} onChange={setCategory} allLabel="Toutes les catégories" />
+        <FilterTabs items={facets.categories.slice(0, 40)} value={category} onChange={setCategory} allLabel={t("Toutes les catégories")} />
       ) : null}
 
       {!filtered && showcase && facets && <Showcase part="rows" kind={kind} genres={facets.genres.map((g) => g.name)} />}
       {!filtered && (
         <>
           <VodRow
-            title={kind === "radio" ? "Écoutées récemment" : "Reprendre"}
+            title={kind === "radio" ? t("Écoutées récemment") : t("Reprendre")}
             items={resume}
             progress={progress}
             onRemove={(i) => useSettings.getState().removeHistory(itemIds(i))}
             onClear={() => useSettings.getState().clearHistory(kind)}
           />
-          <VodRow title="Ma liste" items={favorites} onRemove={(i) => useSettings.getState().toggleVodFavorite(i.id)} />
+          <VodRow title={t("Ma liste")} items={favorites} onRemove={(i) => useSettings.getState().toggleVodFavorite(i.id)} />
           {(profile.collections ?? []).map((c) => (
             <CollectionRow key={c.id} collection={c} kind={kind} />
           ))}
@@ -362,22 +363,22 @@ export function VodView({ kind }: { kind: VodKind }) {
           ))}
         </>
       )}
-      {!filtered && showcase && <h3 className="catalog-title">Tout le catalogue</h3>}
+      {!filtered && showcase && <h3 className="catalog-title">{t("Tout le catalogue")}</h3>}
 
       {total === 0 && !busy && !loading ? (
         hiddenByLanguage > 0 && !filtered ? (
           <div className="empty-state small column">
-            <span>Aucun contenu dans la langue choisie, mais {hiddenByLanguage.toLocaleString("fr-FR")} dans d'autres langues.</span>
+            <span>{t("Aucun contenu dans la langue choisie, mais {n} dans d'autres langues.", { n: hiddenByLanguage.toLocaleString(locale()) })}</span>
             <button className="btn btn-primary" onClick={() => useUi.setState({ langFilter: "all" })}>
-              <Icon name="globe" /> Tout afficher
+              <Icon name="globe" /> {t("Tout afficher")}
             </button>
           </div>
         ) : (
-          <div className="empty-state small">{filtered ? "Aucun résultat." : meta.empty}</div>
+          <div className="empty-state small">{filtered ? t("Aucun résultat.") : t(meta.empty)}</div>
         )
       ) : (
         <>
-          {filtered && <p className="dim">{total.toLocaleString("fr-FR")} résultat(s)</p>}
+          {filtered && <p className="dim">{t("{n} résultat(s)", { n: total.toLocaleString(locale()) })}</p>}
           <div className={`vod-grid shape-${meta.shape}`}>
             {items.map((i) => (
               <VodCard key={i.id} item={i} progress={progress[i.id]} />

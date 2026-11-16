@@ -1,3 +1,4 @@
+import { uiLanguage } from "../lib/t";
 import { useActiveProfile } from "../store/settings";
 import { useUi } from "../store/ui";
 import { langFlag, langName } from "../lib/languages";
@@ -5,10 +6,11 @@ import type { Facet } from "../types";
 import { Icon } from "./Icon";
 import { Dropdown } from "./Dropdown";
 import { translateLabel } from "../lib/i18n";
+import { t } from "../lib/t";
 
 /** Langue d'affichage des catégories : première langue favorite du profil. */
 function useDisplayLang() {
-  return useActiveProfile()?.languages[0];
+  return uiLanguage();
 }
 
 /** Drapeaux de langue posés sur une vignette (affiche, logo). */
@@ -49,14 +51,14 @@ export function LangSelect({ available }: { available?: Facet[] }) {
   const others = (available ?? []).filter((f) => !prefs.includes(f.name));
   return (
     <Dropdown<string>
-      ariaLabel="Langue"
+      ariaLabel={t("Langue")}
       icon="globe"
       value={value}
       active={value !== "all"}
       onChange={(v) => useUi.setState({ langFilter: v })}
       options={[
-        { value: "all", label: "Toutes les langues" },
-        ...(prefs.length ? [{ value: "mine", label: "Mes langues", prefix: <Icon name="heart" size={13} /> }] : []),
+        { value: "all", label: t("Toutes les langues") },
+        ...(prefs.length ? [{ value: "mine", label: t("Mes langues"), prefix: <Icon name="heart" size={13} /> }] : []),
         ...prefs.map((l) => ({ value: l, label: langName(l), prefix: langFlag(l), hint: count(l) != null ? String(count(l)) : undefined })),
         ...others.map((o) => ({ value: o.name, label: langName(o.name), prefix: langFlag(o.name), hint: String(o.count) })),
       ]}
@@ -72,13 +74,13 @@ export function CategorySelect({ categories, value, onChange, langFilter }: { ca
   if (visible.length < 2) return null;
   return (
     <Dropdown<string>
-      ariaLabel="Catégorie"
+      ariaLabel={t("Catégorie")}
       icon="grid"
       value={value ?? ""}
       active={!!value}
       onChange={(v) => onChange(v || undefined)}
       options={[
-        { value: "", label: "Toutes les catégories" },
+        { value: "", label: t("Toutes les catégories") },
         ...visible.map((c) => ({ value: c.name, label: translateLabel(c.label, lang), prefix: c.language ? langFlag(c.language) : undefined, hint: String(c.count) })),
       ]}
     />

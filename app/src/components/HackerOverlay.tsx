@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type HlsType from "hls.js";
 import { getBackend, type SysStats } from "../platform";
 import { usePlayer } from "../store/player";
+import { t } from "../lib/t";
 
 type EngineRef = MutableRefObject<{ hls?: HlsType; kind?: string; stats?: () => { speedKBps?: number; decodedFrames?: number; droppedFrames?: number } } | null>;
 
@@ -146,54 +147,54 @@ export function HackerOverlay({ video, engine }: { video: HTMLVideoElement | nul
     return () => clearInterval(t);
   }, [video, engine]);
 
-  if (!sample) return <div className="hk-overlay">initialisation…</div>;
+  if (!sample) return <div className="hk-overlay">{t("initialisation…")}</div>;
   const s = sample;
-  const engineName = info?.kind === "remux" ? `ffmpeg → ${info.remuxFormat}` : info?.timeshift ? "timeshift disque + hls.js" : engine.current?.kind ?? info?.kind ?? "natif";
+  const engineName = info?.kind === "remux" ? `ffmpeg → ${info.remuxFormat}` : info?.timeshift ? t("timeshift disque + hls.js") : engine.current?.kind ?? info?.kind ?? t("natif");
   const peak = Math.max(...history.current, s.levelKbps ?? 0);
   return (
-    <div className="hk-overlay" aria-label="Mesures techniques">
+    <div className="hk-overlay" aria-label={t("Mesures techniques")}>
       <div className="hk-title">▌MyIPTV // diagnostics</div>
       <dl>
-        <dt>vidéo</dt>
+        <dt>{t("vidéo")}</dt>
         <dd>
-          {s.width && s.height ? `${s.width}×${s.height}` : "—"} · <b className={s.fps && s.fps < 20 ? "warn" : ""}>{s.fps.toFixed(1)} i/s</b> · perdues {s.dropped}/s ({s.droppedTotal})
+          {s.width && s.height ? `${s.width}×${s.height}` : "—"} · <b className={s.fps && s.fps < 20 ? "warn" : ""}>{t("{n} i/s", { n: s.fps.toFixed(1) })}</b> · {t("perdues {n}/s ({total})", { n: s.dropped, total: s.droppedTotal })}
         </dd>
         <dt>codecs</dt>
         <dd>{s.codecs ?? "—"}</dd>
-        <dt>tampon</dt>
+        <dt>{t("tampon")}</dt>
         <dd>
-          <b className={s.bufferAhead < 2 ? "warn" : ""}>{s.bufferAhead.toFixed(1)} s</b> d'avance{s.liveLatency != null ? ` · retard direct ${s.liveLatency.toFixed(1)} s` : ""}
+          <b className={s.bufferAhead < 2 ? "warn" : ""}>{s.bufferAhead.toFixed(1)} s</b> {t("d'avance")}{s.liveLatency != null ? ` · ${t("retard direct {n} s", { n: s.liveLatency.toFixed(1) })}` : ""}
         </dd>
-        <dt>réseau</dt>
+        <dt>{t("réseau")}</dt>
         <dd>
-          reçu <b>{fmtRate(s.throughputKbps)}</b> · estimé {fmtRate(s.estimateKbps)} · flux {fmtRate(s.levelKbps)}
+          {t("reçu")} <b>{fmtRate(s.throughputKbps)}</b> · {t("estimé {rate}", { rate: fmtRate(s.estimateKbps) })} · {t("flux {rate}", { rate: fmtRate(s.levelKbps) })}
         </dd>
         <dd className="hk-graph">
           <Spark values={history.current} max={peak * 1.15} />
         </dd>
-        <dt>système</dt>
+        <dt>{t("système")}</dt>
         <dd>
           {s.sys ? (
             <>
-              CPU app <b className={s.sys.processCpu > 80 * Math.max(1, s.sys.cores / 4) ? "warn" : ""}>{s.sys.processCpu.toFixed(0)} %</b> · machine {s.sys.systemCpu.toFixed(0)} % ({s.sys.cores} cœurs) · RAM app {(s.sys.processMemory / 1048576).toFixed(0)} Mo · machine {((s.sys.usedMemory / s.sys.totalMemory) * 100).toFixed(0)} %
+              {t("CPU app")} <b className={s.sys.processCpu > 80 * Math.max(1, s.sys.cores / 4) ? "warn" : ""}>{s.sys.processCpu.toFixed(0)} %</b> · {t("machine {n} % ({cores} cœurs)", { n: s.sys.systemCpu.toFixed(0), cores: s.sys.cores })} · {t("RAM app {n} Mo", { n: (s.sys.processMemory / 1048576).toFixed(0) })} · {t("machine {n} %", { n: ((s.sys.usedMemory / s.sys.totalMemory) * 100).toFixed(0) })}
             </>
           ) : (
-            "CPU non mesurable dans le navigateur"
+            t("CPU non mesurable dans le navigateur")
           )}
         </dd>
-        <dt>interface</dt>
+        <dt>{t("interface")}</dt>
         <dd>
-          {s.uiFps.toFixed(0)} i/s · réactivité <b className={s.lagMs > 50 ? "warn" : ""}>{s.lagMs.toFixed(0)} ms</b>
-          {s.heapMb != null ? ` · mémoire JS ${s.heapMb.toFixed(0)} Mo` : ""}
+          {t("{n} i/s", { n: s.uiFps.toFixed(0) })} · {t("réactivité")} <b className={s.lagMs > 50 ? "warn" : ""}>{s.lagMs.toFixed(0)} ms</b>
+          {s.heapMb != null ? ` · ${t("mémoire JS {n} Mo", { n: s.heapMb.toFixed(0) })}` : ""}
         </dd>
-        <dt>moteur</dt>
+        <dt>{t("moteur")}</dt>
         <dd>
           {engineName}
-          {streams.length > 1 ? ` · copie ${streamIndex + 1}/${streams.length}${streams[streamIndex]?.probe?.ok ? ` (${Math.round(streams[streamIndex].probe!.ms)} ms)` : ""}` : ""}
+          {streams.length > 1 ? ` · ${t("copie {i}/{n}", { i: streamIndex + 1, n: streams.length })}${streams[streamIndex]?.probe?.ok ? ` (${Math.round(streams[streamIndex].probe!.ms)} ms)` : ""}` : ""}
         </dd>
         {source && (
           <>
-            <dt>flux</dt>
+            <dt>{t("flux")}</dt>
             <dd className="hk-url">{mask(source.url)}</dd>
           </>
         )}

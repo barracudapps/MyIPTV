@@ -13,6 +13,7 @@ import { Modal } from "./Dialogs";
 import { Icon } from "./Icon";
 import { findDuplicate, normalizeUrl, sourceKey } from "../lib/sourceKey";
 import { readPlaylistFiles, useDropZone, type DroppedPlaylists, type PlaylistFile } from "../lib/drop";
+import { t, plural, locale } from "../lib/t";
 
 type Tab = "catalog" | "url" | "file" | "xtream" | "jellyfin" | "test";
 
@@ -43,17 +44,17 @@ export function SourcesView() {
       case "m3uUrl":
         return s.url;
       case "m3uText":
-        return "Fichier importé";
+        return t("Fichier importé");
       case "archive":
-        return "Internet Archive · domaine public / licences libres";
+        return t("Internet Archive · domaine public / licences libres");
       case "radioBrowser":
-        return `Radio Browser · ${s.countries.join(", ") || "monde"}`;
+        return `Radio Browser · ${s.countries.join(", ") || t("monde")}`;
       case "podcasts":
         return `Apple Podcasts · ${s.countries.join(", ").toUpperCase()}`;
       case "librivox":
         return `LibriVox · ${s.languages.join(", ")}`;
       case "jellyfin":
-        return `Serveur multimédia · ${s.server}`;
+        return t("Serveur multimédia · {server}", { server: s.server });
     }
   };
 
@@ -67,34 +68,34 @@ export function SourcesView() {
     <div className="page" {...(isAdmin && !adding ? pageDrop.bind : {})}>
       <header className="page-head">
         <div>
-          <h1>Sources</h1>
+          <h1>{t("Sources")}</h1>
           <p className="dim">
-            {channels.length} chaînes chargées
-            {epgStats ? ` · guide : ${epgStats.programmes.toLocaleString("fr-FR")} programmes` : ""}
-            {epgLoading ? " · mise à jour du guide…" : ""}
+            {t("{n} chaînes chargées", { n: channels.length })}
+            {epgStats ? ` · ${t("guide : {n} programmes", { n: epgStats.programmes.toLocaleString(locale()) })}` : ""}
+            {epgLoading ? ` · ${t("mise à jour du guide…")}` : ""}
           </p>
         </div>
         <div className="row">
           <button className="btn" onClick={() => useLibrary.getState().loadAll(true)} disabled={loading}>
-            <Icon name="refresh" /> Tout actualiser
+            <Icon name="refresh" /> {t("Tout actualiser")}
           </button>
           <button className="btn btn-primary" onClick={() => setAdding(true)}>
-            <Icon name="plus" /> Ajouter
+            <Icon name="plus" /> {t("Ajouter")}
           </button>
         </div>
       </header>
 
       {sources.length === 0 && (
         <div className="card notice">
-          <strong>Bienvenue !</strong> Les sources gratuites et légales intégrées peuvent être réactivées ici. Commencez par le catalogue gratuit (chaînes publiques et gratuites du monde entier), ou ajoutez l'abonnement
-          de votre fournisseur.
+          <strong>{t("Bienvenue !")}</strong>{" "}
+          {t("Les sources gratuites et légales intégrées peuvent être réactivées ici. Commencez par le catalogue gratuit (chaînes publiques et gratuites du monde entier), ou ajoutez l'abonnement de votre fournisseur.")}
         </div>
       )}
 
       <ul className="source-list">
         {sources.map((s) => (
           <li key={s.id} className="card source">
-            <label className="switch" title={s.enabled ? "Désactiver" : "Activer"}>
+            <label className="switch" title={s.enabled ? t("Désactiver") : t("Activer")}>
               <input
                 type="checkbox"
                 checked={s.enabled}
@@ -107,21 +108,21 @@ export function SourcesView() {
             </label>
             <div className="source-info">
               <strong>
-                {s.name} {s.builtin && <span className="mini-badge ok">gratuit et légal</span>}
+                {s.builtin ? t(s.name) : s.name} {s.builtin && <span className="mini-badge ok">{t("gratuit et légal")}</span>}
               </strong>
               <span className="dim">
                 {describe(s)}
-                {count(s.id) > 0 && ` · ${count(s.id)} chaînes`}
-                {s.risk && s.risk !== "low" && <span className="mini-badge warn">import à risque confirmé</span>}
+                {count(s.id) > 0 && ` · ${t("{n} chaînes", { n: count(s.id) })}`}
+                {s.risk && s.risk !== "low" && <span className="mini-badge warn">{t("import à risque confirmé")}</span>}
               </span>
               {errors[s.id] && <span className="error-text">{errors[s.id]}</span>}
             </div>
             {!s.builtin && (
               <>
-                <button className="icon-btn" title="Modifier" onClick={() => setEditing(s)}>
+                <button className="icon-btn" title={t("Modifier")} onClick={() => setEditing(s)}>
                   <Icon name="settings" />
                 </button>
-                <button className="icon-btn" title="Supprimer" onClick={() => remove(s)}>
+                <button className="icon-btn" title={t("Supprimer")} onClick={() => remove(s)}>
                   <Icon name="trash" />
                 </button>
               </>
@@ -132,7 +133,7 @@ export function SourcesView() {
 
       {epgStats && epgStats.errors.length > 0 && (
         <div className="card">
-          <strong>Guides en erreur</strong>
+          <strong>{t("Guides en erreur")}</strong>
           <ul className="dim">
             {epgStats.errors.map((e) => (
               <li key={e}>{e}</li>
@@ -144,8 +145,11 @@ export function SourcesView() {
       {epgStats?.missing && epgStats.missing.length > 0 && (
         <details className="card dim small">
           <summary>
-            {epgStats.missing.length} guide{epgStats.missing.length > 1 ? "s" : ""} annoncé{epgStats.missing.length > 1 ? "s" : ""} par les listes
-            {epgStats.missing.length > 1 ? " n'existent" : " n'existe"} plus sur leur serveur : ignoré{epgStats.missing.length > 1 ? "s" : ""}, nouvel essai dans une semaine.
+            {plural(
+              epgStats.missing.length,
+              "{n} guide annoncé par les listes n'existe plus sur leur serveur : ignoré, nouvel essai dans une semaine.",
+              "{n} guides annoncés par les listes n'existent plus sur leur serveur : ignorés, nouvel essai dans une semaine.",
+            )}
           </summary>
           <ul>
             {epgStats.missing.map((u) => (
@@ -159,7 +163,7 @@ export function SourcesView() {
       {pageDrop.over && !adding && (
         <div className="drop-overlay page-drop" aria-hidden="true">
           <Icon name="upload" size={40} />
-          <strong>Déposez vos listes M3U ou leurs liens</strong>
+          <strong>{t("Déposez vos listes M3U ou leurs liens")}</strong>
         </div>
       )}
       {editing && <EditSourceDialog source={editing} onClose={() => setEditing(null)} />}
@@ -171,13 +175,13 @@ function EditSourceDialog({ source, onClose }: { source: Source; onClose(): void
   const [name, setName] = useState(source.name);
   const [epg, setEpg] = useState(source.epgUrls.join("\n"));
   return (
-    <Modal title="Modifier la source" onClose={onClose}>
+    <Modal title={t("Modifier la source")} onClose={onClose}>
       <label className="field">
-        Nom
+        {t("Nom")}
         <input value={name} onChange={(e) => setName(e.target.value)} />
       </label>
       <label className="field">
-        Guides XMLTV supplémentaires (un par ligne)
+        {t("Guides XMLTV supplémentaires (un par ligne)")}
         <textarea rows={3} value={epg} onChange={(e) => setEpg(e.target.value)} placeholder="https://…/guide.xml.gz" />
       </label>
       <div className="actions">
@@ -189,7 +193,7 @@ function EditSourceDialog({ source, onClose }: { source: Source; onClose(): void
             onClose();
           }}
         >
-          Enregistrer
+          {t("Enregistrer")}
         </button>
       </div>
     </Modal>
@@ -233,11 +237,11 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   const commit = (source: Source) => {
     if (!useSettings.getState().addSource(source)) {
       const dup = findDuplicate(source, useSettings.getState().sources);
-      toast(dup ? `Déjà dans vos sources : « ${dup.name} ».` : "Cette source est déjà ajoutée.", "info");
+      toast(dup ? t("Déjà dans vos sources : « {name} ».", { name: dup.name }) : t("Cette source est déjà ajoutée."), "info");
       return onClose();
     }
     useLibrary.getState().loadAll();
-    toast(`« ${source.name} » ajoutée.`, "success");
+    toast(t("« {name} » ajoutée.", { name: source.name }), "success");
     onClose();
   };
 
@@ -250,7 +254,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     setError(null);
     setFailures([]);
     setProgress({ done: 0, total: sources.length });
-    const task = startTask("Vérification des listes", { done: 0, total: sources.length });
+    const task = startTask(t("Vérification des listes"), { done: 0, total: sources.length });
     const backend = await getBackend();
     const added: Source[] = [];
     const risky: { source: Source; report: RiskReport }[] = [];
@@ -265,13 +269,13 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
         try {
           const preview = await backend.previewSource(source);
           if (preview.risk.total === 0) {
-            failed.push(`${label} : aucune chaîne trouvée.`);
+            failed.push(t("{label} : aucune chaîne trouvée.", { label }));
             if (source.kind === "m3uUrl") retry.push(source.url);
           }
           else if (preview.risk.level === "low") added.push(source);
           else risky.push({ source: { ...source, risk: preview.risk.level }, report: preview.risk });
         } catch (e) {
-          failed.push(`${label} : ${errorMessage(e)}`);
+          failed.push(t("{label} : {error}", { label, error: errorMessage(e) }));
           if (source.kind === "m3uUrl") retry.push(source.url);
         }
         setProgress((p) => p && { ...p, done: p.done + 1 });
@@ -298,8 +302,8 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     const skipped = list.length - added.length;
     if (added.length) {
       useLibrary.getState().loadAll();
-      toast((added.length === 1 ? `« ${added[0].name} » ajoutée.` : `${added.length} sources ajoutées.`) + (skipped ? ` ${skipped} déjà présente${skipped > 1 ? "s" : ""}, ignorée${skipped > 1 ? "s" : ""}.` : ""), "success");
-    } else if (skipped) toast("Ces sources sont déjà ajoutées.", "info");
+      toast((added.length === 1 ? t("« {name} » ajoutée.", { name: added[0].name }) : t("{n} sources ajoutées.", { n: added.length })) + (skipped ? ` ${plural(skipped, "{n} déjà présente, ignorée.", "{n} déjà présentes, ignorées.")}` : ""), "success");
+    } else if (skipped) toast(t("Ces sources sont déjà ajoutées."), "info");
     setBatch(null);
     if (!keepOpen) onClose();
   };
@@ -316,13 +320,13 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     } as Source;
     // Inutile de télécharger et d'analyser une source déjà présente.
     const dup = findDuplicate(source, useSettings.getState().sources);
-    if (dup) return setError(`Cette source est déjà ajoutée : « ${dup.name} ».`);
+    if (dup) return setError(t("Cette source est déjà ajoutée : « {name} ».", { name: dup.name }));
     if (trusted) return commit(source);
     setBusy(true);
     setError(null);
     try {
-      const preview = await track("Vérification de la source", async () => (await getBackend()).previewSource(source), source.name);
-      if (preview.risk.total === 0) throw new Error("Aucune chaîne trouvée dans cette source.");
+      const preview = await track(t("Vérification de la source"), async () => (await getBackend()).previewSource(source), source.name);
+      if (preview.risk.total === 0) throw new Error(t("Aucune chaîne trouvée dans cette source."));
       if (preview.risk.level === "low") commit(source);
       else setBatch({ clean: [], risky: [{ source: { ...source, risk: preview.risk.level }, report: preview.risk }] });
     } catch (e) {
@@ -332,7 +336,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
     }
   };
 
-  const addCatalog = (e: CatalogEntry) => submit({ kind: "m3uUrl", url: e.url }, `Gratuit · ${e.name}`, true);
+  const addCatalog = (e: CatalogEntry) => submit({ kind: "m3uUrl", url: e.url }, t("Gratuit · {name}", { name: t(e.name) }), true);
 
   if (batch) {
     const keepOpen = failures.length > 0;
@@ -371,23 +375,23 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
   const numbered = (fallback: string, i: number, n: number) => (name.trim() ? (n > 1 ? `${name.trim()} ${i + 1}` : name.trim()) : fallback);
 
   return (
-    <Modal title="Ajouter une source" onClose={onClose} wide>
+    <Modal title={t("Ajouter une source")} onClose={onClose} wide>
       <div className="drop-area" {...drop.bind}>
       {drop.over && (
         <div className="drop-overlay" aria-hidden="true">
           <Icon name="upload" size={34} />
-          <strong>Déposez vos listes M3U ou leurs liens</strong>
+          <strong>{t("Déposez vos listes M3U ou leurs liens")}</strong>
         </div>
       )}
       <div className="tabs" role="tablist">
         {(
           [
-            ["catalog", "Catalogue gratuit"],
-            ["url", "Lien M3U"],
-            ["file", "Fichier M3U"],
+            ["catalog", t("Catalogue gratuit")],
+            ["url", t("Lien M3U")],
+            ["file", t("Fichier M3U")],
             ["xtream", "Xtream Codes"],
             ["jellyfin", "Jellyfin / Emby"],
-            ...(testMode ? [["test", "🧪 Test"]] : []),
+            ...(testMode ? [["test", t("🧪 Test")]] : []),
           ] as [Tab, string][]
         ).map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
@@ -399,34 +403,34 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
       {tab === "test" ? (
         <div className="catalog">
           <p className="dim">
-            Mode test : deux listes d'exemple pour essayer le parcours d'ajout. La liste suspecte est simulée (adresses factices <code>example.invalid</code>) : elle ne
-            contient aucun flux réel et sert uniquement à déclencher l'avertissement et la double confirmation.
+            {t("Mode test : deux listes d'exemple pour essayer le parcours d'ajout. La liste suspecte est simulée (adresses factices {domain}) : elle ne contient aucun flux réel et sert uniquement à déclencher l'avertissement et la double confirmation.").split("{domain}")[0]}
+            <code>example.invalid</code>
+            {t("Mode test : deux listes d'exemple pour essayer le parcours d'ajout. La liste suspecte est simulée (adresses factices {domain}) : elle ne contient aucun flux réel et sert uniquement à déclencher l'avertissement et la double confirmation.").split("{domain}")[1]}
           </p>
           {error && <p className="error-text">{error}</p>}
           <div className="row">
-            <button className="btn btn-primary" disabled={busy} onClick={() => submit({ kind: "m3uText", content: LEGAL_TEST_LIST }, "Test · liste légale")}>
-              <Icon name="check" /> Ajouter une liste légale
+            <button className="btn btn-primary" disabled={busy} onClick={() => submit({ kind: "m3uText", content: LEGAL_TEST_LIST }, t("Test · liste légale"))}>
+              <Icon name="check" /> {t("Ajouter une liste légale")}
             </button>
-            <button className="btn" disabled={busy} onClick={() => submit({ kind: "m3uText", content: SUSPICIOUS_TEST_LIST }, "Test · liste suspecte (simulée)")}>
-              <Icon name="alert" /> Ajouter une liste suspecte simulée
+            <button className="btn" disabled={busy} onClick={() => submit({ kind: "m3uText", content: SUSPICIOUS_TEST_LIST }, t("Test · liste suspecte (simulée)"))}>
+              <Icon name="alert" /> {t("Ajouter une liste suspecte simulée")}
             </button>
           </div>
         </div>
       ) : tab === "catalog" ? (
         <div className="catalog">
           <p className="dim">
-            Chaînes diffusées gratuitement par leurs éditeurs (télévisions publiques, chaînes en clair, chaînes gratuites financées par la publicité), recensées
-            par le projet communautaire iptv-org. Certaines peuvent être géo-restreintes à leur pays.
+            {t("Chaînes diffusées gratuitement par leurs éditeurs (télévisions publiques, chaînes en clair, chaînes gratuites financées par la publicité), recensées par le projet communautaire iptv-org. Certaines peuvent être géo-restreintes à leur pays.")}
           </p>
           <button className="btn btn-primary" onClick={() => addCatalog(CATALOG_ALL)}>
-            <Icon name="plus" /> {CATALOG_ALL.name} <span className="dim">({CATALOG_ALL.hint})</span>
+            <Icon name="plus" /> {t(CATALOG_ALL.name)} <span className="dim">({t(CATALOG_ALL.hint!)})</span>
           </button>
-          <CatalogGroup title="Par pays" entries={CATALOG_COUNTRIES} onPick={addCatalog} />
-          <CatalogGroup title="Par langue" entries={CATALOG_LANGUAGES} onPick={addCatalog} />
-          <CatalogGroup title="Par thème" entries={CATALOG_CATEGORIES} onPick={addCatalog} />
+          <CatalogGroup title={t("Par pays")} entries={CATALOG_COUNTRIES} onPick={addCatalog} />
+          <CatalogGroup title={t("Par langue")} entries={CATALOG_LANGUAGES} onPick={addCatalog} />
+          <CatalogGroup title={t("Par thème")} entries={CATALOG_CATEGORIES} onPick={addCatalog} />
           <CatalogGroup
-            title="Plateformes gratuites financées par la publicité"
-            note="Chaînes diffusées officiellement et gratuitement par ces services (listes communautaires apsattv.com) ; surtout américaines et anglophones."
+            title={t("Plateformes gratuites financées par la publicité")}
+            note={t("Chaînes diffusées officiellement et gratuitement par ces services (listes communautaires apsattv.com) ; surtout américaines et anglophones.")}
             entries={CATALOG_FAST}
             onPick={addCatalog}
           />
@@ -441,46 +445,46 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
               setError(null);
               getBackend()
                 .then((b) => b.jellyfinLogin(jf.server.trim(), jf.username, jf.password))
-                .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, r.serverName ?? "Mon serveur multimédia", true))
+                .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, r.serverName ?? t("Mon serveur multimédia"), true))
                 .catch((err) => setError(errorMessage(err)))
                 .finally(() => setBusy(false));
               return;
             }
             if (tab === "url") {
-              if (!newLinks.length) return setError(links.length ? "Ces listes sont déjà dans vos sources." : "Saisissez au moins une adresse http(s)://.");
+              if (!newLinks.length) return setError(links.length ? t("Ces listes sont déjà dans vos sources.") : t("Saisissez au moins une adresse http(s)://."));
               submitMany(newLinks.map((u, i) => ({ ...base, kind: "m3uUrl", url: u, id: uid(), name: numbered(hostOf(u), i, newLinks.length) }) as Source));
             } else if (tab === "file") {
-              if (!files.length) return setError("Choisissez au moins un fichier.");
-              if (!newFiles.length) return setError(files.length > 1 ? "Ces fichiers sont déjà dans vos sources." : "Ce fichier est déjà dans vos sources.");
+              if (!files.length) return setError(t("Choisissez au moins un fichier."));
+              if (!newFiles.length) return setError(files.length > 1 ? t("Ces fichiers sont déjà dans vos sources.") : t("Ce fichier est déjà dans vos sources."));
               submitMany(newFiles.map((f, i) => ({ ...base, kind: "m3uText", content: f.content, id: uid(), name: numbered(f.name.replace(/\.m3u8?$/i, ""), i, newFiles.length) }) as Source));
             }
             else submit({ kind: "xtream", ...xt, server: xt.server.trim() }, xt.server.replace(/^https?:\/\//, ""));
           }}
         >
           <label className="field">
-            Nom (facultatif)
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Mon fournisseur" />
+            {t("Nom (facultatif)")}
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("Mon fournisseur")} />
           </label>
           {tab === "url" && (
             <label className="field">
-              Adresses des playlists (une par ligne)
-              <textarea required rows={4} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={"https://…/playlist.m3u\nhttps://…/autre-liste.m3u8"} />
+              {t("Adresses des playlists (une par ligne)")}
+              <textarea required rows={4} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t("https://…/playlist.m3u\nhttps://…/autre-liste.m3u8")} />
               {links.length > 0 && (
                 <span className="dim small">
-                  {links.length} lien{links.length > 1 ? "s" : ""}
-                  {links.length > newLinks.length ? ` · ${links.length - newLinks.length} déjà ajouté${links.length - newLinks.length > 1 ? "s" : ""}, ignoré${links.length - newLinks.length > 1 ? "s" : ""}` : ""}
-                  {newLinks.length > 1 ? " · chacun devient une source séparée" : ""}
+                  {plural(links.length, "{n} lien", "{n} liens")}
+                  {links.length > newLinks.length ? ` · ${plural(links.length - newLinks.length, "{n} déjà ajouté, ignoré", "{n} déjà ajoutés, ignorés")}` : ""}
+                  {newLinks.length > 1 ? ` · ${t("chacun devient une source séparée")}` : ""}
                 </span>
               )}
             </label>
           )}
           {tab === "file" && (
             <div className="field">
-              Fichiers .m3u / .m3u8 (un ou plusieurs)
+              {t("Fichiers .m3u / .m3u8 (un ou plusieurs)")}
               <label className={`dropzone ${drop.over ? "over" : ""}`}>
                 <Icon name="upload" size={26} />
                 <span>
-                  <strong>Glissez vos fichiers ici</strong> ou <u>parcourez</u>
+                  <strong>{t("Glissez vos fichiers ici")}</strong> {t("ou")} <u>{t("parcourez")}</u>
                 </span>
                 <input
                   type="file"
@@ -500,30 +504,29 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
                       <Icon name="list" size={16} />
                       <span>{f.name}</span>
                       {knownKeys.has(`file:${f.hash}`) ? (
-                        <span className="small warn-text">déjà ajouté</span>
+                        <span className="small warn-text">{t("déjà ajouté")}</span>
                       ) : (
-                        <span className="dim small">{(f.content.match(/#EXTINF/g)?.length ?? 0).toLocaleString("fr-FR")} entrées</span>
+                        <span className="dim small">{t("{n} entrées", { n: (f.content.match(/#EXTINF/g)?.length ?? 0).toLocaleString(locale()) })}</span>
                       )}
-                      <button type="button" className="icon-btn" title={`Retirer ${f.name}`} onClick={() => setFiles((cur) => cur.filter((x) => x !== f))}>
+                      <button type="button" className="icon-btn" title={t("Retirer {name}", { name: f.name })} onClick={() => setFiles((cur) => cur.filter((x) => x !== f))}>
                         <Icon name="close" size={16} />
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-              {ignored.length > 0 && <span className="small warn-text">Ignoré{ignored.length > 1 ? "s" : ""}, ce ne sont pas des listes M3U : {ignored.join(", ")}</span>}
+              {ignored.length > 0 && <span className="small warn-text">{t(ignored.length > 1 ? "Ignorés, ce ne sont pas des listes M3U : {files}" : "Ignoré, ce ne sont pas des listes M3U : {files}", { files: ignored.join(", ") })}</span>}
             </div>
           )}
           {tab === "jellyfin" && (
             <>
               <p className="dim small">
-                Jellyfin (gratuit et libre) ou Emby : votre serveur multimédia personnel, avec vos propres films et séries. Ils apparaissent dans Films et Séries
-                avec affiches, casting, saisons et reprise de lecture. Seul un jeton de connexion est conservé, jamais le mot de passe.
+                {t("Jellyfin (gratuit et libre) ou Emby : votre serveur multimédia personnel, avec vos propres films et séries. Ils apparaissent dans Films et Séries avec affiches, casting, saisons et reprise de lecture. Seul un jeton de connexion est conservé, jamais le mot de passe.")}
               </p>
               <div className="card demo-card">
                 <span>
-                  <strong>Pas de serveur ?</strong> Essayez le serveur de démonstration officiel de Jellyfin : des films libres et du domaine public (courts
-                  métrages Blender, classiques du cinéma).
+                  <strong>{t("Pas de serveur ?")}</strong>{" "}
+                  {t("Essayez le serveur de démonstration officiel de Jellyfin : des films libres et du domaine public (courts métrages Blender, classiques du cinéma).")}
                 </span>
                 <button
                   type="button"
@@ -534,25 +537,25 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
                     setError(null);
                     getBackend()
                       .then((b) => b.jellyfinLogin(JELLYFIN_DEMO.server, JELLYFIN_DEMO.username, JELLYFIN_DEMO.password))
-                      .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, "Démo Jellyfin (films libres)", true))
+                      .then((r) => submit({ kind: "jellyfin", server: r.server, userId: r.userId, token: r.token }, t("Démo Jellyfin (films libres)"), true))
                       .catch((err) => setError(errorMessage(err)))
                       .finally(() => setBusy(false));
                   }}
                 >
-                  <Icon name="plus" /> Ajouter la démo Jellyfin
+                  <Icon name="plus" /> {t("Ajouter la démo Jellyfin")}
                 </button>
               </div>
               <label className="field">
-                Adresse du serveur
+                {t("Adresse du serveur")}
                 <input required value={jf.server} onChange={(e) => setJf({ ...jf, server: e.target.value })} placeholder="http://192.168.1.10:8096" />
               </label>
               <div className="row">
                 <label className="field">
-                  Utilisateur
+                  {t("Utilisateur")}
                   <input required value={jf.username} onChange={(e) => setJf({ ...jf, username: e.target.value })} autoComplete="username" />
                 </label>
                 <label className="field">
-                  Mot de passe
+                  {t("Mot de passe")}
                   <input type="password" value={jf.password} onChange={(e) => setJf({ ...jf, password: e.target.value })} autoComplete="current-password" />
                 </label>
               </div>
@@ -561,38 +564,35 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           {tab === "xtream" && (
             <>
               <p className="dim small">
-                Les identifiants Xtream Codes viennent de votre fournisseur d'abonnement. Il n'existe pas de serveur Xtream gratuit et légal ouvert à tous : les
-                « codes Xtream gratuits » qui circulent sur internet sont des accès piratés ou volés. Pour des chaînes gratuites, utilisez l'onglet Catalogue
-                gratuit.
+                {t("Les identifiants Xtream Codes viennent de votre fournisseur d'abonnement. Il n'existe pas de serveur Xtream gratuit et légal ouvert à tous : les « codes Xtream gratuits » qui circulent sur internet sont des accès piratés ou volés. Pour des chaînes gratuites, utilisez l'onglet Catalogue gratuit.")}
               </p>
               <label className="field">
-                Serveur
-                <input required value={xt.server} onChange={(e) => setXt({ ...xt, server: e.target.value })} placeholder="http://exemple.com:8080" />
+                {t("Serveur")}
+                <input required value={xt.server} onChange={(e) => setXt({ ...xt, server: e.target.value })} placeholder={t("http://exemple.com:8080")} />
               </label>
               <div className="row">
                 <label className="field">
-                  Identifiant
+                  {t("Identifiant")}
                   <input required value={xt.username} onChange={(e) => setXt({ ...xt, username: e.target.value })} autoComplete="off" />
                 </label>
                 <label className="field">
-                  Mot de passe
+                  {t("Mot de passe")}
                   <input required type="password" value={xt.password} onChange={(e) => setXt({ ...xt, password: e.target.value })} autoComplete="off" />
                 </label>
               </div>
             </>
           )}
           <label className="field">
-            Guide des programmes XMLTV (facultatif, un par ligne)
+            {t("Guide des programmes XMLTV (facultatif, un par ligne)")}
             <textarea rows={2} value={epg} onChange={(e) => setEpg(e.target.value)} placeholder="https://…/guide.xml.gz" />
           </label>
           <p className="dim small">
-            Seuls les contenus que vous êtes autorisé à recevoir doivent être ajoutés. MyIPTV analyse chaque liste et vous prévient si elle présente les signes
-            d'une offre illégale.
+            {t("Seuls les contenus que vous êtes autorisé à recevoir doivent être ajoutés. MyIPTV analyse chaque liste et vous prévient si elle présente les signes d'une offre illégale.")}
           </p>
           {error && <p className="error-text">{error}</p>}
           {failures.length > 0 && (
             <div className="error-text">
-              <strong>{failures.length === 1 ? "Une liste n'a pas pu être ajoutée :" : `${failures.length} listes n'ont pas pu être ajoutées :`}</strong>
+              <strong>{failures.length === 1 ? t("Une liste n'a pas pu être ajoutée :") : t("{n} listes n'ont pas pu être ajoutées :", { n: failures.length })}</strong>
               <ul className="small">
                 {failures.map((f) => (
                   <li key={f}>{f}</li>
@@ -603,7 +603,7 @@ function AddSourceDialog({ onClose, initial }: { onClose(): void; initial?: Drop
           <div className="actions">
             <button className="btn btn-primary" type="submit" disabled={busy}>
               {busy ? <div className="spinner small" /> : <Icon name="check" />}{" "}
-              {progress && progress.total > 1 ? `Vérification ${progress.done}/${progress.total}…` : (tab === "url" && newLinks.length > 1) || (tab === "file" && newFiles.length > 1) ? `Vérifier et ajouter (${tab === "url" ? newLinks.length : newFiles.length})` : "Vérifier et ajouter"}
+              {progress && progress.total > 1 ? t("Vérification {done}/{total}…", { done: progress.done, total: progress.total }) : (tab === "url" && newLinks.length > 1) || (tab === "file" && newFiles.length > 1) ? t("Vérifier et ajouter ({n})", { n: tab === "url" ? newLinks.length : newFiles.length }) : t("Vérifier et ajouter")}
             </button>
           </div>
         </form>
@@ -620,9 +620,9 @@ function CatalogGroup({ title, note, entries, onPick }: { title: string; note?: 
       {note && <p className="dim small">{note}</p>}
       <div className="chips wrap">
         {entries.map((e) => (
-          <button key={e.id} className="chip" onClick={() => onPick(e)} title={e.hint}>
-            {e.name}
-            {e.hint && <span>{e.hint.split(",")[0]}</span>}
+          <button key={e.id} className="chip" onClick={() => onPick(e)} title={e.hint && t(e.hint)}>
+            {t(e.name)}
+            {e.hint && <span>{t(e.hint).split(",")[0]}</span>}
           </button>
         ))}
       </div>
@@ -694,8 +694,8 @@ function RiskDialog({
     <Modal
       title={
         many
-          ? high ? `${lists!.length} listes semblent illégales` : `${lists!.length} listes présentent des signes suspects`
-          : high ? "Cette liste semble illégale" : "Cette liste présente des signes suspects"
+          ? high ? t("{n} listes semblent illégales", { n: lists!.length }) : t("{n} listes présentent des signes suspects", { n: lists!.length })
+          : high ? t("Cette liste semble illégale") : t("Cette liste présente des signes suspects")
       }
       onClose={onCancel}
       wide
@@ -703,14 +703,17 @@ function RiskDialog({
       {lists && (
         <div className="card">
           <p>
-            Vérification de l'ensemble de l'import : {total} liste{total > 1 ? "s" : ""}, dont {lists.length} suspecte{lists.length > 1 ? "s" : ""}
-            {cleanCount ? ` et ${cleanCount} sans signe suspect` : ""}. Une seule confirmation vaut pour tout l'import.
+            {t("Vérification de l'ensemble de l'import : {lists}, dont {suspicious}{clean}. Une seule confirmation vaut pour tout l'import.", {
+              lists: plural(total, "{n} liste", "{n} listes"),
+              suspicious: plural(lists.length, "{n} suspecte", "{n} suspectes"),
+              clean: cleanCount ? t(" et {n} sans signe suspect", { n: cleanCount }) : "",
+            })}
           </p>
           <ul className="risk-lists">
             {lists.map((l) => (
               <li key={l.name}>
-                <span className={`badge ${l.report.level === "high" ? "badge-danger" : "badge-warn"}`}>{l.report.level === "high" ? "illégale probable" : "suspecte"}</span> {l.name}{" "}
-                <span className="dim small">({l.report.total} entrées)</span>
+                <span className={`badge ${l.report.level === "high" ? "badge-danger" : "badge-warn"}`}>{l.report.level === "high" ? t("illégale probable") : t("suspecte")}</span> {l.name}{" "}
+                <span className="dim small">{t("({n} entrées)", { n: l.report.total })}</span>
               </li>
             ))}
           </ul>
@@ -720,30 +723,29 @@ function RiskDialog({
         <Icon name="alert" size={32} />
         <div>
           <p>
-            Sur {report.total} entrées, l'analyse a relevé :
+            {t("Sur {n} entrées, l'analyse a relevé :", { n: report.total })}
           </p>
           <ul>
             {report.reasons.map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>
-          {report.examples.length > 0 && <p className="dim small">Exemples : {report.examples.join(", ")}</p>}
+          {report.examples.length > 0 && <p className="dim small">{t("Exemples : {list}", { list: report.examples.join(", ") })}</p>}
         </div>
       </div>
       <div className="card">
         <p>
-          <strong>Les chaînes payantes, le sport premium et les films ou séries récents ne sont jamais diffusés gratuitement ni à bas prix.</strong> Une
-          offre de ce type est presque toujours une offre pirate, même si elle est vendue sur une boutique en ligne ou par un revendeur.
+          <strong>{t("Les chaînes payantes, le sport premium et les films ou séries récents ne sont jamais diffusés gratuitement ni à bas prix.")}</strong>{" "}
+          {t("Une offre de ce type est presque toujours une offre pirate, même si elle est vendue sur une boutique en ligne ou par un revendeur.")}
         </p>
         <ul className="dim">
-          <li>Le téléchargement ou la diffusion d'œuvres sans autorisation est illégal dans la plupart des pays et passible d'amendes.</li>
-          <li>Ces services disparaissent souvent sans préavis et sans remboursement.</li>
-          <li>Les données de paiement et les applications associées sont un vecteur fréquent de fraude et de logiciels malveillants.</li>
-          <li>La redevance audiovisuelle ne couvre pas les chaînes et plateformes payantes.</li>
+          <li>{t("Le téléchargement ou la diffusion d'œuvres sans autorisation est illégal dans la plupart des pays et passible d'amendes.")}</li>
+          <li>{t("Ces services disparaissent souvent sans préavis et sans remboursement.")}</li>
+          <li>{t("Les données de paiement et les applications associées sont un vecteur fréquent de fraude et de logiciels malveillants.")}</li>
+          <li>{t("La redevance audiovisuelle ne couvre pas les chaînes et plateformes payantes.")}</li>
         </ul>
         <p className="dim small">
-          MyIPTV est un simple lecteur : il ne fournit aucun contenu et n'est pas responsable des sources que vous ajoutez. Vous êtes seul responsable de
-          leur légalité.
+          {t("MyIPTV est un simple lecteur : il ne fournit aucun contenu et n'est pas responsable des sources que vous ajoutez. Vous êtes seul responsable de leur légalité.")}
         </p>
       </div>
       {step === 1 ? (
@@ -751,30 +753,30 @@ function RiskDialog({
           <label className="check">
             <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} />
             {lists
-              ? "J'atteste disposer d'un abonnement légal auprès du fournisseur de chacune de ces listes et des droits nécessaires pour les lire."
-              : "J'atteste disposer d'un abonnement légal auprès du fournisseur de cette liste et des droits nécessaires pour la lire."}
+              ? t("J'atteste disposer d'un abonnement légal auprès du fournisseur de chacune de ces listes et des droits nécessaires pour les lire.")
+              : t("J'atteste disposer d'un abonnement légal auprès du fournisseur de cette liste et des droits nécessaires pour la lire.")}
           </label>
           <div className="actions">
             <button className="btn btn-primary" onClick={onCancel}>
-              {lists ? "Ne rien importer" : "Ne pas importer"}
+              {lists ? t("Ne rien importer") : t("Ne pas importer")}
             </button>
             {onCleanOnly && (
               <button className="btn" onClick={onCleanOnly}>
-                Importer seulement {cleanCount > 1 ? `les ${cleanCount} listes sans signe suspect` : "la liste sans signe suspect"}
+                {cleanCount > 1 ? t("Importer seulement les {n} listes sans signe suspect", { n: cleanCount }) : t("Importer seulement la liste sans signe suspect")}
               </button>
             )}
             <button className="btn" disabled={!attested} onClick={toStep2}>
-              Continuer
+              {t("Continuer")}
             </button>
           </div>
         </>
       ) : (
         <div className="actions">
           <button className="btn btn-primary" onClick={onCancel}>
-            Annuler l'import
+            {t("Annuler l'import")}
           </button>
           <button className="btn btn-danger" disabled={countdown > 0} onClick={onConfirm}>
-            {(lists ? `Tout importer : ${total} listes` : "Confirmer définitivement") + (countdown > 0 ? ` · ${countdown} s` : "")}
+            {(lists ? t("Tout importer : {n} listes", { n: total }) : t("Confirmer définitivement")) + (countdown > 0 ? ` · ${countdown} s` : "")}
           </button>
         </div>
       )}

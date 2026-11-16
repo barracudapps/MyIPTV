@@ -3,6 +3,7 @@ import sources from "./en/sources";
 import settings from "./en/settings";
 import live from "./en/live";
 import library from "./en/library";
+import sharing from "./en/sharing";
 
 /** Interface en anglais : une table par zone de l'application. */
-export const EN: Record<string, string> = { ...player, ...sources, ...settings, ...live, ...library };
+export const EN: Record<string, string> = { ...player, ...sources, ...settings, ...live, ...library, ...sharing };

@@ -5,6 +5,7 @@ import { playSound } from "../lib/fun";
 import { unlockSettings, useUi, type View } from "../store/ui";
 import { useNow } from "../lib/hooks";
 import { fmtTime } from "../lib/util";
+import { t, locale } from "../lib/t";
 import { switchProfile } from "./ProfilePicker";
 import { Icon } from "./Icon";
 import { ActivityButton } from "./ActivityIndicator";
@@ -34,7 +35,7 @@ export function Nav() {
     // Sources et réglages : protégés pour les enfants (et pour tous si l'option est active).
     if ((v === "sources" || v === "settings") && !(await unlockSettings())) return;
     if (v === "sources" && profile.kind !== "admin" && !useUi.getState().settingsUnlocked) {
-      useUi.getState().toast("Les sources se gèrent depuis un profil administrateur.", "info");
+      useUi.getState().toast(t("Les sources se gèrent depuis un profil administrateur."), "info");
       return;
     }
     playSound("click");
@@ -44,16 +45,16 @@ export function Nav() {
   const items = NAV_ITEMS.filter(([v]) => !hidden.includes(v) && !(profile.kind === "child" && v === "sources"));
 
   return (
-    <nav className="nav" aria-label="Navigation principale">
+    <nav className="nav" aria-label={t("Navigation principale")}>
       <div className="nav-brand" aria-hidden="true">
         <Icon name="live" size={22} />
         <span>MyIPTV</span>
       </div>
       <div className="nav-items">
         {items.map(([v, label, icon]) => (
-          <button key={v} className={`nav-item ${view === v ? "active" : ""}`} onClick={() => go(v)} aria-current={view === v ? "page" : undefined} title={label}>
+          <button key={v} className={`nav-item ${view === v ? "active" : ""}`} onClick={() => go(v)} aria-current={view === v ? "page" : undefined} title={t(label)}>
             <Icon name={icon} />
-            <span>{label}</span>
+            <span>{t(label)}</span>
             {v.startsWith("vod:") && counts[v.slice(4)] ? <small className="nav-count">{counts[v.slice(4)] > 999 ? `${Math.floor(counts[v.slice(4)] / 1000)}k` : counts[v.slice(4)]}</small> : null}
           </button>
         ))}
@@ -63,10 +64,10 @@ export function Nav() {
         {showClock && (
           <div className="clock">
             <span>{fmtTime(now)}</span>
-            <small>{new Date(now * 1000).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</small>
+            <small>{new Date(now * 1000).toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" })}</small>
           </div>
         )}
-        <button className="nav-item profile-btn" onClick={switchProfile} title="Changer de profil">
+        <button className="nav-item profile-btn" onClick={switchProfile} title={t("Changer de profil")}>
           <span className="avatar small" style={{ background: profile.color }}>
             {profile.avatar}
           </span>

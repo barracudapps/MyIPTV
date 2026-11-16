@@ -6,6 +6,7 @@ import { programmeAccess } from "../lib/parental";
 import { fmtTime, nowSec } from "../lib/util";
 import type { Channel } from "../types";
 import { Icon } from "./Icon";
+import { t, plural, locale } from "../lib/t";
 
 /** Nombre de jours d'archive d'une chaîne (0 = pas de replay). */
 export function catchupDays(ch: Channel): number {
@@ -17,9 +18,9 @@ export function ReplayBadge({ channel, compact }: { channel: Channel; compact?: 
   const days = catchupDays(channel);
   if (!days) return null;
   return (
-    <span className="replay-badge" title={`Replay disponible sur ${days} jour${days > 1 ? "s" : ""}`}>
+    <span className="replay-badge" title={plural(days, "Replay disponible sur {n} jour", "Replay disponible sur {n} jours")}>
       <Icon name="replay" size={12} />
-      {!compact && <>{days} j</>}
+      {!compact && <>{t("{n} j", { n: days })}</>}
     </span>
   );
 }
@@ -32,9 +33,9 @@ function dayStart(offset: number) {
 }
 
 function dayLabel(offset: number) {
-  if (offset === 0) return "Aujourd'hui";
-  if (offset === 1) return "Hier";
-  return new Date(dayStart(offset) * 1000).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
+  if (offset === 0) return t("Aujourd'hui");
+  if (offset === 1) return t("Hier");
+  return new Date(dayStart(offset) * 1000).toLocaleDateString(locale(), { weekday: "short", day: "numeric" });
 }
 
 /**
@@ -68,7 +69,7 @@ export function CatchupBrowser({ channel }: { channel: Channel }) {
   return (
     <section className="catchup">
       <h3>
-        <Icon name="replay" /> Revoir ({days} jour{days > 1 ? "s" : ""})
+        <Icon name="replay" /> {plural(days, "Revoir ({n} jour)", "Revoir ({n} jours)")}
       </h3>
       <div className="chips">
         {Array.from({ length: Math.min(days + 1, 15) }, (_, i) => (
@@ -78,7 +79,7 @@ export function CatchupBrowser({ channel }: { channel: Channel }) {
         ))}
       </div>
       {list.length === 0 ? (
-        <p className="dim small">{progs ? "Pas de programme connu pour ce jour (guide manquant)." : "Chargement du guide…"}</p>
+        <p className="dim small">{progs ? t("Pas de programme connu pour ce jour (guide manquant).") : t("Chargement du guide…")}</p>
       ) : (
         <ol className="catchup-list" ref={listRef}>
           {list.map((p) => {
@@ -91,7 +92,7 @@ export function CatchupBrowser({ channel }: { channel: Channel }) {
                   className={`catchup-item ${current ? "current" : ""}`}
                   disabled={!ok}
                   onClick={() => usePlayer.getState().playCatchup(channel, p)}
-                  title={live ? "Reprendre depuis le début" : "Revoir"}
+                  title={live ? t("Reprendre depuis le début") : t("Revoir")}
                 >
                   <span className="time">{fmtTime(p.start)}</span>
                   <span className="catchup-text">

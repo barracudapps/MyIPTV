@@ -50,8 +50,16 @@ export function setUiLanguage(lang: UiLanguage) {
 
 const DICTS: Record<UiLanguage, Record<string, string> | null> = { fr: null, en: EN };
 
+/**
+ * Un même mot français peut demander deux traductions (« Enregistrer » : sauvegarder ou
+ * enregistrer une émission) : `t("Enregistrer|record")` cherche d'abord la clé avec son
+ * contexte, puis le mot seul ; le contexte n'est jamais affiché.
+ */
 export function t(fr: string, vars?: Record<string, string | number>): string {
-  const text = DICTS[current]?.[fr] ?? fr;
+  const bar = fr.indexOf("|");
+  const base = bar < 0 ? fr : fr.slice(0, bar);
+  const dict = DICTS[current];
+  const text = dict?.[fr] ?? dict?.[base] ?? base;
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 }

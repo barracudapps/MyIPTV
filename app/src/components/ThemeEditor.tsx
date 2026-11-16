@@ -4,6 +4,7 @@ import { useUi } from "../store/ui";
 import { applyTheme, COLOR_LABELS, type Theme, type ThemeColors, type ThemeLayout } from "../lib/themes";
 import { uid } from "../lib/util";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 /** Choix du thème du profil actif + éditeur complet (couleurs, typographie, disposition des écrans). */
 export function AppearanceSettings() {
@@ -15,27 +16,27 @@ export function AppearanceSettings() {
   const [io, setIo] = useState(false);
   const animations = useSettings((s) => s.fun.animations !== false);
 
-  const pick = (t: Theme) => useSettings.getState().updateProfile(profile.id, { themeId: t.id });
+  const pick = (th: Theme) => useSettings.getState().updateProfile(profile.id, { themeId: th.id });
 
   return (
     <div className="settings-section">
-      <h2>Thème de « {profile.name} »</h2>
+      <h2>{t("Thème de « {name} »", { name: profile.name })}</h2>
       <div className="theme-grid">
-        {themes.map((t) => (
-          <div key={t.id} className={`theme-card ${t.id === active.id ? "active" : ""}`}>
-            <button className="theme-swatch" onClick={() => pick(t)} style={{ background: t.colors.bg, color: t.colors.text, borderRadius: t.radius }}>
-              <span style={{ background: t.colors.surface, borderRadius: t.radius / 2 }} />
-              <span style={{ background: t.colors.accent, borderRadius: t.radius / 2 }} />
-              <strong>{t.name}</strong>
-              {t.id === active.id && <Icon name="check" />}
+        {themes.map((th) => (
+          <div key={th.id} className={`theme-card ${th.id === active.id ? "active" : ""}`}>
+            <button className="theme-swatch" onClick={() => pick(th)} style={{ background: th.colors.bg, color: th.colors.text, borderRadius: th.radius }}>
+              <span style={{ background: th.colors.surface, borderRadius: th.radius / 2 }} />
+              <span style={{ background: th.colors.accent, borderRadius: th.radius / 2 }} />
+              <strong>{t(th.name)}</strong>
+              {th.id === active.id && <Icon name="check" />}
             </button>
             <div className="row">
-              <button className="link" onClick={() => setDraft({ ...structuredClone(t), id: t.builtin ? uid() : t.id, name: t.builtin ? `${t.name} (perso)` : t.name, builtin: false })}>
-                {t.builtin ? "Personnaliser" : "Modifier"}
+              <button className="link" onClick={() => setDraft({ ...structuredClone(th), id: th.builtin ? uid() : th.id, name: th.builtin ? t("{name} (perso)", { name: t(th.name) }) : th.name, builtin: false })}>
+                {th.builtin ? t("Personnaliser") : t("Modifier")}
               </button>
-              {!t.builtin && (
-                <button className="link danger" onClick={() => useSettings.getState().removeTheme(t.id)}>
-                  Supprimer
+              {!th.builtin && (
+                <button className="link danger" onClick={() => useSettings.getState().removeTheme(th.id)}>
+                  {t("Supprimer")}
                 </button>
               )}
             </div>
@@ -43,16 +44,16 @@ export function AppearanceSettings() {
         ))}
       </div>
       <div className="row">
-        <button className="btn" onClick={() => setDraft({ ...structuredClone(active), id: uid(), name: "Mon écran", builtin: false })}>
-          <Icon name="palette" /> Créer mon écran
+        <button className="btn" onClick={() => setDraft({ ...structuredClone(active), id: uid(), name: t("Mon écran"), builtin: false })}>
+          <Icon name="palette" /> {t("Créer mon écran")}
         </button>
         <button className="btn" onClick={() => setIo(true)}>
-          <Icon name="upload" /> Importer / exporter
+          <Icon name="upload" /> {t("Importer / exporter")}
         </button>
       </div>
       <Toggle
-        label="Animations"
-        hint="Ouverture des menus, fenêtres et écrans. À couper sur une TV peu puissante ; le réglage « réduire les animations » du système est toujours respecté."
+        label={t("Animations")}
+        hint={t("Ouverture des menus, fenêtres et écrans. À couper sur une TV peu puissante ; le réglage « réduire les animations » du système est toujours respecté.")}
         checked={animations}
         onChange={(v) => useSettings.getState().setFun({ animations: v })}
       />
@@ -65,86 +66,86 @@ export function AppearanceSettings() {
 function Editor({ initial, onClose }: { initial: Theme; onClose(): void }) {
   const profile = useActiveProfile()!;
   const custom = useSettings((s) => s.customThemes);
-  const [t, setT] = useState(initial);
+  const [th, setT] = useState(initial);
   const toast = useUi((s) => s.toast);
 
   // Aperçu en direct sur toute l'application ; restauré à la fermeture.
-  useEffect(() => applyTheme(t), [t]);
+  useEffect(() => applyTheme(th), [th]);
   useEffect(() => () => applyTheme(themeFor(useSettings.getState().profiles.find((p) => p.id === profile.id), useSettings.getState().customThemes)), [profile.id]);
 
-  const color = (k: keyof ThemeColors, v: string) => setT({ ...t, colors: { ...t.colors, [k]: v } });
-  const lay = <K extends keyof ThemeLayout>(k: K, v: ThemeLayout[K]) => setT({ ...t, layout: { ...t.layout, [k]: v } });
+  const color = (k: keyof ThemeColors, v: string) => setT({ ...th, colors: { ...th.colors, [k]: v } });
+  const lay = <K extends keyof ThemeLayout>(k: K, v: ThemeLayout[K]) => setT({ ...th, layout: { ...th.layout, [k]: v } });
   const save = () => {
-    useSettings.getState().saveTheme(t);
-    useSettings.getState().updateProfile(profile.id, { themeId: t.id });
-    toast(`Écran « ${t.name} » enregistré.`, "success");
+    useSettings.getState().saveTheme(th);
+    useSettings.getState().updateProfile(profile.id, { themeId: th.id });
+    toast(t("Écran « {name} » enregistré.", { name: th.name }), "success");
     onClose();
   };
 
   return (
-    <div className="editor-panel" data-modal role="dialog" aria-label="Éditeur d'écran">
+    <div className="editor-panel" data-modal role="dialog" aria-label={t("Éditeur d'écran")}>
       <header>
-        <h2>Personnaliser l'écran</h2>
-        <button className="icon-btn" onClick={onClose} title="Annuler">
+        <h2>{t("Personnaliser l'écran")}</h2>
+        <button className="icon-btn" onClick={onClose} title={t("Annuler")}>
           <Icon name="close" />
         </button>
       </header>
       <div className="editor-body">
         <label className="field">
-          Nom
-          <input value={t.name} onChange={(e) => setT({ ...t, name: e.target.value })} />
+          {t("Nom")}
+          <input value={th.name} onChange={(e) => setT({ ...th, name: e.target.value })} />
         </label>
 
-        <h3>Couleurs</h3>
+        <h3>{t("Couleurs")}</h3>
         <div className="color-grid">
           {(Object.keys(COLOR_LABELS) as (keyof ThemeColors)[]).map((k) => (
             <label key={k} className="color-field">
-              <input type="color" value={t.colors[k]} onChange={(e) => color(k, e.target.value)} />
-              {COLOR_LABELS[k]}
+              <input type="color" value={th.colors[k]} onChange={(e) => color(k, e.target.value)} />
+              {t(COLOR_LABELS[k])}
             </label>
           ))}
         </div>
 
-        <h3>Texte et formes</h3>
+        <h3>{t("Texte et formes")}</h3>
         <Segmented<Theme["font"]>
-          label="Police"
-          value={t.font}
+          label={t("Police")}
+          value={th.font}
           options={[
-            ["system", "Système"],
-            ["rounded", "Arrondie"],
-            ["serif", "Classique"],
-            ["mono", "Machine"],
+            ["system", t("Système")],
+            ["rounded", t("Arrondie")],
+            ["serif", t("Classique")],
+            ["mono", t("Machine")],
           ]}
-          onChange={(v) => setT({ ...t, font: v })}
+          onChange={(v) => setT({ ...th, font: v })}
         />
-        <Range label="Taille du texte" value={t.fontScale} min={0.85} max={1.6} step={0.05} fmt={(v) => `${Math.round(v * 100)} %`} onChange={(v) => setT({ ...t, fontScale: v })} />
-        <Range label="Arrondi des angles" value={t.radius} min={0} max={28} step={1} fmt={(v) => `${v} px`} onChange={(v) => setT({ ...t, radius: v })} />
+        <Range label={t("Taille du texte")} value={th.fontScale} min={0.85} max={1.6} step={0.05} fmt={(v) => `${Math.round(v * 100)} %`} onChange={(v) => setT({ ...th, fontScale: v })} />
+        <Range label={t("Arrondi des angles")} value={th.radius} min={0} max={28} step={1} fmt={(v) => `${v} px`} onChange={(v) => setT({ ...th, radius: v })} />
 
-        <h3>Disposition</h3>
+        <h3>{t("Disposition")}</h3>
         <Segmented
-          label="Écran Direct"
-          value={t.layout.experience ?? "classic"}
-          options={[["classic", "Classique"], ["immersive", "Salon"], ["guide", "Programme TV"], ["magazine", "Magazine"]]}
+          label={t("Écran Direct")}
+          value={th.layout.experience ?? "classic"}
+          options={[["classic", t("Classique")], ["immersive", t("Salon")], ["guide", t("Programme TV")], ["magazine", t("Magazine")]]}
           onChange={(v) => lay("experience", v)}
         />
-        <Segmented label="Vitrine des films" value={t.layout.showcase ? "on" : "off"} options={[["off", "Grille"], ["on", "Bannière et rangées"]]} onChange={(v) => lay("showcase", v === "on")} />
-        <Segmented label="Menu" value={t.layout.nav} options={[["left", "À gauche"], ["rail", "Icônes"], ["top", "En haut"], ["bottom", "En bas"]]} onChange={(v) => lay("nav", v)} />
-        <Segmented label="Lecteur" value={t.layout.playerPosition} options={[["right", "À droite"], ["left", "À gauche"], ["top", "En haut"]]} onChange={(v) => lay("playerPosition", v)} />
-        <Range label="Taille du lecteur" value={t.layout.playerSize} min={25} max={75} step={1} fmt={(v) => `${v} %`} onChange={(v) => lay("playerSize", v)} />
-        <Segmented label="Chaînes" value={t.layout.channelView} options={[["list", "Liste"], ["grid", "Mosaïque"]]} onChange={(v) => lay("channelView", v)} />
-        <Segmented label="Densité" value={t.layout.density} options={[["compact", "Compacte"], ["comfortable", "Confort"], ["tv", "TV (grand)"]]} onChange={(v) => lay("density", v)} />
-        <Range label="Taille des logos" value={t.layout.logoSize} min={24} max={96} step={4} fmt={(v) => `${v} px`} onChange={(v) => lay("logoSize", v)} />
-        <Toggle label="Programme en cours et suivant" checked={t.layout.showNowNext} onChange={(v) => lay("showNowNext", v)} />
-        <Toggle label="Barre de progression" checked={t.layout.showProgress} onChange={(v) => lay("showProgress", v)} />
-        <Toggle label="Catégories" checked={t.layout.showGroups} onChange={(v) => lay("showGroups", v)} />
-        <Toggle label="Horloge" checked={t.layout.showClock} onChange={(v) => lay("showClock", v)} />
+        <Segmented label={t("Vitrine des films")} value={th.layout.showcase ? "on" : "off"} options={[["off", t("Grille")], ["on", t("Bannière et rangées")]]} onChange={(v) => lay("showcase", v === "on")} />
+        <Segmented label={t("Menu")} value={th.layout.nav} options={[["left", t("À gauche")], ["rail", t("Icônes")], ["top", t("En haut")], ["bottom", t("En bas")]]} onChange={(v) => lay("nav", v)} />
+        <Segmented label={t("Lecteur")} value={th.layout.playerPosition} options={[["right", t("À droite")], ["left", t("À gauche")], ["top", t("En haut")]]} onChange={(v) => lay("playerPosition", v)} />
+        <Range label={t("Taille du lecteur")} value={th.layout.playerSize} min={25} max={75} step={1} fmt={(v) => `${v} %`} onChange={(v) => lay("playerSize", v)} />
+        <Segmented label={t("Chaînes")} value={th.layout.channelView} options={[["list", t("Liste")], ["grid", t("Mosaïque")]]} onChange={(v) => lay("channelView", v)} />
+        <Segmented label={t("Densité")} value={th.layout.density} options={[["compact", t("Compacte")], ["comfortable", t("Confort")], ["tv", t("TV (grand)")]]} onChange={(v) => lay("density", v)} />
+        <Range label={t("Taille des logos")} value={th.layout.logoSize} min={24} max={96} step={4} fmt={(v) => `${v} px`} onChange={(v) => lay("logoSize", v)} />
+        <Toggle label={t("Programme en cours et suivant")} checked={th.layout.showNowNext} onChange={(v) => lay("showNowNext", v)} />
+        <Toggle label={t("Barre de progression")} checked={th.layout.showProgress} onChange={(v) => lay("showProgress", v)} />
+        <Toggle label={t("Catégories")} checked={th.layout.showGroups} onChange={(v) => lay("showGroups", v)} />
+        <Toggle label={t("Horloge")} checked={th.layout.showClock} onChange={(v) => lay("showClock", v)} />
       </div>
       <footer className="actions">
         <button className="btn" onClick={onClose}>
-          Annuler
+          {t("Annuler")}
         </button>
-        <button className="btn btn-primary" onClick={save} disabled={!t.name.trim()}>
-          {custom.some((c) => c.id === t.id) ? "Enregistrer" : "Enregistrer mon écran"}
+        <button className="btn btn-primary" onClick={save} disabled={!th.name.trim()}>
+          {custom.some((c) => c.id === th.id) ? t("Enregistrer") : t("Enregistrer mon écran")}
         </button>
       </footer>
     </div>
@@ -157,34 +158,34 @@ function ThemeIO({ active, onClose }: { active: Theme; onClose(): void }) {
   const toast = useUi((s) => s.toast);
   const doImport = () => {
     try {
-      const t = JSON.parse(text) as Theme;
-      if (!t.colors || !t.layout) throw new Error();
-      useSettings.getState().saveTheme({ ...t, id: uid(), builtin: false });
-      toast("Thème importé.", "success");
+      const th = JSON.parse(text) as Theme;
+      if (!th.colors || !th.layout) throw new Error();
+      useSettings.getState().saveTheme({ ...th, id: uid(), builtin: false });
+      toast(t("Thème importé."), "success");
       onClose();
     } catch {
-      setError("Ce texte n'est pas un thème MyIPTV valide.");
+      setError(t("Ce texte n'est pas un thème MyIPTV valide."));
     }
   };
   return (
     <div className="modal-backdrop">
-      <div className="modal modal-wide" data-modal role="dialog" aria-label="Importer ou exporter un thème">
+      <div className="modal modal-wide" data-modal role="dialog" aria-label={t("Importer ou exporter un thème")}>
         <header>
-          <h2>Importer / exporter un thème</h2>
+          <h2>{t("Importer / exporter un thème")}</h2>
           <button className="icon-btn" onClick={onClose}>
             <Icon name="close" />
           </button>
         </header>
         <div className="modal-body">
-          <p className="dim">Copiez ce texte pour partager votre écran, ou collez celui d'un autre appareil.</p>
+          <p className="dim">{t("Copiez ce texte pour partager votre écran, ou collez celui d'un autre appareil.")}</p>
           <textarea className="mono" rows={12} value={text} onChange={(e) => setText(e.target.value)} />
           {error && <p className="error-text">{error}</p>}
           <div className="actions">
-            <button className="btn" onClick={() => navigator.clipboard?.writeText(text).then(() => toast("Copié."))}>
-              <Icon name="download" /> Copier
+            <button className="btn" onClick={() => navigator.clipboard?.writeText(text).then(() => toast(t("Copié.")))}>
+              <Icon name="download" /> {t("Copier")}
             </button>
             <button className="btn btn-primary" onClick={doImport}>
-              <Icon name="upload" /> Importer
+              <Icon name="upload" /> {t("Importer")}
             </button>
           </div>
         </div>

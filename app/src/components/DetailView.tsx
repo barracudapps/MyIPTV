@@ -16,13 +16,14 @@ import { CollectionMenu } from "./Collections";
 import { fmtRuntime, openItem, VodCard } from "./VodView";
 import { Dropdown } from "./Dropdown";
 import { translateLabel } from "../lib/i18n";
+import { t, plural, locale, uiLanguage } from "../lib/t";
 
 function Stars({ value, onChange }: { value: number; onChange(v: number): void }) {
   const [hover, setHover] = useState(0);
   return (
-    <div className="stars" role="radiogroup" aria-label="Ma note" onMouseLeave={() => setHover(0)}>
+    <div className="stars" role="radiogroup" aria-label={t("Ma note")} onMouseLeave={() => setHover(0)}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} role="radio" aria-checked={value === n} className={(hover || value) >= n ? "on" : ""} onMouseEnter={() => setHover(n)} onClick={() => onChange(n)} title={`${n} étoile${n > 1 ? "s" : ""}`}>
+        <button key={n} role="radio" aria-checked={value === n} className={(hover || value) >= n ? "on" : ""} onMouseEnter={() => setHover(n)} onClick={() => onChange(n)} title={plural(n, "{n} étoile", "{n} étoiles")}>
           ★
         </button>
       ))}
@@ -32,7 +33,7 @@ function Stars({ value, onChange }: { value: number; onChange(v: number): void }
 
 function PersonChip({ p }: { p: Person }) {
   return (
-    <button className="person-chip" onClick={() => useUi.setState({ person: { name: p.name, tmdbId: p.tmdbId } })} title={`Tous les contenus avec ${p.name}`}>
+    <button className="person-chip" onClick={() => useUi.setState({ person: { name: p.name, tmdbId: p.tmdbId } })} title={t("Tous les contenus avec {name}", { name: p.name })}>
       <span className="person-photo">{p.photo ? <LazyImg src={p.photo} alt="" /> : p.name.slice(0, 1)}</span>
       <span className="person-name">{p.name}</span>
       {p.role && <span className="person-role">{p.role}</span>}
@@ -42,11 +43,11 @@ function PersonChip({ p }: { p: Person }) {
 
 export function TrailerDialog({ youtubeKey, title, onClose }: { youtubeKey: string; title: string; onClose(): void }) {
   return (
-    <Modal title={`Bande-annonce · ${title}`} onClose={onClose} wide>
+    <Modal title={t("Bande-annonce · {title}", { title })} onClose={onClose} wide>
       <div className="trailer">
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(youtubeKey)}?autoplay=1&rel=0`}
-          title="Bande-annonce"
+          title={t("Bande-annonce")}
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           allowFullScreen
         />
@@ -113,10 +114,12 @@ export function DetailView() {
   };
   const resumeLabel =
     history && !history.finished && history.position > 30
-      ? `Reprendre${history.episodeLabel ? ` ${history.episodeLabel}` : ""} (${fmtDuration(history.position)})`
+      ? history.episodeLabel
+        ? t("Reprendre {episode} ({time})", { episode: history.episodeLabel, time: fmtDuration(history.position) })
+        : t("Reprendre ({time})", { time: fmtDuration(history.position) })
       : history?.finished && queue.length
-        ? "Épisode suivant"
-        : "Lecture";
+        ? t("Épisode suivant")
+        : t("Lecture");
 
   const toggleFav = () => {
     useSettings.getState().toggleVodFavorite(id);
@@ -125,9 +128,9 @@ export function DetailView() {
 
   return (
     <div className={`detail-backdrop ${closing ? "closing" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="detail" role="dialog" aria-modal="true" aria-label={item?.title ?? "Fiche"} data-modal>
+      <div className="detail" role="dialog" aria-modal="true" aria-label={item?.title ?? t("Fiche")} data-modal>
         <header className="detail-hero" style={item?.backdrop ? { backgroundImage: `url(${item.backdrop})` } : undefined}>
-          <button className="icon-btn detail-close" onClick={close} title="Fermer">
+          <button className="icon-btn detail-close" onClick={close} title={t("Fermer")}>
             <Icon name="close" />
           </button>
         </header>
@@ -148,14 +151,14 @@ export function DetailView() {
                 {item.poster && !posterBroken ? <img src={item.poster} alt="" onError={() => setPosterBroken(true)} /> : <Icon name={meta.icon} size={48} />}
               </div>
               <div className="detail-info">
-                <span className="eyebrow">{meta.label}</span>
+                <span className="eyebrow">{t(meta.label)}</span>
                 <h1>{item.title}</h1>
                 {detail.tagline && <p className="tagline">{detail.tagline}</p>}
                 <div className="detail-facts">
                   {item.year && <span>{item.year}</span>}
                   {item.duration ? <span>{fmtRuntime(item.duration)}</span> : null}
-                  {detail.seasons.length > 1 && <span>{detail.seasons.length} saisons</span>}
-                  {queue.length > 0 && <span>{queue.length} {meta.unit}s</span>}
+                  {detail.seasons.length > 1 && <span>{t("{n} saisons", { n: detail.seasons.length })}</span>}
+                  {queue.length > 0 && <span>{queue.length} {t(meta.unit)}s</span>}
                   {detail.age ? <span className="age-badge">-{detail.age}</span> : null}
                   {item.languages?.map((l) => (
                     <span key={l} title={langName(l)}>
@@ -165,7 +168,7 @@ export function DetailView() {
                 </div>
                 <div className="ratings">
                   {detail.imdbRating && (
-                    <span className="rating-imdb" title={detail.imdbVotes ? `${detail.imdbVotes} votes` : undefined}>
+                    <span className="rating-imdb" title={detail.imdbVotes ? t("{n} votes", { n: detail.imdbVotes }) : undefined}>
                       IMDb <strong>{detail.imdbRating.toFixed(1)}</strong>
                     </span>
                   )}
@@ -176,7 +179,7 @@ export function DetailView() {
                   )}
                   {!detail.imdbRating && !detail.tmdbRating && item.rating ? (
                     <span className="rating-tmdb">
-                      Note <strong>{item.rating.toFixed(1)}</strong>
+                      {t("Note")} <strong>{item.rating.toFixed(1)}</strong>
                     </span>
                   ) : null}
                   <Stars value={profile.ratings[id] ?? 0} onChange={(v) => useSettings.getState().rate(id, v)} />
@@ -188,30 +191,30 @@ export function DetailView() {
                   </button>
                   {history && !history.finished && history.position > 30 && !queue.length && (
                     <button className="btn" onClick={() => (usePlayer.getState().playMedia(item, { age: detail.age }), close())}>
-                      <Icon name="restart" /> Depuis le début
+                      <Icon name="restart" /> {t("Depuis le début")}
                     </button>
                   )}
                   {item.trailer && (
                     <button className="btn" onClick={() => setTrailer(true)}>
-                      <Icon name="film" /> Bande-annonce
+                      <Icon name="film" /> {t("Bande-annonce")}
                     </button>
                   )}
                   <button className={`btn ${fav ? "btn-on" : ""}`} onClick={toggleFav}>
-                    <Icon name="heart" filled={fav} /> {fav ? "Dans ma liste" : "Ma liste"}
+                    <Icon name="heart" filled={fav} /> {fav ? t("Dans ma liste") : t("Ma liste")}
                   </button>
                   <CollectionMenu itemId={id} />
                   {history && (
-                    <button className="btn" onClick={() => useSettings.getState().removeHistory(id)} title="Retirer de l'historique">
-                      <Icon name="history" /> Oublier
+                    <button className="btn" onClick={() => useSettings.getState().removeHistory(id)} title={t("Retirer de l'historique")}>
+                      <Icon name="history" /> {t("Oublier")}
                     </button>
                   )}
                 </div>
                 {item.genres && item.genres.length > 0 && (
                   <div className="chips wrap">
                     {/* Étiquettes identiques une fois traduites (« 50s », « 1950's ») : une seule. */}
-                    {item.genres.filter((g, i, all) => all.findIndex((x) => translateLabel(x, profile.languages[0]) === translateLabel(g, profile.languages[0])) === i).map((g) => (
+                    {item.genres.filter((g, i, all) => all.findIndex((x) => translateLabel(x, uiLanguage()) === translateLabel(g, uiLanguage())) === i).map((g) => (
                       <button key={g} className="chip" onClick={() => (useUi.setState({ view: `vod:${item.kind ?? "movie"}`, vodFilter: { genre: g }, detailId: null }))}>
-                        {translateLabel(g, profile.languages[0])}
+                        {translateLabel(g, uiLanguage())}
                       </button>
                     ))}
                   </div>
@@ -223,7 +226,7 @@ export function DetailView() {
 
             {detail.crew.length > 0 && (
               <section>
-                <h3>Équipe</h3>
+                <h3>{t("Équipe")}</h3>
                 <div className="people">
                   {detail.crew.slice(0, 12).map((p, i) => (
                     <PersonChip key={p.name + i} p={p} />
@@ -233,7 +236,7 @@ export function DetailView() {
             )}
             {detail.cast.length > 0 && (
               <section>
-                <h3>{item.kind === "music" ? "Artistes" : "Casting"}</h3>
+                <h3>{item.kind === "music" ? t("Artistes") : t("Casting")}</h3>
                 <div className="people">
                   {detail.cast.slice(0, 24).map((p, i) => (
                     <PersonChip key={p.name + i} p={p} />
@@ -256,7 +259,7 @@ export function DetailView() {
                         <button className="episode" onClick={() => playEpisode(e, current && !history?.finished ? history!.position : 0)} disabled={!access.ok && access.reason === "blocked"}>
                           {e.still ? <LazyImg src={e.still} alt="" wrapClassName="ep-still" /> : <span className="ep-num">{e.episode}</span>}
                           <span className="ep-text">
-                            <strong>{e.title || `${meta.unit} ${e.episode}`}</strong>
+                            <strong>{e.title || `${t(meta.unit)} ${e.episode}`}</strong>
                             <span className="dim">
                               {[e.airDate?.slice(0, 16), e.duration ? fmtRuntime(e.duration) : ""].filter(Boolean).join(" · ")}
                             </span>
@@ -315,12 +318,12 @@ export function PersonDialog() {
             {data.photo && <img className="person-big" src={data.photo} alt="" />}
             <div className="grow">
               {data.knownFor && <span className="eyebrow">{data.knownFor}</span>}
-              {data.birthday && <p className="dim small">Né(e) le {new Date(data.birthday).toLocaleDateString("fr-FR")}</p>}
+              {data.birthday && <p className="dim small">{t("Né(e) le {date}", { date: new Date(data.birthday).toLocaleDateString(locale()) })}</p>}
               {data.biography && <p className="bio">{data.biography}</p>}
-              {!hasTmdb && <p className="dim small">Ajoutez une clé TMDB (Réglages › Métadonnées) pour la photo, la biographie et la filmographie complète.</p>}
+              {!hasTmdb && <p className="dim small">{t("Ajoutez une clé TMDB (Réglages › Métadonnées) pour la photo, la biographie et la filmographie complète.")}</p>}
             </div>
           </div>
-          <h3>Disponible ({data.items.length})</h3>
+          <h3>{t("Disponible ({n})", { n: data.items.length })}</h3>
           {data.items.length ? (
             <div className="vod-grid shape-portrait compact">
               {data.items.map((i) => (
@@ -328,14 +331,14 @@ export function PersonDialog() {
               ))}
             </div>
           ) : (
-            <p className="dim">Aucun contenu disponible avec {person.name} dans vos sources.</p>
+            <p className="dim">{t("Aucun contenu disponible avec {name} dans vos sources.", { name: person.name })}</p>
           )}
           {data.credits.length > 0 && (
             <>
               <div className="row">
-                <h3 className="grow">Filmographie ({data.credits.length})</h3>
+                <h3 className="grow">{t("Filmographie ({n})", { n: data.credits.length })}</h3>
                 <label className="check">
-                  <input type="checkbox" checked={onlyAvailable} onChange={(e) => setOnlyAvailable(e.target.checked)} /> Seulement disponibles
+                  <input type="checkbox" checked={onlyAvailable} onChange={(e) => setOnlyAvailable(e.target.checked)} /> {t("Seulement disponibles")}
                 </label>
               </div>
               <ul className="credits">
@@ -345,7 +348,7 @@ export function PersonDialog() {
                       <span className="time">{c.year ?? "—"}</span>
                       <strong>{c.title}</strong>
                       {c.role && <span className="dim"> · {c.role}</span>}
-                      {c.availableId && <span className="mini-badge ok">disponible</span>}
+                      {c.availableId && <span className="mini-badge ok">{t("disponible")}</span>}
                     </button>
                   </li>
                 ))}
@@ -367,36 +370,36 @@ function SeasonPicker({ seasons, value, onChange, currentEpisodeId, finished }: 
   const currentSeason = currentEpisodeId ? seasons.findIndex((s) => s.episodes.some((e) => e.id === currentEpisodeId)) : -1;
   const progress = (i: number) => {
     if (currentSeason < 0 || i > currentSeason) return "";
-    if (i < currentSeason) return "✓ vue";
+    if (i < currentSeason) return t("✓ vue");
     const eps = seasons[i].episodes;
     const at = eps.findIndex((e) => e.id === currentEpisodeId) + (finished ? 1 : 0);
-    return at >= eps.length ? "✓ vue" : `${at}/${eps.length}`;
+    return at >= eps.length ? t("✓ vue") : `${at}/${eps.length}`;
   };
   return (
     <div className="season-picker">
-      <button className="icon-btn" title="Saison précédente" disabled={value === 0} onClick={() => onChange(value - 1)}>
+      <button className="icon-btn" title={t("Saison précédente")} disabled={value === 0} onClick={() => onChange(value - 1)}>
         <Icon name="prev" size={16} />
       </button>
       <Dropdown<string>
-        ariaLabel="Saison"
+        ariaLabel={t("Saison")}
         value={String(value)}
         onChange={(v) => onChange(Number(v))}
         options={seasons.map((s, i) => ({
           value: String(i),
           label: s.name,
-          hint: [progress(i) || `${s.episodes.length} ép.`, i === currentSeason ? "en cours" : ""].filter(Boolean).join(" · "),
+          hint: [progress(i) || t("{n} ép.", { n: s.episodes.length }), i === currentSeason ? t("en cours") : ""].filter(Boolean).join(" · "),
         }))}
       />
-      <button className="icon-btn" title="Saison suivante" disabled={value === seasons.length - 1} onClick={() => onChange(value + 1)}>
+      <button className="icon-btn" title={t("Saison suivante")} disabled={value === seasons.length - 1} onClick={() => onChange(value + 1)}>
         <Icon name="next" size={16} />
       </button>
       <span className="dim small">
-        {seasons[value].episodes.length} épisode{seasons[value].episodes.length > 1 ? "s" : ""}
+        {plural(seasons[value].episodes.length, "{n} épisode", "{n} épisodes")}
         {progress(value) ? ` · ${progress(value)}` : ""}
       </span>
       {currentSeason >= 0 && currentSeason !== value && (
         <button className="link" onClick={() => onChange(currentSeason)}>
-          Aller à la saison en cours
+          {t("Aller à la saison en cours")}
         </button>
       )}
     </div>

@@ -2,6 +2,7 @@ import { withContent } from "./playlists";
 import type { Profile } from "./parental";
 import type { Theme } from "./themes";
 import type { Source } from "../types";
+import { t } from "./t";
 import { useSettings, type FunSettings, type MetaSettings, type ParentalSettings, type PlaybackSettings } from "../store/settings";
 
 /** Configuration échangée entre deux appareils (chiffrée pendant le transfert). */
@@ -66,7 +67,7 @@ function mergeHistory(local: Profile["history"], incoming: Profile["history"] | 
 
 export function parsePayload(text: string): SharePayload {
   const p = JSON.parse(text) as SharePayload;
-  if (p?.app !== "MyIPTV" || p.version !== 1) throw new Error("Ce partage ne vient pas d'une version compatible de MyIPTV.");
+  if (p?.app !== "MyIPTV" || p.version !== 1) throw new Error(t("Ce partage ne vient pas d'une version compatible de MyIPTV."));
   return p;
 }
 

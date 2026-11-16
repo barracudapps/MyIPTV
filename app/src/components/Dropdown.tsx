@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { normalize } from "../lib/util";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 export interface DropdownOption<T extends string> {
   value: T;
@@ -20,7 +21,7 @@ export function Dropdown<T extends string>({
   options,
   onChange,
   label,
-  placeholder = "Choisir…",
+  placeholder,
   icon,
   ariaLabel,
   active,
@@ -79,7 +80,7 @@ export function Dropdown<T extends string>({
         {icon && <Icon name={icon} size={15} />}
         {label && <span className="dd-label">{label}</span>}
         {current?.prefix && <span className="dd-prefix">{current.prefix}</span>}
-        <span className="dd-value">{current?.label ?? placeholder}</span>
+        <span className="dd-value">{current?.label ?? placeholder ?? t("Choisir…")}</span>
         <Icon name="down" size={14} />
       </button>
       {open && (
@@ -87,7 +88,7 @@ export function Dropdown<T extends string>({
           {searchable && (
             <div className="dd-search">
               <Icon name="search" size={15} />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher…" aria-label="Rechercher dans la liste" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Rechercher…")} aria-label={t("Rechercher dans la liste")} />
             </div>
           )}
           <div className="dd-options">
@@ -99,7 +100,7 @@ export function Dropdown<T extends string>({
                 {o.value === value && <Icon name="check" size={14} />}
               </button>
             ))}
-            {!shown.length && <p className="dim small dd-empty">Aucun résultat.</p>}
+            {!shown.length && <p className="dim small dd-empty">{t("Aucun résultat.")}</p>}
           </div>
         </div>
       )}

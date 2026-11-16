@@ -16,6 +16,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { Icon } from "./Icon";
 import { VodCard } from "./VodView";
 import { translateLabel } from "../lib/i18n";
+import { t, uiLanguage } from "../lib/t";
 
 type Field = SearchField | "channel" | "programme";
 
@@ -102,19 +103,19 @@ export function SearchView() {
       <div className="search-bar">
         <div className="search-field big">
           <Icon name="search" />
-          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Chaîne, film, acteur, émission, podcast…" aria-label="Rechercher" />
+          <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Chaîne, film, acteur, émission, podcast…")} aria-label={t("Rechercher")} />
           {searching && <div className="spinner small" />}
         </div>
-        <div className="chips center-chips" role="radiogroup" aria-label="Critère de recherche">
+        <div className="chips center-chips" role="radiogroup" aria-label={t("Critère de recherche")}>
           {FIELDS.map(([f, label]) => (
             <button key={f} role="radio" aria-checked={field === f} className={`chip ${field === f ? "active" : ""}`} onClick={() => setField(f)}>
-              {label}
+              {t(label)}
             </button>
           ))}
         </div>
         {profile.languages.length > 0 && (
           <p className="dim center small">
-            Résultats triés par langues favorites : {profile.languages.map((l) => langFlag(l)).join(" ")}
+            {t("Résultats triés par langues favorites : {flags}", { flags: profile.languages.map((l) => langFlag(l)).join(" ") })}
           </p>
         )}
       </div>
@@ -126,7 +127,7 @@ export function SearchView() {
           {channelHits.length > 0 && (
             <section>
               <h3>
-                <Icon name="live" /> Chaînes ({channelHits.length})
+                <Icon name="live" /> {t("Chaînes ({n})", { n: channelHits.length })}
               </h3>
               <div className="search-channels">
                 {channelHits.map((c) => (
@@ -139,7 +140,7 @@ export function SearchView() {
               </div>
             </section>
           )}
-          <HitList title="À la télé en ce moment" hits={live} action={(h) => usePlayer.getState().play(h.ch)} icon="play" />
+          <HitList title={t("À la télé en ce moment")} hits={live} action={(h) => usePlayer.getState().play(h.ch)} icon="play" />
           {SECTIONS.map((s) => {
             const page = vod[s.kind];
             if (!page?.total) return null;
@@ -147,11 +148,11 @@ export function SearchView() {
               <section key={s.kind}>
                 <div className="row">
                   <h3 className="grow">
-                    <Icon name={s.icon} /> {s.label} ({page.total})
+                    <Icon name={s.icon} /> {t(s.label)} ({page.total})
                   </h3>
                   {page.total > page.items.length && (
                     <button className="link" onClick={() => seeAll(s.kind)}>
-                      Voir tout
+                      {t("Voir tout")}
                     </button>
                   )}
                 </div>
@@ -163,15 +164,14 @@ export function SearchView() {
               </section>
             );
           })}
-          <HitList title="Revoir (replay TV)" hits={past} action={(h) => usePlayer.getState().playCatchup(h.ch, h.p)} icon="replay" />
-          <HitList title="Prochainement à la télé" hits={upcoming} />
+          <HitList title={t("Revoir (replay TV)")} hits={past} action={(h) => usePlayer.getState().playCatchup(h.ch, h.p)} icon="replay" />
+          <HitList title={t("Prochainement à la télé")} hits={upcoming} />
           {nothing && (
             <div className="empty-state">
-              <p>Aucun résultat.</p>
+              <p>{t("Aucun résultat.")}</p>
               {wantChannels && (
                 <p className="small">
-                  Le catalogue intégré ne contient que des chaînes et programmes diffusés gratuitement et légalement. Une chaîne payante n'apparaît
-                  que si vous ajoutez la source fournie par votre abonnement (playlist M3U ou compte Xtream).
+                  {t("Le catalogue intégré ne contient que des chaînes et programmes diffusés gratuitement et légalement. Une chaîne payante n'apparaît que si vous ajoutez la source fournie par votre abonnement (playlist M3U ou compte Xtream).")}
                 </p>
               )}
             </div>
@@ -207,7 +207,7 @@ function Browse() {
 
   return (
     <div className="search-results">
-      <h2>Parcourir par catégorie</h2>
+      <h2>{t("Parcourir par catégorie")}</h2>
       {SECTIONS.filter((s) => facets[s.kind]).map((s) => {
         const f = facets[s.kind]!;
         const useGenres = f.genres.length >= 3;
@@ -216,12 +216,12 @@ function Browse() {
         return (
           <section key={s.kind}>
             <h3>
-              <Icon name={s.icon} /> {s.label}
+              <Icon name={s.icon} /> {t(s.label)}
             </h3>
             <div className="browse-tiles">
               {list.map((c) => (
                 <button key={c.name} className="browse-tile" onClick={() => open(s.kind, useGenres ? { genre: c.name } : { category: c.name })}>
-                  <strong>{translateLabel(c.label ?? c.name, profile.languages[0])}</strong>
+                  <strong>{translateLabel(c.label ?? c.name, uiLanguage())}</strong>
                   <span>{c.count}</span>
                 </button>
               ))}
@@ -229,7 +229,7 @@ function Browse() {
           </section>
         );
       })}
-      {!Object.keys(facets).length && <p className="dim center">Tapez au moins deux lettres. La lecture continue dans le mini-lecteur.</p>}
+      {!Object.keys(facets).length && <p className="dim center">{t("Tapez au moins deux lettres. La lecture continue dans le mini-lecteur.")}</p>}
     </div>
   );
 }

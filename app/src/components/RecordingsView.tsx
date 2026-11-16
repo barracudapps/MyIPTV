@@ -10,6 +10,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { Icon } from "./Icon";
 import { ReminderList } from "./Reminders";
 import { fmtRuntime } from "./VodView";
+import { t } from "../lib/t";
 
 const STATUS: Record<RecStatus, { label: string; tone: string }> = {
   scheduled: { label: "Programmé", tone: "" },
@@ -20,9 +21,9 @@ const STATUS: Record<RecStatus, { label: string; tone: string }> = {
 };
 
 function fmtSize(b: number) {
-  if (b > 1e9) return `${(b / 1e9).toFixed(1)} Go`;
-  if (b > 1e6) return `${Math.round(b / 1e6)} Mo`;
-  return b ? `${Math.round(b / 1e3)} ko` : "";
+  if (b > 1e9) return t("{n} Go", { n: (b / 1e9).toFixed(1) });
+  if (b > 1e6) return t("{n} Mo", { n: Math.round(b / 1e6) });
+  return b ? t("{n} ko", { n: Math.round(b / 1e3) }) : "";
 }
 
 export function RecordingsView() {
@@ -61,27 +62,27 @@ export function RecordingsView() {
       <header className="page-head">
         <div>
           <h1>
-            <Icon name="rec" size={26} /> Enregistrements
+            <Icon name="rec" size={26} /> {t("Enregistrements")}
           </h1>
           {info && (
             <p className="dim small">
-              Dossier : <code>{info.dir}</code>
-              {!info.ffmpeg && " · ffmpeg non installé : seules les chaînes MPEG-TS peuvent être enregistrées."}
+              {t("Dossier :")} <code>{info.dir}</code>
+              {!info.ffmpeg && ` · ${t("ffmpeg non installé : seules les chaînes MPEG-TS peuvent être enregistrées.")}`}
             </p>
           )}
         </div>
         <button className="btn" onClick={() => useUi.getState().setView("guide")}>
-          <Icon name="guide" /> Programmer depuis le guide
+          <Icon name="guide" /> {t("Programmer depuis le guide")}
         </button>
       </header>
 
-      {!info && <div className="card notice">L'enregistrement n'est disponible que sur l'application de bureau ou Android.</div>}
+      {!info && <div className="card notice">{t("L'enregistrement n'est disponible que sur l'application de bureau ou Android.")}</div>}
 
       <ReminderList />
 
-      <h3>À venir et en cours ({upcoming.length})</h3>
+      <h3>{t("À venir et en cours ({n})", { n: upcoming.length })}</h3>
       {upcoming.length === 0 ? (
-        <p className="dim">Aucun enregistrement programmé. Dans le guide, choisissez un programme puis « Enregistrer », ou utilisez le bouton ⏺ du lecteur.</p>
+        <p className="dim">{t("Aucun enregistrement programmé. Dans le guide, choisissez un programme puis « Enregistrer », ou utilisez le bouton ⏺ du lecteur.")}</p>
       ) : (
         <ul className="rec-list">
           {upcoming.map((r) => (
@@ -90,9 +91,9 @@ export function RecordingsView() {
         </ul>
       )}
 
-      <h3>Mes enregistrements ({done.length})</h3>
+      <h3>{t("Mes enregistrements ({n})", { n: done.length })}</h3>
       {done.length === 0 ? (
-        <p className="dim">Rien d'enregistré pour l'instant.</p>
+        <p className="dim">{t("Rien d'enregistré pour l'instant.")}</p>
       ) : (
         <ul className="rec-list">
           {done.map((r) => (
@@ -118,19 +119,19 @@ function RecRow({ r, onPlay, onCancel, onDelete }: { r: Recording; onPlay?(): vo
         </div>
         {r.error && <div className="error-text small">{r.error}</div>}
       </div>
-      <span className={`mini-badge ${s.tone}`}>{s.label}</span>
+      <span className={`mini-badge ${s.tone}`}>{t(s.label)}</span>
       {onPlay && (
         <button className="btn btn-primary" onClick={onPlay}>
-          <Icon name="play" /> Regarder
+          <Icon name="play" /> {t("Regarder")}
         </button>
       )}
       {onCancel && (
         <button className="btn" onClick={onCancel}>
-          {r.status === "recording" ? "Arrêter" : "Annuler"}
+          {r.status === "recording" ? t("Arrêter") : t("Annuler")}
         </button>
       )}
       {onDelete && (
-        <button className="icon-btn" title="Supprimer le fichier" onClick={onDelete}>
+        <button className="icon-btn" title={t("Supprimer le fichier")} onClick={onDelete}>
           <Icon name="trash" />
         </button>
       )}

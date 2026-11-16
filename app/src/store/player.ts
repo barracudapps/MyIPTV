@@ -9,6 +9,7 @@ import { errorMessage } from "../lib/util";
 import { metaKeys, useSettings } from "./settings";
 import { askPin, useUi } from "./ui";
 import { fun } from "../lib/fun";
+import { t } from "../lib/t";
 
 export type PlayerMode = "docked" | "mini" | "hidden";
 
@@ -158,7 +159,7 @@ async function startStream(token: number, index: number, forceRemux?: boolean) {
     await loadEngines(info);
     if (usePlayer.getState().token !== token) return; // une autre chaîne a été lancée entre-temps
     usePlayer.setState({ info, loading: false });
-    if (info.error) useUi.getState().toast(`Timeshift indisponible pour cette chaîne (${info.error}). Lecture directe.`, "info");
+    if (info.error) useUi.getState().toast(t("Timeshift indisponible pour cette chaîne ({error}). Lecture directe.", { error: info.error }), "info");
   } catch (e) {
     if (usePlayer.getState().token !== token) return;
     if (!usePlayer.getState().tryNextStream(errorMessage(e))) usePlayer.setState({ loading: false, error: errorMessage(e) });
@@ -194,7 +195,7 @@ function tryEpisodeElsewhere(reason: string): boolean {
         const same = episodes.find((e) => e.season === ep.season && e.episode === ep.episode);
         if (!same || usePlayer.getState().token !== token) continue;
         tried.add(same.id);
-        useUi.getState().toast(`Épisode indisponible sur cette source : lecture depuis une autre source.`, "info");
+        useUi.getState().toast(t("Épisode indisponible sur cette source : lecture depuis une autre source."), "info");
         await usePlayer.getState().playMedia(media.item, { episode: same, queue: episodes, resumeAt: position > 5 ? position : media.resumeAt, age: media.age });
         return;
       } catch {
@@ -214,7 +215,7 @@ function activeProfile(): Profile | undefined {
 async function resolve(access: Access, label: string): Promise<boolean> {
   if (access.ok) return true;
   if (access.reason === "adult-pin") {
-    const ok = await askPin("Contenu réservé aux adultes", `« ${label} » est protégé par le code parental.`);
+    const ok = await askPin(t("Contenu réservé aux adultes"), t("« {label} » est protégé par le code parental.", { label }));
     if (ok) useUi.setState({ adultUnlocked: true });
     return ok;
   }
@@ -230,8 +231,8 @@ function adultCtx() {
 export function mediaAccess(p: Profile, item: VodItem, age: number | undefined): Access {
   if (item.adult) return adultAccess(p, adultCtx());
   if (p.kind !== "child") return { ok: true };
-  if (age != null) return age <= maxAge(p) ? { ok: true } : { ok: false, reason: "blocked", message: `Déconseillé aux moins de ${age} ans.` };
-  return p.child!.allowUnrated ? { ok: true } : { ok: false, reason: "blocked", message: "Contenu sans classification d'âge." };
+  if (age != null) return age <= maxAge(p) ? { ok: true } : { ok: false, reason: "blocked", message: t("Déconseillé aux moins de {age} ans.", { age }) };
+  return p.child!.allowUnrated ? { ok: true } : { ok: false, reason: "blocked", message: t("Contenu sans classification d'âge.") };
 }
 
 export const usePlayer = create<PlayerState>()((set, get) => ({
@@ -308,7 +309,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     // Les résultats mis en cache tiennent compte de l'échec pour les prochains zappings.
     rankCache.set(key, { at: Date.now(), streams: rank(marked) });
     if (fallback < 0) return false;
-    useUi.getState().toast(`Source ${streamIndex + 1} indisponible : essai de la source ${fallback + 1}/${streams.length}.`, "info");
+    useUi.getState().toast(t("Source {i} indisponible : essai de la source {next}/{n}.", { i: streamIndex + 1, next: fallback + 1, n: streams.length }), "info");
     get().useStream(fallback);
     return true;
   },
@@ -323,7 +324,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     try {
       const backend = await getBackend();
       const url = await backend.catchupUrl(src, prog.start, prog.stop);
-      if (!url) throw new Error("Ce programme n'est pas disponible en replay.");
+      if (!url) throw new Error(t("Ce programme n'est pas disponible en replay."));
       usePlayer.setState({ source: { url, userAgent: src.userAgent, referrer: src.referrer, live: false, title: `${ch.name} — ${prog.title}`, poster: ch.logo } });
       const info = await backend.play({ url, userAgent: src.userAgent, referrer: src.referrer, timeshift: false, windowMinutes: 0, media: true, forceRemux });
       await loadEngines(info);
@@ -366,7 +367,7 @@ export const usePlayer = create<PlayerState>()((set, get) => ({
     }
     const url = opts.episode?.url ?? streams[index]?.channel.url ?? item.url;
     if (!url) {
-      useUi.getState().toast("Aucun flux lisible pour ce contenu.", "error");
+      useUi.getState().toast(t("Aucun flux lisible pour ce contenu."), "error");
       return;
     }
     const copy = streams[index]?.channel;

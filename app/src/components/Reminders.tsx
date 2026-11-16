@@ -6,13 +6,14 @@ import { useSettings } from "../store/settings";
 import { fmtTime } from "../lib/util";
 import type { Channel, Programme } from "../types";
 import { Icon } from "./Icon";
+import { t, locale } from "../lib/t";
 
 /** Bouton « Me rappeler » d'un programme à venir. */
 export function ReminderButton({ ch, p, compact = false }: { ch: Channel; p: Programme; compact?: boolean }) {
   const on = useHasReminder(ch.id, p.start);
-  const label = on ? "Rappel programmé" : "Me rappeler";
+  const label = on ? t("Rappel programmé") : t("Me rappeler");
   return (
-    <button className={compact ? `icon-btn ${on ? "active" : ""}` : `btn ${on ? "active" : ""}`} title={on ? "Annuler le rappel" : "Être prévenu 2 minutes avant"} onClick={() => useReminders.getState().toggle(ch, p)}>
+    <button className={compact ? `icon-btn ${on ? "active" : ""}` : `btn ${on ? "active" : ""}`} title={on ? t("Annuler le rappel") : t("Être prévenu 2 minutes avant")} onClick={() => useReminders.getState().toggle(ch, p)}>
       <Icon name="bell" filled={on} />
       {!compact && ` ${label}`}
     </button>
@@ -48,9 +49,9 @@ export function ReminderAlerts() {
             </small>
           </span>
           <button className="btn btn-primary" onClick={() => watch(r)}>
-            <Icon name="play" /> Regarder
+            <Icon name="play" /> {t("Regarder")}
           </button>
-          <button className="icon-btn" title="Fermer" onClick={() => useReminders.getState().dismiss(r.id)}>
+          <button className="icon-btn" title={t("Fermer")} onClick={() => useReminders.getState().dismiss(r.id)}>
             <Icon name="close" />
           </button>
         </div>
@@ -68,7 +69,7 @@ export function ReminderList() {
   return (
     <section className="rec-section">
       <h3>
-        <Icon name="bell" /> Rappels
+        <Icon name="bell" /> {t("Rappels")}
       </h3>
       <ul className="reminder-list">
         {list.map((r) => (
@@ -76,10 +77,10 @@ export function ReminderList() {
             <span>
               <strong>{r.title}</strong>
               <small className="dim">
-                {new Date(r.start * 1000).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} {fmtTime(r.start)} · {r.channelName}
+                {new Date(r.start * 1000).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })} {fmtTime(r.start)} · {r.channelName}
               </small>
             </span>
-            <button className="icon-btn" title="Supprimer le rappel" onClick={() => useReminders.getState().remove(r.id)}>
+            <button className="icon-btn" title={t("Supprimer le rappel")} onClick={() => useReminders.getState().remove(r.id)}>
               <Icon name="close" />
             </button>
           </li>

@@ -12,6 +12,7 @@ import { useUi } from "../store/ui";
 import type { Channel } from "../types";
 import { ChannelLogo } from "./ChannelLogo";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 type Layout = 2 | 4;
 
@@ -53,13 +54,13 @@ export function MultiView() {
     <div className={`multiview layout-${layout}`}>
       <header className="multiview-head">
         <h1>
-          <Icon name="grid" size={24} /> Multivue
+          <Icon name="grid" size={24} /> {t("Multivue")}
         </h1>
-        <span className="dim small">Cliquez sur une tuile pour entendre son son.</span>
+        <span className="dim small">{t("Cliquez sur une tuile pour entendre son son.")}</span>
         <div className="segmented">
           {([2, 4] as Layout[]).map((l) => (
             <button key={l} className={layout === l ? "active" : ""} onClick={() => setLayout(l)}>
-              {l} écrans
+              {t("{n} écrans", { n: l })}
             </button>
           ))}
         </div>
@@ -98,21 +99,21 @@ function Tile({ index, channel, hearing }: { index: number; channel: Channel; he
       if (info.kind === "hls" && Hls?.isSupported()) {
         // Tuiles petites : qualité limitée à la taille affichée, tampon court.
         const hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 12, backBufferLength: 10, enableWorker: true });
-        hls.on(Hls.Events.ERROR, (_e, d) => d.fatal && fail("La chaîne ne répond pas."));
+        hls.on(Hls.Events.ERROR, (_e, d) => d.fatal && fail(t("La chaîne ne répond pas.")));
         hls.loadSource(info.url);
         hls.attachMedia(v);
         destroy = () => hls.destroy();
       } else if (info.kind === "mpegts" && mpegts?.getFeatureList().mseLivePlayback) {
         const p = mpegts.createPlayer({ type: "mpegts", isLive: true, url: info.url }, { lazyLoad: false, liveBufferLatencyChasing: true });
-        p.on(mpegts.Events.ERROR, () => fail("La chaîne ne répond pas."));
+        p.on(mpegts.Events.ERROR, () => fail(t("La chaîne ne répond pas.")));
         p.attachMediaElement(v);
         p.load();
         destroy = () => (p.unload(), p.detachMediaElement(), p.destroy());
       } else if (info.kind === "hls" || info.kind === "mpegts" || info.kind === "native") {
         v.src = info.url;
-        v.onerror = () => fail("Flux illisible.");
+        v.onerror = () => fail(t("Flux illisible."));
         destroy = () => (v.removeAttribute("src"), v.load());
-      } else throw new Error("Cette chaîne ne peut pas s'afficher en multivue.");
+      } else throw new Error(t("Cette chaîne ne peut pas s'afficher en multivue."));
       v.play().catch(() => undefined);
     })().catch((e) => !cancelled && fail(e instanceof Error ? e.message : String(e)));
     return () => {
@@ -138,7 +139,7 @@ function Tile({ index, channel, hearing }: { index: number; channel: Channel; he
         <Icon name={hearing ? "volume" : "mute"} size={16} />
         <button
           className="icon-btn"
-          title="Regarder en grand"
+          title={t("Regarder en grand")}
           onClick={(e) => {
             e.stopPropagation();
             usePlayer.getState().play(channel);
@@ -147,7 +148,7 @@ function Tile({ index, channel, hearing }: { index: number; channel: Channel; he
         >
           <Icon name="expand" size={16} />
         </button>
-        <button className="icon-btn" title="Retirer" onClick={(e) => (e.stopPropagation(), m.set(index, null))}>
+        <button className="icon-btn" title={t("Retirer")} onClick={(e) => (e.stopPropagation(), m.set(index, null))}>
           <Icon name="close" size={16} />
         </button>
       </div>
@@ -168,7 +169,7 @@ function EmptyTile({ index }: { index: number }) {
     <div className="mv-tile empty">
       <label className="mv-search">
         <Icon name="search" size={16} />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Choisir une chaîne…" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Choisir une chaîne…")} />
       </label>
       <ul className="mv-pick">
         {list.map((c) => (
@@ -179,7 +180,7 @@ function EmptyTile({ index }: { index: number }) {
             </button>
           </li>
         ))}
-        {!list.length && <li className="dim small">Aucune chaîne trouvée.</li>}
+        {!list.length && <li className="dim small">{t("Aucune chaîne trouvée.")}</li>}
       </ul>
     </div>
   );

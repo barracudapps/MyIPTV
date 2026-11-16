@@ -1,6 +1,7 @@
 import { getBackend } from "../platform";
 import { buildPayload, parsePayload, shareableSources, type SharePayload } from "./share";
 import { useSettings } from "../store/settings";
+import { t } from "./t";
 
 /** Fichier de sauvegarde chiffré par mot de passe (PBKDF2 + AES-GCM). */
 interface SealedBackup {
@@ -67,7 +68,7 @@ export async function exportBackup(opt: BackupOptions): Promise<{ name: string; 
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  return { name, where: "Téléchargements du navigateur" };
+  return { name, where: t("Téléchargements du navigateur") };
 }
 
 /** Le fichier est-il chiffré (mot de passe nécessaire) ? */
@@ -85,18 +86,18 @@ export async function readBackup(text: string, password?: string): Promise<Share
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error("Ce fichier n'est pas une sauvegarde MyIPTV.");
+    throw new Error(t("Ce fichier n'est pas une sauvegarde MyIPTV."));
   }
   const sealed = parsed as Partial<SealedBackup>;
   if (sealed.kind !== "backup-sealed") return parsePayload(text);
-  if (!canEncrypt) throw new Error("Cet appareil ne sait pas déchiffrer les sauvegardes protégées.");
-  if (!password) throw new Error("Mot de passe requis.");
+  if (!canEncrypt) throw new Error(t("Cet appareil ne sait pas déchiffrer les sauvegardes protégées."));
+  if (!password) throw new Error(t("Mot de passe requis."));
   try {
     const key = await keyFrom(password, unb64(sealed.salt!));
     const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(sealed.iv!) }, key, unb64(sealed.data!));
     return parsePayload(new TextDecoder().decode(plain));
   } catch (e) {
     if (e instanceof Error && e.message.includes("MyIPTV")) throw e;
-    throw new Error("Mot de passe incorrect.");
+    throw new Error(t("Mot de passe incorrect."));
   }
 }

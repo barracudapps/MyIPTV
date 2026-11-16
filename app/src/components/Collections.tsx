@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useActiveProfile, useSettings } from "../store/settings";
 import { Icon } from "./Icon";
+import { t } from "../lib/t";
 
 /** Bouton « Collections » d'une fiche : ajouter le contenu à une ou plusieurs collections. */
 export function CollectionMenu({ itemId }: { itemId: string }) {
@@ -27,7 +28,7 @@ export function CollectionMenu({ itemId }: { itemId: string }) {
   return (
     <div className="collection-menu" ref={box}>
       <button className={`btn ${inCount ? "btn-on" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <Icon name="folder" /> {inCount ? `Collections (${inCount})` : "Collection"}
+        <Icon name="folder" /> {inCount ? t("Collections ({n})", { n: inCount }) : t("Collection")}
       </button>
       {open && (
         <div className="collection-pop" role="menu">
@@ -38,11 +39,11 @@ export function CollectionMenu({ itemId }: { itemId: string }) {
               <small className="dim">{c.itemIds.length}</small>
             </label>
           ))}
-          {!collections.length && <p className="dim small">Rangez vos contenus par thème : « Soirées d'hiver », « Pour les enfants »…</p>}
+          {!collections.length && <p className="dim small">{t("Rangez vos contenus par thème : « Soirées d'hiver », « Pour les enfants »…")}</p>}
           <form className="collection-new" onSubmit={(e) => (e.preventDefault(), create())}>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nouvelle collection" maxLength={60} />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("Nouvelle collection")} maxLength={60} />
             <button className="btn btn-primary" disabled={!name.trim()}>
-              Créer
+              {t("Créer")}
             </button>
           </form>
         </div>

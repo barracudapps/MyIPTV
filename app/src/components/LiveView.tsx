@@ -17,6 +17,7 @@ import { Dropdown } from "./Dropdown";
 import { countryFlag, countryName, countryOrLang } from "../lib/languages";
 import { ConfirmButton, historyProgress, itemIds, useItemsByIds, VodRow } from "./VodView";
 import { Icon } from "./Icon";
+import { t, plural, locale } from "../lib/t";
 
 const ALL = "__all__";
 
@@ -81,17 +82,17 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
   }, [list, base, filter]);
   // `base` est déjà trié par langues favorites ; les autres tris s'appliquent par-dessus.
   const sorted = useMemo(() => {
-    if (sortBy === "name") return [...list].sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    if (sortBy === "name") return [...list].sort((a, b) => a.name.localeCompare(b.name, locale()));
     if (sortBy === "country") {
       const key = (c: Channel) => (c.countries?.[0] ? countryName(c.countries[0]) : "\uffff");
-      return [...list].sort((a, b) => key(a).localeCompare(key(b), "fr") || a.name.localeCompare(b.name, "fr"));
+      return [...list].sort((a, b) => key(a).localeCompare(key(b), locale()) || a.name.localeCompare(b.name, locale()));
     }
     return list;
   }, [list, sortBy]);
   const countries = useMemo(() => {
     const n = new Map<string, number>();
     for (const c of base) for (const k of c.countries ?? []) n.set(k, (n.get(k) ?? 0) + 1);
-    return [...n.entries()].sort((a, b) => countryName(a[0]).localeCompare(countryName(b[0]), "fr"));
+    return [...n.entries()].sort((a, b) => countryName(a[0]).localeCompare(countryName(b[0]), locale()));
   }, [base]);
   const replayCount = useMemo(() => base.filter((c) => c.catchup).length, [base]);
 
@@ -118,10 +119,10 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
     return (
       <div className="empty-state">
         <Icon name="live" size={56} />
-        <h2>Aucune source pour l'instant</h2>
-        <p>Ajoutez le catalogue gratuit de chaînes en clair, ou votre propre playlist M3U / compte Xtream.</p>
+        <h2>{t("Aucune source pour l'instant")}</h2>
+        <p>{t("Ajoutez le catalogue gratuit de chaînes en clair, ou votre propre playlist M3U / compte Xtream.")}</p>
         <button className="btn btn-primary" onClick={() => setView("sources")}>
-          <Icon name="plus" /> Ajouter une source
+          <Icon name="plus" /> {t("Ajouter une source")}
         </button>
       </div>
     );
@@ -133,48 +134,48 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
         <div className="toolbar">
           <div className="search-field">
             <Icon name="search" size={18} />
-            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={`Filtrer ${base.length} chaînes…`} aria-label="Filtrer les chaînes" />
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t("Filtrer {n} chaînes…", { n: base.length })} aria-label={t("Filtrer les chaînes")} />
           </div>
           <LangSelect available={languages} />
           {countries.length > 1 && (
             <Dropdown<string>
-              ariaLabel="Pays"
+              ariaLabel={t("Pays")}
               icon="globe"
               value={country}
               active={!!country}
               onChange={setCountry}
-              options={[{ value: "", label: "Tous les pays" }, ...countries.map(([c, n]) => ({ value: c, label: countryName(c), prefix: countryFlag(c), hint: String(n) }))]}
+              options={[{ value: "", label: t("Tous les pays") }, ...countries.map(([c, n]) => ({ value: c, label: countryName(c), prefix: countryFlag(c), hint: String(n) }))]}
             />
           )}
           <Dropdown<"languages" | "country" | "name">
-            ariaLabel="Tri des chaînes"
-            label="Tri :"
+            ariaLabel={t("Tri des chaînes")}
+            label={t("Tri :")}
             value={sortBy}
             onChange={setSortBy}
             options={[
-              { value: "languages", label: "Mes langues d'abord" },
-              { value: "country", label: "Par pays" },
-              { value: "name", label: "Nom (A-Z)" },
+              { value: "languages", label: t("Mes langues d'abord") },
+              { value: "country", label: t("Par pays") },
+              { value: "name", label: t("Nom (A-Z)") },
             ]}
           />
           {replayCount > 0 && (
-            <button className={`dd-button ${replayOnly ? "active" : ""}`} aria-pressed={replayOnly} onClick={() => setReplayOnly(!replayOnly)} title="Seulement les chaînes dont on peut revoir les émissions passées">
-              <Icon name="replay" size={15} /> Replay
+            <button className={`dd-button ${replayOnly ? "active" : ""}`} aria-pressed={replayOnly} onClick={() => setReplayOnly(!replayOnly)} title={t("Seulement les chaînes dont on peut revoir les émissions passées")}>
+              <Icon name="replay" size={15} /> {t("Replay")}
             </button>
           )}
           <div className="spacer" />
-          <button className={`icon-btn ${view === "list" ? "active" : ""}`} title="Liste" onClick={() => setChannelView("list")}>
+          <button className={`icon-btn ${view === "list" ? "active" : ""}`} title={t("Liste")} onClick={() => setChannelView("list")}>
             <Icon name="list" />
           </button>
-          <button className={`icon-btn ${view === "grid" ? "active" : ""}`} title="Mosaïque" onClick={() => setChannelView("grid")}>
+          <button className={`icon-btn ${view === "grid" ? "active" : ""}`} title={t("Mosaïque")} onClick={() => setChannelView("grid")}>
             <Icon name="grid" />
           </button>
         </div>
         {scope === "favorites" && (
           <>
-            <VodRow title="Ma liste" items={vodFavorites} />
+            <VodRow title={t("Ma liste")} items={vodFavorites} />
             <VodRow
-              title="Historique"
+              title={t("Historique")}
               items={historyItems}
               progress={historyProgress(profile.history)}
               onRemove={(i) => useSettings.getState().removeHistory(itemIds(i))}
@@ -183,13 +184,13 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
           </>
         )}
         {layout.showGroups && groups.length > 1 && (
-          <FilterTabs items={groups.slice(0, 60).map(([g, n]) => ({ name: g, count: n, ...groupLabel(g) }))} value={group === ALL ? undefined : group} onChange={(g) => setGroup(g ?? ALL)} allLabel="Toutes" />
+          <FilterTabs items={groups.slice(0, 60).map(([g, n]) => ({ name: g, count: n, ...groupLabel(g) }))} value={group === ALL ? undefined : group} onChange={(g) => setGroup(g ?? ALL)} allLabel={t("Toutes")} />
         )}
         {recent.length > 0 && (
           <div className="recent">
             <div className="vod-row-head">
-              <h3>Récemment regardées</h3>
-              <ConfirmButton label="Tout effacer" confirm="Confirmer l'effacement ?" onConfirm={() => useSettings.getState().clearRecent()} />
+              <h3>{t("Récemment regardées")}</h3>
+              <ConfirmButton label={t("Tout effacer")} confirm={t("Confirmer l'effacement ?")} onConfirm={() => useSettings.getState().clearRecent()} />
             </div>
             <div className="recent-row">
               {recent.map((c) => (
@@ -198,7 +199,7 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
                     <ChannelLogo channel={c} size={48} />
                     <span>{c.name}</span>
                   </button>
-                  <button type="button" className="vod-remove" title={`Retirer ${c.name} des chaînes récentes`} aria-label={`Retirer ${c.name} des chaînes récentes`} onClick={() => useSettings.getState().removeRecent(channelIds(c))}>
+                  <button type="button" className="vod-remove" title={t("Retirer {name} des chaînes récentes", { name: c.name })} aria-label={t("Retirer {name} des chaînes récentes", { name: c.name })} onClick={() => useSettings.getState().removeRecent(channelIds(c))}>
                     <Icon name="close" size={14} />
                   </button>
                 </div>
@@ -208,7 +209,7 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
         )}
         {loading && !sorted.length ? (
           <div className="empty-state small">
-            <div className="spinner" /> Chargement des chaînes…
+            <div className="spinner" /> {t("Chargement des chaînes…")}
           </div>
         ) : sorted.length === 0 ? (
           scope === "favorites" && (vodFavorites.length || historyItems.length) ? null : scope === "all" && filter.trim() ? (
@@ -224,7 +225,7 @@ function ClassicLive({ scope }: { scope: "all" | "favorites" }) {
               onAddSource={() => setView("sources")}
             />
           ) : (
-            <div className="empty-state small">{scope === "favorites" ? "Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film." : "Aucune chaîne ne correspond."}</div>
+            <div className="empty-state small">{scope === "favorites" ? t("Ajoutez des favoris avec l'étoile ☆ ou le cœur ♡ d'un film.") : t("Aucune chaîne ne correspond.")}</div>
           )
         ) : (
           <ChannelCollection channels={sorted} mode={view} showNowNext={layout.showNowNext} showProgress={layout.showProgress} />
@@ -246,7 +247,7 @@ function PlayerPlaceholder() {
   return (
     <div className="player-placeholder">
       <Icon name="play" size={40} />
-      <span>Choisissez une chaîne</span>
+      <span>{t("Choisissez une chaîne")}</span>
     </div>
   );
 }
@@ -322,7 +323,7 @@ function FavButton({ channel, fav }: { channel: Channel; fav: boolean }) {
   return (
     <button
       className={`fav ${fav ? "on" : ""}`}
-      title={fav ? "Retirer des favoris" : "Ajouter aux favoris"}
+      title={fav ? t("Retirer des favoris") : t("Ajouter aux favoris")}
       onClick={(e) => {
         e.stopPropagation();
         // Retrait : toutes les copies ; ajout : la chaîne affichée.
@@ -357,7 +358,7 @@ function ChannelRow({ channel, list, showNowNext, showProgress }: { channel: Cha
           {showNowNext && prog && (
             <span className="channel-prog">
               {prog.title}
-              {next && <span className="dim"> · ensuite {fmtTime(next.start)} {next.title}</span>}
+              {next && <span className="dim"> · {t("ensuite {time} {title}", { time: fmtTime(next.start), title: next.title })}</span>}
             </span>
           )}
           {showProgress && prog && (
@@ -377,8 +378,8 @@ function VariantBadge({ channel }: { channel: Channel }) {
   const n = channel.variants?.length;
   if (!n) return null;
   return (
-    <span className="variant-badge" title={`${n + 1} sources pour cette chaîne : la plus rapide et de meilleure qualité est choisie au lancement.`}>
-      {n + 1} sources
+    <span className="variant-badge" title={t("{n} sources pour cette chaîne : la plus rapide et de meilleure qualité est choisie au lancement.", { n: n + 1 })}>
+      {t("{n} sources", { n: n + 1 })}
     </span>
   );
 }
@@ -417,15 +418,15 @@ export function NowPanel() {
   return (
     <div className="now-panel">
       {catchup ? (
-        <ProgrammeCard p={catchup} label="Replay" />
+        <ProgrammeCard p={catchup} label={t("Replay")} />
       ) : nowProg ? (
-        <ProgrammeCard p={nowProg} label="En ce moment" />
+        <ProgrammeCard p={nowProg} label={t("En ce moment")} />
       ) : (
-        <p className="dim">Pas d'information de programme pour cette chaîne.</p>
+        <p className="dim">{t("Pas d'information de programme pour cette chaîne.")}</p>
       )}
       {upcoming.length > 0 && (
         <>
-          <h3>À suivre</h3>
+          <h3>{t("À suivre")}</h3>
           <ul className="prog-list">
             {upcoming.map((p) => (
               <li key={p.start}>
@@ -464,7 +465,7 @@ function ProgrammeCard({ p, label }: { p: Programme; label: string }) {
 function groupLabel(name: string): { label: string; language?: string } {
   const m = name.match(/^\s*[[(|]?\s*([A-Za-z]{2,3})\s*[\]):|\-]\s*(.+)$/);
   const code = m ? countryOrLang(m[1]) : undefined;
-  return m && code ? { label: m[2], language: code } : { label: name };
+  return m && code ? { label: m[2], language: code } : { label: name === "Sans catégorie" ? t("Sans catégorie") : name };
 }
 
 /** Recherche de chaîne sans résultat : filtres trop stricts, ou chaîne absente des sources. */
@@ -473,10 +474,10 @@ function NoChannelMatch({ hiddenByFilters, canAddSource, onReset, onAddSource }:
     return (
       <div className="empty-state small">
         <span>
-          {hiddenByFilters} chaîne{hiddenByFilters > 1 ? "s" : ""} masquée{hiddenByFilters > 1 ? "s" : ""} par les filtres (langue, pays, catégorie, replay).
+          {plural(hiddenByFilters, "{n} chaîne masquée par les filtres (langue, pays, catégorie, replay).", "{n} chaînes masquées par les filtres (langue, pays, catégorie, replay).")}
         </span>
         <button className="btn" onClick={onReset}>
-          Afficher tout
+          {t("Afficher tout")}
         </button>
       </div>
     );
@@ -484,15 +485,13 @@ function NoChannelMatch({ hiddenByFilters, canAddSource, onReset, onAddSource }:
   return (
     <div className="empty-state">
       <Icon name="live" size={40} />
-      <h3>Cette chaîne n'est dans aucune de vos sources</h3>
+      <h3>{t("Cette chaîne n'est dans aucune de vos sources")}</h3>
       <p>
-        Le catalogue intégré ne contient que des chaînes diffusées gratuitement et légalement sur Internet. Les chaînes payantes (bouquets Canal+,
-        box opérateur, offres thématiques…) n'y figurent pas : pour les regarder ici, ajoutez la playlist M3U ou le compte Xtream fourni par votre
-        abonnement, s'il en propose un.
+        {t("Le catalogue intégré ne contient que des chaînes diffusées gratuitement et légalement sur Internet. Les chaînes payantes (bouquets Canal+, box opérateur, offres thématiques…) n'y figurent pas : pour les regarder ici, ajoutez la playlist M3U ou le compte Xtream fourni par votre abonnement, s'il en propose un.")}
       </p>
       {canAddSource && (
         <button className="btn btn-primary" onClick={onAddSource}>
-          <Icon name="plus" /> Ajouter une source
+          <Icon name="plus" /> {t("Ajouter une source")}
         </button>
       )}
     </div>

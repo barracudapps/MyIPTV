@@ -23,6 +23,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { MascotFigure } from "./Mascot";
 import { useRecordings } from "../store/recordings";
 import { parseSubtitles, readSubtitleFile, showExternal, type Cue } from "../lib/subtitles";
+import { t, locale } from "../lib/t";
 
 type Engine = { destroy(): void; hls?: HlsType; playingDate?: () => Date | null; kind?: string; stats?: () => { speedKBps?: number; decodedFrames?: number; droppedFrames?: number } };
 
@@ -62,14 +63,14 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       if (d.details.startsWith("manifest") || d.details.startsWith("level") || code >= 400) {
         onFatal(
           code === 0 && !isTauri && d.type === H.ErrorTypes.NETWORK_ERROR
-            ? "Cette chaîne n'autorise pas la lecture depuis un navigateur. Elle fonctionne dans l'application de bureau ou sur TV."
+            ? t("Cette chaîne n'autorise pas la lecture depuis un navigateur. Elle fonctionne dans l'application de bureau ou sur TV.")
             : code === 403 || code === 401
-            ? "Accès refusé par la chaîne (restriction géographique ou d'accès probable)."
+            ? t("Accès refusé par la chaîne (restriction géographique ou d'accès probable).")
             : code === 404 || code === 410
-              ? "Flux introuvable : la chaîne a peut-être changé d'adresse."
+              ? t("Flux introuvable : la chaîne a peut-être changé d'adresse.")
               : d.details === "manifestParsingError"
-                ? "Cette adresse ne renvoie pas un flux vidéo."
-                : "La chaîne ne répond pas.",
+                ? t("Cette adresse ne renvoie pas un flux vidéo.")
+                : t("La chaîne ne répond pas."),
         );
         return;
       }
@@ -79,7 +80,7 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
       } else if (d.type === H.ErrorTypes.NETWORK_ERROR && !recovered) {
         recovered = true;
         hls.startLoad();
-      } else onFatal(d.details === "manifestLoadError" ? "La source ne répond pas." : `Lecture impossible (${d.details}).`);
+      } else onFatal(d.details === "manifestLoadError" ? t("La source ne répond pas.") : t("Lecture impossible ({details}).", { details: d.details }));
     });
     hls.on(H.Events.ERROR, (_e, d) => {
       if (!d.fatal) console.info(`[lecteur] hls non bloquant : ${d.details}`);
@@ -92,7 +93,7 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
   }
   if (kind === "mpegts" && mpegts?.getFeatureList().mseLivePlayback) {
     const p = mpegts.createPlayer({ type: "mpegts", isLive: opts.live, url }, { enableStashBuffer: !opts.live, lazyLoad: false, liveBufferLatencyChasing: false });
-    p.on(mpegts.Events.ERROR, (_t: string, detail: string) => onFatal(`Lecture impossible (${detail}).`));
+    p.on(mpegts.Events.ERROR, (_t: string, detail: string) => onFatal(t("Lecture impossible ({details}).", { details: detail })));
     p.attachMediaElement(video);
     p.load();
     return {
@@ -114,7 +115,7 @@ function attach(video: HTMLVideoElement, url: string, kind: string, opts: { time
   // de la source courante compte, et l'écouteur est retiré avec le moteur.
   const onError = () => {
     if (video.getAttribute("src") !== url) return;
-    onFatal(video.error?.code === 4 ? "Flux illisible : l'adresse ne mène pas à une vidéo ou son format n'est pas pris en charge." : `Lecture impossible (erreur ${video.error?.code ?? "?"}).`);
+    onFatal(video.error?.code === 4 ? t("Flux illisible : l'adresse ne mène pas à une vidéo ou son format n'est pas pris en charge.") : t("Lecture impossible (erreur {code}).", { code: video.error?.code ?? "?" }));
   };
   video.addEventListener("error", onError);
   video.addEventListener("loadedmetadata", onTracks, { once: true });
@@ -258,7 +259,7 @@ export function Player() {
     if (!file) return;
     const cues = parseSubtitles(await readSubtitleFile(file));
     if (!cues.length) {
-      useUi.getState().toast("Aucun sous-titre lisible dans ce fichier (formats .srt et .vtt).", "error");
+      useUi.getState().toast(t("Aucun sous-titre lisible dans ce fichier (formats .srt et .vtt)."), "error");
       return;
     }
     // Les sous-titres du flux laissent la place à ceux du fichier.
@@ -331,7 +332,7 @@ export function Player() {
     engineRef.current = engine;
     // Chien de garde : aucune donnée après 25 s, la source ne répond pas (évite un chargement sans fin).
     const watchdog = window.setTimeout(() => {
-      if (alive && video.readyState === 0 && !isAudioOnly()) onFatal("La chaîne ne répond pas (aucune donnée reçue).");
+      if (alive && video.readyState === 0 && !isAudioOnly()) onFatal(t("La chaîne ne répond pas (aucune donnée reçue)."));
     }, 25_000);
     video.playbackRate = 1;
     setSpeed(1);
@@ -697,9 +698,9 @@ export function Player() {
         <div className="youtube-wrap">
           <div className="player-center">
             <Icon name="globe" size={small ? 24 : 40} />
-            {!small && <span>Cette chaîne diffuse son direct sur son propre site.</span>}
+            {!small && <span>{t("Cette chaîne diffuse son direct sur son propre site.")}</span>}
             <button className="btn btn-primary" onClick={() => openExternal(info.url)}>
-              Ouvrir le direct sur le site de la chaîne
+              {t("Ouvrir le direct sur le site de la chaîne")}
             </button>
           </div>
         </div>
@@ -713,9 +714,9 @@ export function Player() {
           ) : (
             <div className="player-center">
               <Icon name="live" size={40} />
-              <span>Ce direct est diffusé sur une plateforme vidéo.</span>
+              <span>{t("Ce direct est diffusé sur une plateforme vidéo.")}</span>
               <button className="btn btn-primary" onClick={() => openExternal(info.url)}>
-                Ouvrir le direct
+                {t("Ouvrir le direct")}
               </button>
             </div>
           )}
@@ -745,14 +746,14 @@ export function Player() {
       {!shownError && info?.kind !== "youtube" && info?.kind !== "webpage" && !isAudio && (loading || !clock.ready) && !blocked && (
         <div className="player-center">
           <div className="spinner" />
-          {!small && <span>{probing ? `Test de ${streams.length} sources…` : info?.timeshift ? "Préparation du direct…" : streams.length > 1 ? `Connexion (source ${streamIndex + 1}/${streams.length})…` : "Connexion…"}</span>}
+          {!small && <span>{probing ? t("Test de {n} sources…", { n: streams.length }) : info?.timeshift ? t("Préparation du direct…") : streams.length > 1 ? t("Connexion (source {i}/{n})…", { i: streamIndex + 1, n: streams.length }) : t("Connexion…")}</span>}
         </div>
       )}
 
       {blocked && !access.ok && access.reason === "blocked" && (
         <div className="player-center player-blocked">
           <Icon name="shield" size={small ? 24 : 48} />
-          <strong>Programme non adapté</strong>
+          <strong>{t("Programme non adapté")}</strong>
           {!small && <span>{access.message}</span>}
         </div>
       )}
@@ -762,7 +763,7 @@ export function Player() {
           <Icon name="alert" size={small ? 22 : 40} />
           <span>{shownError}</span>
           <button className="btn" onClick={() => retry(isRemux)}>
-            Réessayer
+            {t("Réessayer")}
           </button>
         </div>
       )}
@@ -773,12 +774,12 @@ export function Player() {
 
       {nextIn != null && (
         <div className="next-up">
-          <span>Épisode suivant dans {nextIn} s</span>
+          <span>{t("Épisode suivant dans {n} s", { n: nextIn })}</span>
           <button className="btn btn-primary" onClick={() => (setNextIn(null), nextEpisode())}>
-            Lancer
+            {t("Lancer")}
           </button>
           <button className="btn" onClick={() => setNextIn(null)}>
-            Annuler
+            {t("Annuler")}
           </button>
         </div>
       )}
@@ -796,33 +797,33 @@ export function Player() {
           )}
         </div>
         {channel && (info?.kind === "youtube" || info?.kind === "webpage") && !small && (
-          <button className="btn btn-ghost" onClick={() => openExternal(channel.url)} title="Ouvrir le direct officiel dans le navigateur">
-            <Icon name="globe" size={16} /> Ouvrir dans le navigateur
+          <button className="btn btn-ghost" onClick={() => openExternal(channel.url)} title={t("Ouvrir le direct officiel dans le navigateur")}>
+            <Icon name="globe" size={16} /> {t("Ouvrir dans le navigateur")}
           </button>
         )}
         {catchup ? (
-          <span className="badge">REPLAY</span>
+          <span className="badge">{t("REPLAY")}</span>
         ) : isLiveStream && atLive ? (
-          <span className="badge live">DIRECT</span>
+          <span className="badge live">{t("DIRECT")}</span>
         ) : isLiveStream ? (
           <span className="badge">-{fmtDuration(behind)}</span>
         ) : null}
         {small ? (
           <>
             {small && (
-              <button className="icon-btn" title={clock.playing ? "Pause" : "Lecture"} onClick={togglePlay}>
+              <button className="icon-btn" title={clock.playing ? t("Pause") : t("Lecture")} onClick={togglePlay}>
                 <Icon name={clock.playing ? "pause" : "play"} />
               </button>
             )}
-            <button className="icon-btn" title="Agrandir" onClick={expand}>
+            <button className="icon-btn" title={t("Agrandir")} onClick={expand}>
               <Icon name="expand" />
             </button>
-            <button className="icon-btn" title="Fermer" onClick={() => (compact && exitCompact(), stop())}>
+            <button className="icon-btn" title={t("Fermer")} onClick={() => (compact && exitCompact(), stop())}>
               <Icon name="close" />
             </button>
           </>
         ) : (
-          <button className="icon-btn" title="Réduire dans l'application" onClick={() => setMode("mini")}>
+          <button className="icon-btn" title={t("Réduire dans l'application")} onClick={() => setMode("mini")}>
             <Icon name="shrink" />
           </button>
         )}
@@ -834,7 +835,7 @@ export function Player() {
             <div
               className="seekbar"
               role="slider"
-              aria-label="Position"
+              aria-label={t("Position")}
               aria-valuemin={0}
               aria-valuemax={span}
               aria-valuenow={clock.t - clock.start}
@@ -845,78 +846,78 @@ export function Player() {
             >
               <div className="seekbar-fill" style={{ width: `${((clock.t - clock.start) / span) * 100}%` }} />
               {channel && !catchup && playingProg && playingProg.start > clock.wall - (clock.t - clock.start) && (
-                <div className="seekbar-mark" title="Début du programme" style={{ left: `${((clock.t - clock.start - (clock.wall - playingProg.start)) / span) * 100}%` }} />
+                <div className="seekbar-mark" title={t("Début du programme")} style={{ left: `${((clock.t - clock.start - (clock.wall - playingProg.start)) / span) * 100}%` }} />
               )}
             </div>
           )}
           <div className="controls-row">
             {channel && (
-              <button className="icon-btn" title="Chaîne précédente" onClick={() => zap(-1)} disabled={!!catchup}>
+              <button className="icon-btn" title={t("Chaîne précédente")} onClick={() => zap(-1)} disabled={!!catchup}>
                 <Icon name="prev" />
               </button>
             )}
             {seekable && (
-              <button className="icon-btn" title="Reculer de 10 s" onClick={() => seekBy(-10)}>
+              <button className="icon-btn" title={t("Reculer de 10 s")} onClick={() => seekBy(-10)}>
                 <Icon name="back30" />
               </button>
             )}
-            <button className="icon-btn big" title={clock.playing ? "Pause" : "Lecture"} onClick={togglePlay}>
+            <button className="icon-btn big" title={clock.playing ? t("Pause") : t("Lecture")} onClick={togglePlay}>
               <Icon name={clock.playing ? "pause" : "play"} />
             </button>
             {seekable && (
-              <button className="icon-btn" title="Avancer de 30 s" onClick={() => seekBy(30)} disabled={isLiveStream && !catchup && atLive}>
+              <button className="icon-btn" title={t("Avancer de 30 s")} onClick={() => seekBy(30)} disabled={isLiveStream && !catchup && atLive}>
                 <Icon name="fwd30" />
               </button>
             )}
             {channel ? (
-              <button className="icon-btn" title="Chaîne suivante" onClick={() => zap(1)} disabled={!!catchup}>
+              <button className="icon-btn" title={t("Chaîne suivante")} onClick={() => zap(1)} disabled={!!catchup}>
                 <Icon name="next" />
               </button>
             ) : media?.queue.length ? (
-              <button className="icon-btn" title="Suivant" onClick={() => nextEpisode()}>
+              <button className="icon-btn" title={t("Suivant")} onClick={() => nextEpisode()}>
                 <Icon name="next" />
               </button>
             ) : null}
             {channel && !catchup && <RecButton channel={channel} prog={playingProg} />}
             {channel && !catchup && seekable && !atLive && (
               <button className="btn btn-live" onClick={goLive}>
-                Revenir au direct
+                {t("Revenir au direct")}
               </button>
             )}
             {channel && !catchup && seekable && playingProg && clock.wall - playingProg.start > 60 && clock.wall - playingProg.start < span && (
-              <button className="btn" onClick={startOver} title="Reprendre au début du programme">
-                <Icon name="restart" size={16} /> Début
+              <button className="btn" onClick={startOver} title={t("Reprendre au début du programme")}>
+                <Icon name="restart" size={16} /> {t("Début")}
               </button>
             )}
             <span className="time">
               {channel && !catchup
-                ? `${fmtTime(Math.floor(clock.wall))}${seekable ? ` · tampon ${fmtDuration(span)}` : ""}`
+                ? `${fmtTime(Math.floor(clock.wall))}${seekable ? ` · ${t("tampon {d}", { d: fmtDuration(span) })}` : ""}`
                 : seekable
                   ? `${fmtDuration(clock.t)} / ${fmtDuration(clock.end)}`
                   : ""}
             </span>
             <div className="spacer" />
-            <button className="icon-btn" title={muted ? "Rétablir le son" : "Couper le son"} onClick={() => setMuted(!muted)}>
+            <button className="icon-btn" title={muted ? t("Rétablir le son") : t("Couper le son")} onClick={() => setMuted(!muted)}>
               <Icon name={muted ? "mute" : "volume"} />
             </button>
-            <input className="volume" type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(+e.target.value)} aria-label="Volume" />
+            <input className="volume" type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(+e.target.value)} aria-label={t("Volume")} />
             {tracks.subtitles.length > 0 && (
-              <button className={`icon-btn ${tracks.subtitleCurrent >= 0 ? "active" : ""}`} title="Sous-titres" onClick={() => setPanel(panel === "subtitles" ? null : "subtitles")}>
+              <button className={`icon-btn ${tracks.subtitleCurrent >= 0 ? "active" : ""}`} title={t("Sous-titres")} onClick={() => setPanel(panel === "subtitles" ? null : "subtitles")}>
                 <Icon name="subtitles" />
               </button>
             )}
-            <button className={`icon-btn ${panel ? "active" : ""}`} title="Réglages de lecture" onClick={() => setPanel(panel ? null : tracks.audio.length > 1 || (info?.audioTracks?.length ?? 0) > 1 ? "audio" : tracks.qualities.length > 1 ? "quality" : "picture")}>
+            <button className={`icon-btn ${panel ? "active" : ""}`} title={t("Réglages de lecture")} onClick={() => setPanel(panel ? null : tracks.audio.length > 1 || (info?.audioTracks?.length ?? 0) > 1 ? "audio" : tracks.qualities.length > 1 ? "quality" : "picture")}>
               <Icon name="sliders" />
             </button>
             {source && (
-              <button className="icon-btn" title="Diffuser sur un autre écran (téléviseur, Chromecast…)" onClick={() => setCastOpen(true)}>
+              <button className="icon-btn" title={t("Diffuser sur un autre écran (téléviseur, Chromecast…)")} onClick={() => setCastOpen(true)}>
                 <Icon name="cast" />
               </button>
             )}
-            <button className="icon-btn" title={compactSupported ? "Mini-lecteur flottant (au-dessus de toutes les fenêtres)" : "Image dans l'image"} onClick={floating}>
+            <button className="icon-btn" title={compactSupported ? t("Mini-lecteur flottant (au-dessus de toutes les fenêtres)") : t("Image dans l'image")} onClick={floating}>
               <Icon name="pip" />
             </button>
-            <button className="icon-btn" title="Plein écran (F)" onClick={toggleFullscreen}>
+            <button className="icon-btn" title={t("Plein écran (F)")} onClick={toggleFullscreen}>
               <Icon name={fullscreen ? "shrink" : "expand"} />
             </button>
           </div>
@@ -924,18 +925,18 @@ export function Player() {
       )}
 
       {panel && !small && (
-        <div className="player-panel" role="dialog" aria-label="Réglages de lecture">
+        <div className="player-panel" role="dialog" aria-label={t("Réglages de lecture")}>
           <div className="panel-tabs">
             {(
               [
-                ["audio", "Audio", tracks.audio.length > 1 || (isRemux && (info?.audioTracks?.length ?? 0) > 1)],
-                ["subtitles", "Sous-titres", true],
-                ["quality", "Qualité", tracks.qualities.length > 1],
-                ["picture", "Image", true],
-                ["sound", "Son", true],
-                ["speed", "Vitesse", !isLiveStream],
-                ["buffer", "Pause du direct", channel != null && !catchup && prefsTimeshift],
-                ["sources", `Sources (${streams.length})`, !catchup && !media?.episode && streams.length > 1],
+                ["audio", t("Audio"), tracks.audio.length > 1 || (isRemux && (info?.audioTracks?.length ?? 0) > 1)],
+                ["subtitles", t("Sous-titres"), true],
+                ["quality", t("Qualité"), tracks.qualities.length > 1],
+                ["picture", t("Image"), true],
+                ["sound", t("Son"), true],
+                ["speed", t("Vitesse"), !isLiveStream],
+                ["buffer", t("Pause du direct"), channel != null && !catchup && prefsTimeshift],
+                ["sources", t("Sources ({n})", { n: streams.length }), !catchup && !media?.episode && streams.length > 1],
               ] as [Panel, string, boolean][]
             )
               .filter(([, , shown]) => shown)
@@ -944,18 +945,18 @@ export function Player() {
                   {label}
                 </button>
               ))}
-            <button className="icon-btn" onClick={() => setPanel(null)} title="Fermer">
+            <button className="icon-btn" onClick={() => setPanel(null)} title={t("Fermer")}>
               <Icon name="close" size={16} />
             </button>
           </div>
           <div className="panel-body">
             {panel === "audio" &&
               isRemux &&
-              info?.audioTracks?.map((t) => (
-                <button key={t.index} className={`opt ${remuxAudio === t.index ? "on" : ""}`} onClick={() => remuxLoad(clock.t, t.index)}>
-                  {t.title ?? (t.language ? t.language.toUpperCase() : `Piste ${t.index + 1}`)}
+              info?.audioTracks?.map((tr) => (
+                <button key={tr.index} className={`opt ${remuxAudio === tr.index ? "on" : ""}`} onClick={() => remuxLoad(clock.t, tr.index)}>
+                  {tr.title ?? (tr.language ? tr.language.toUpperCase() : t("Piste {n}", { n: tr.index + 1 }))}
                   <span className="dim">
-                    {[t.language?.toUpperCase(), t.codec.toUpperCase(), t.channels ? (t.channels >= 6 ? "5.1" : t.channels === 2 ? "stéréo" : `${t.channels} canaux`) : ""].filter(Boolean).join(" · ")}
+                    {[tr.language?.toUpperCase(), tr.codec.toUpperCase(), tr.channels ? (tr.channels >= 6 ? "5.1" : tr.channels === 2 ? t("stéréo") : t("{n} canaux", { n: tr.channels })) : ""].filter(Boolean).join(" · ")}
                   </span>
                 </button>
               ))}
@@ -969,7 +970,7 @@ export function Player() {
             {panel === "subtitles" && (
               <>
                 <button className={`opt ${tracks.subtitleCurrent < 0 && !extOn ? "on" : ""}`} onClick={() => (setExtOn(false), setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, -1), refreshTracks())}>
-                  Désactivés
+                  {t("Désactivés")}
                 </button>
                 {tracks.subtitles.map((t) => (
                   <button key={t.id} className={`opt ${tracks.subtitleCurrent === t.id && !extOn ? "on" : ""}`} onClick={() => (setExtOn(false), setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, t.id), refreshTracks())}>
@@ -979,21 +980,21 @@ export function Player() {
                 {extSubs && (
                   <button className={`opt ${extOn ? "on" : ""}`} onClick={() => (setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, -1), setExtOn(true), refreshTracks())}>
                     {extSubs.name}
-                    <span className="dim">{extSubs.cues.length} répliques</span>
+                    <span className="dim">{t("{n} répliques", { n: extSubs.cues.length })}</span>
                   </button>
                 )}
                 {extSubs && extOn && (
                   <div className="opt-group">
-                    <span>Décalage</span>
-                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o - 0.5) * 10) / 10)}>−0,5 s</button>
-                    <span className="sub-offset">{extOffset > 0 ? "+" : ""}{extOffset.toFixed(1).replace(".", ",")} s</span>
-                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o + 0.5) * 10) / 10)}>+0,5 s</button>
-                    {extOffset !== 0 && <button className="opt" onClick={() => setExtOffset(0)}>Réinitialiser</button>}
+                    <span>{t("Décalage")}</span>
+                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o - 0.5) * 10) / 10)}>{t("−0,5 s")}</button>
+                    <span className="sub-offset">{extOffset > 0 ? "+" : ""}{extOffset.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s</span>
+                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o + 0.5) * 10) / 10)}>{t("+0,5 s")}</button>
+                    {extOffset !== 0 && <button className="opt" onClick={() => setExtOffset(0)}>{t("Réinitialiser")}</button>}
                   </div>
                 )}
                 <button className="opt" onClick={() => subInput.current?.click()}>
-                  <Icon name="upload" size={16} /> Ouvrir un fichier de sous-titres…
-                  <span className="dim">.srt ou .vtt</span>
+                  <Icon name="upload" size={16} /> {t("Ouvrir un fichier de sous-titres…")}
+                  <span className="dim">{t(".srt ou .vtt")}</span>
                 </button>
                 <input ref={subInput} type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden onChange={(e) => (void loadSubtitleFile(e.target.files?.[0]), (e.target.value = ""))} />
               </>
@@ -1001,7 +1002,7 @@ export function Player() {
             {panel === "quality" && (
               <>
                 <button className={`opt ${tracks.qualityCurrent < 0 ? "on" : ""}`} onClick={() => (setQuality(engineRef.current?.hls ?? null, -1), refreshTracks())}>
-                  Automatique
+                  {t("Automatique")}
                 </button>
                 {[...tracks.qualities].reverse().map((t) => (
                   <button key={t.id} className={`opt ${tracks.qualityCurrent === t.id ? "on" : ""}`} onClick={() => (setQuality(engineRef.current?.hls ?? null, t.id), refreshTracks())}>
@@ -1013,7 +1014,7 @@ export function Player() {
             {panel === "picture" && (
               <>
                 <div className="opt-group">
-                  <span>Format</span>
+                  <span>{t("Format")}</span>
                   {(
                     [
                       ["contain", "Adapter"],
@@ -1025,15 +1026,15 @@ export function Player() {
                     ] as [AspectMode, string][]
                   ).map(([a, l]) => (
                     <button key={a} className={`opt small ${prefs.aspect === a ? "on" : ""}`} onClick={() => setPref({ aspect: a })}>
-                      {l}
+                      {t(l)}
                     </button>
                   ))}
                 </div>
                 <div className="opt-group">
-                  <span>Préréglage</span>
+                  <span>{t("Préréglage")}</span>
                   {PICTURE_PRESETS.map((p) => (
                     <button key={p.id} className={`opt small ${prefs.brightness === p.brightness && prefs.contrast === p.contrast && prefs.saturation === p.saturation ? "on" : ""}`} onClick={() => setPref({ brightness: p.brightness, contrast: p.contrast, saturation: p.saturation })}>
-                      {p.label}
+                      {t(p.label)}
                     </button>
                   ))}
                 </div>
@@ -1045,7 +1046,7 @@ export function Player() {
                   ] as const
                 ).map(([k, l]) => (
                   <label key={k} className="slider-row">
-                    {l}
+                    {t(l)}
                     <input type="range" min={0.5} max={1.6} step={0.05} value={prefs[k]} onChange={(e) => setPref({ [k]: +e.target.value })} />
                     <output>{Math.round(prefs[k] * 100)} %</output>
                   </label>
@@ -1062,17 +1063,17 @@ export function Player() {
                 ] as [AudioMode, string, string][]
               ).map(([m, l, d]) => (
                 <button key={m} className={`opt ${prefs.audioMode === m ? "on" : ""}`} onClick={() => setPref({ audioMode: m })}>
-                  <strong>{l}</strong> <span className="dim">{d}</span>
+                  <strong>{t(l)}</strong> <span className="dim">{t(d)}</span>
                 </button>
               ))}
             {panel === "sources" &&
               streams.map((st, i) => {
-                const source = sourceNames.get(st.channel.sourceId) ?? "Source";
-                const status = st.failed ? `échec : ${st.failed}` : st.probe ? (st.probe.ok ? `répond en ${Math.round(st.probe.ms)} ms` : st.probe.error ?? "injoignable") : "non testée";
+                const source = sourceNames.get(st.channel.sourceId) ?? t("Source");
+                const status = st.failed ? t("échec : {reason}", { reason: st.failed }) : st.probe ? (st.probe.ok ? t("répond en {ms} ms", { ms: Math.round(st.probe.ms) }) : st.probe.error ?? t("injoignable")) : t("non testée");
                 return (
                   <button key={st.channel.id} className={`opt ${i === streamIndex ? "on" : ""} ${st.failed || st.probe?.ok === false ? "bad" : ""}`} onClick={() => usePlayer.getState().useStream(i)}>
                     <strong>
-                      {i === 0 && !st.failed && st.probe?.ok && <span className="mini-badge ok">conseillée</span>} {st.channel.name}
+                      {i === 0 && !st.failed && st.probe?.ok && <span className="mini-badge ok">{t("conseillée")}</span>} {st.channel.name}
                     </strong>
                     <span className="dim">
                       {source}
@@ -1085,7 +1086,7 @@ export function Player() {
               <>
                 <BufferChoice compact />
                 <button className="opt" onClick={() => retry()}>
-                  <strong>Appliquer maintenant</strong> <span className="dim">Relance la chaîne : le retour arrière déjà enregistré est perdu.</span>
+                  <strong>{t("Appliquer maintenant")}</strong> <span className="dim">{t("Relance la chaîne : le retour arrière déjà enregistré est perdu.")}</span>
                 </button>
               </>
             )}
@@ -1116,7 +1117,7 @@ function RecButton({ channel, prog }: { channel: import("../types").Channel; pro
   return (
     <button
       className={`icon-btn ${active ? "recording" : ""}`}
-      title={active ? "Arrêter l'enregistrement" : prog ? `Enregistrer « ${prog.title} »` : "Enregistrer la prochaine heure"}
+      title={active ? t("Arrêter l'enregistrement") : prog ? t("Enregistrer « {title} »", { title: prog.title }) : t("Enregistrer la prochaine heure")}
       onClick={() => (active && rec ? useRecordings.getState().cancel(rec.id, false) : useRecordings.getState().record(channel, prog))}
     >
       <Icon name="rec" />

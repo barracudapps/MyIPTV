@@ -1,5 +1,6 @@
 import { channelIds } from "./variants";
 import type { Channel, Programme } from "../types";
+import { t } from "./t";
 
 export type ProfileKind = "admin" | "standard" | "child";
 
@@ -116,8 +117,8 @@ export type Access =
 
 /** Accès à un contenu adulte : désactivé par défaut, jamais pour un enfant, sinon derrière le code. */
 export function adultAccess(p: Profile, adult: AdultContext): Access {
-  if (p.kind === "child") return { ok: false, reason: "blocked", message: "Contenu réservé aux adultes." };
-  if (!adult.enabled) return { ok: false, reason: "blocked", message: "Les contenus pour adultes sont désactivés (Réglages › Contrôle parental)." };
+  if (p.kind === "child") return { ok: false, reason: "blocked", message: t("Contenu réservé aux adultes.") };
+  if (!adult.enabled) return { ok: false, reason: "blocked", message: t("Les contenus pour adultes sont désactivés (Réglages › Contrôle parental).") };
   return adult.unlocked ? { ok: true } : { ok: false, reason: "adult-pin" };
 }
 
@@ -128,11 +129,11 @@ export function channelAccess(p: Profile, ch: Channel, adult: AdultContext): Acc
     const r = p.child!;
     // Chaîne regroupée : une copie bloquée bloque le groupe, une copie autorisée l'autorise.
     const ids = channelIds(ch);
-    if (ids.some((id) => r.blacklist.includes(id))) return { ok: false, reason: "blocked", message: "Chaîne bloquée par un parent." };
+    if (ids.some((id) => r.blacklist.includes(id))) return { ok: false, reason: "blocked", message: t("Chaîne bloquée par un parent.") };
     if (ids.some((id) => r.whitelist.includes(id))) return { ok: true };
-    if (r.whitelistOnly) return { ok: false, reason: "blocked", message: "Seules les chaînes autorisées par un parent sont visibles." };
+    if (r.whitelistOnly) return { ok: false, reason: "blocked", message: t("Seules les chaînes autorisées par un parent sont visibles.") };
     if (ch.group && r.blockedGroups.some((g) => g.toLowerCase() === ch.group!.toLowerCase()))
-      return { ok: false, reason: "blocked", message: "Catégorie bloquée par un parent." };
+      return { ok: false, reason: "blocked", message: t("Catégorie bloquée par un parent.") };
     return { ok: true };
   }
   return { ok: true };
@@ -156,10 +157,10 @@ export function programmeAccess(p: Profile, ch: Channel, prog: Programme | undef
   if (prog?.age != null) {
     return prog.age <= limit
       ? { ok: true }
-      : { ok: false, reason: "blocked", message: `Programme déconseillé aux moins de ${prog.age} ans.` };
+      : { ok: false, reason: "blocked", message: t("Programme déconseillé aux moins de {age} ans.", { age: prog.age }) };
   }
   if (r.allowUnrated || channelIds(ch).some((id) => r.whitelist.includes(id))) return { ok: true };
-  return { ok: false, reason: "blocked", message: "Programme sans classification d'âge." };
+  return { ok: false, reason: "blocked", message: t("Programme sans classification d'âge.") };
 }
 
 /** Hachage du code parental (jamais stocké en clair). */

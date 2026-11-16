@@ -11,6 +11,7 @@ import { ChannelLogo } from "./ChannelLogo";
 import { GuideView } from "./GuideView";
 import { NowPanel } from "./LiveView";
 import { Icon } from "./Icon";
+import { t, uiLanguage } from "../lib/t";
 
 /**
  * Dispositions alternatives de l'écran Direct, choisies par le thème :
@@ -38,10 +39,10 @@ function ChannelCard({ channel, list, wide = false }: { channel: Channel; list: 
       </span>
       <span className="xp-card-text">
         <strong>{displayName(channel)}</strong>
-        <span className="xp-card-prog">{prog ? prog.title : "Programme non communiqué"}</span>
+        <span className="xp-card-prog">{prog ? prog.title : t("Programme non communiqué")}</span>
         {wide && next && (
           <span className="dim small">
-            Ensuite {fmtTime(next.start)} · {next.title}
+            {t("Ensuite {time} · {title}", { time: fmtTime(next.start), title: next.title })}
           </span>
         )}
       </span>
@@ -109,19 +110,19 @@ export function ImmersiveLive() {
         {!playing && (
           <div className="player-placeholder">
             <Icon name="play" size={48} />
-            <span>Choisissez une chaîne dans la bande ci-dessous</span>
+            <span>{t("Choisissez une chaîne dans la bande ci-dessous")}</span>
           </div>
         )}
       </div>
-      <div className={`xp-strip ${shown ? "shown" : ""}`} ref={strip} aria-label="Chaînes">
+      <div className={`xp-strip ${shown ? "shown" : ""}`} ref={strip} aria-label={t("Chaînes")}>
         <div className="xp-strip-head">
-          <button className="icon-btn" title="Chaînes précédentes" onClick={() => setIndex((i) => Math.max(0, i - 20))}>
+          <button className="icon-btn" title={t("Chaînes précédentes")} onClick={() => setIndex((i) => Math.max(0, i - 20))}>
             <Icon name="prev" />
           </button>
           <span className="dim small">
-            {channels.length ? `${start + 1}–${Math.min(channels.length, start + 40)} sur ${channels.length} chaînes` : "Aucune chaîne"}
+            {channels.length ? t("{from}–{to} sur {n} chaînes", { from: start + 1, to: Math.min(channels.length, start + 40), n: channels.length }) : t("Aucune chaîne")}
           </span>
-          <button className="icon-btn" title="Chaînes suivantes" onClick={() => setIndex((i) => Math.min(channels.length - 1, i + 20))}>
+          <button className="icon-btn" title={t("Chaînes suivantes")} onClick={() => setIndex((i) => Math.min(channels.length - 1, i + 20))}>
             <Icon name="next" />
           </button>
         </div>
@@ -159,7 +160,7 @@ function GuidePlaceholder() {
   return (
     <div className="player-placeholder">
       <Icon name="guide" size={40} />
-      <span>Choisissez un programme dans la grille</span>
+      <span>{t("Choisissez un programme dans la grille")}</span>
     </div>
   );
 }
@@ -174,7 +175,7 @@ export function MagazineLive() {
   const rows = useMemo(() => {
     const byGroup = new Map<string, Channel[]>();
     for (const c of channels) {
-      const g = (c.group ?? "Autres").split(";")[0].trim() || "Autres";
+      const g = (c.group ?? t("Autres")).split(";")[0].trim() || t("Autres");
       (byGroup.get(g) ?? byGroup.set(g, []).get(g)!).push(c);
     }
     const fav = new Set(profile.favorites);
@@ -183,10 +184,10 @@ export function MagazineLive() {
     const groups = [...byGroup.entries()].filter(([, l]) => l.length >= 3).slice(0, 14);
     const merged = new Map<string, Channel[]>();
     for (const [g, l] of groups) {
-      const label = translateLabel(g, "fr");
+      const label = translateLabel(g, uiLanguage());
       merged.set(label, [...(merged.get(label) ?? []), ...l]);
     }
-    return [...(favorites.length ? [["Mes favoris", favorites] as [string, Channel[]]] : []), ...[...merged.entries()].map(([g, l]) => [g, l.slice(0, 30)] as [string, Channel[]])];
+    return [...(favorites.length ? [[t("Mes favoris"), favorites] as [string, Channel[]]] : []), ...[...merged.entries()].map(([g, l]) => [g, l.slice(0, 30)] as [string, Channel[]])];
   }, [channels, profile.favorites]);
 
   return (
@@ -196,16 +197,16 @@ export function MagazineLive() {
           {!channel && channels[0] && (
             <div className="player-placeholder">
               <Icon name="live" size={44} />
-              <span>À la une : {displayName(channels[0])}</span>
+              <span>{t("À la une : {name}", { name: displayName(channels[0]) })}</span>
               <button className="btn btn-primary" onClick={() => usePlayer.getState().play(channels[0], { zapList: channels })}>
-                <Icon name="play" /> Regarder
+                <Icon name="play" /> {t("Regarder")}
               </button>
             </div>
           )}
         </div>
         <div className="xp-mag-now">
           <NowPanel />
-          {!channel && <p className="xp-mag-hint">Parcourez les rangées ci-dessous : chaque carte montre l'émission en cours.</p>}
+          {!channel && <p className="xp-mag-hint">{t("Parcourez les rangées ci-dessous : chaque carte montre l'émission en cours.")}</p>}
         </div>
       </header>
       {rows.map(([title, list]) => (

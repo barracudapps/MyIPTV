@@ -8,6 +8,7 @@ import { startTask, track } from "../store/activity";
 import { Toggle } from "./ThemeEditor";
 import { Icon } from "./Icon";
 import { BackupCard } from "./BackupCard";
+import { t, plural } from "../lib/t";
 
 const LAST_ADDRESS_KEY = "myiptv-share-address";
 
@@ -24,12 +25,11 @@ export function ShareSettings() {
   useEffect(() => void getBackend().then(setBackend), []);
   return (
     <div className="settings-section">
-      <h2>Partage et sauvegarde</h2>
+      <h2>{t("Partage et sauvegarde")}</h2>
       <p className="dim">
-        Copiez vos sources, comptes et réglages vers un autre appareil du même réseau (TV, téléphone, autre ordinateur) sans rien ressaisir. Le
-        transfert est chiffré par un code à usage limité, valable 10 minutes.
+        {t("Copiez vos sources, comptes et réglages vers un autre appareil du même réseau (TV, téléphone, autre ordinateur) sans rien ressaisir. Le transfert est chiffré par un code à usage limité, valable 10 minutes.")}
       </p>
-      {backend?.share ? <SendCard backend={backend} /> : backend && <p className="card dim">L'envoi se fait depuis l'application de bureau ou Android ; cet appareil peut recevoir.</p>}
+      {backend?.share ? <SendCard backend={backend} /> : backend && <p className="card dim">{t("L'envoi se fait depuis l'application de bureau ou Android ; cet appareil peut recevoir.")}</p>}
       {backend && <ReceiveCard backend={backend} />}
       <BackupCard />
     </div>
@@ -55,7 +55,7 @@ function SendCard({ backend }: { backend: Backend }) {
   const sharing = !!info && status?.active !== false;
   useEffect(() => {
     if (!sharing || !info) return;
-    const task = startTask("Partage réseau ouvert", { detail: `Code ${info.code}` });
+    const task = startTask(t("Partage réseau ouvert"), { detail: t("Code {code}", { code: info.code }) });
     return () => task.end();
   }, [sharing, info]);
   useEffect(() => {
@@ -72,7 +72,7 @@ function SendCard({ backend }: { backend: Backend }) {
 
   async function start() {
     setError(null);
-    if (withCredentials && !(await askPin("Partager des comptes", "Les identifiants des comptes sélectionnés seront transmis à l'appareil qui saisira le code."))) return;
+    if (withCredentials && !(await askPin(t("Partager des comptes"), t("Les identifiants des comptes sélectionnés seront transmis à l'appareil qui saisira le code.")))) return;
     setBusy(true);
     try {
       const payload = await buildPayload({ sourceIds: [...picked], meta: withMeta, profiles: withProfiles, themes: withThemes, settings: withSettings });
@@ -101,40 +101,40 @@ function SendCard({ backend }: { backend: Backend }) {
   if (info) {
     const active = status?.active ?? true;
     const minutes = Math.max(0, Math.ceil((info.expiresAt - Date.now() / 1000) / 60));
-    const address = info.addresses[0] ?? "adresse introuvable";
+    const address = info.addresses[0] ?? t("adresse introuvable");
     const portSuffix = info.port === 47820 ? "" : `:${info.port}`;
     return (
       <div className="card share-live">
-        <h3><Icon name="upload" /> Partage ouvert</h3>
+        <h3><Icon name="upload" /> {t("Partage ouvert")}</h3>
         {active ? (
           <>
-            <p className="dim">Sur l'autre appareil : Réglages › Partage en réseau › Recevoir, puis saisissez :</p>
+            <p className="dim">{t("Sur l'autre appareil : Réglages › Partage et sauvegarde › Recevoir, puis saisissez :")}</p>
             <dl className="share-code">
-              <dt>Adresse</dt>
+              <dt>{t("Adresse")}</dt>
               <dd>{address}{portSuffix}</dd>
-              {info.addresses.slice(1).map((a) => <dd key={a} className="dim small">ou {a}{portSuffix}</dd>)}
-              <dt>Code</dt>
+              {info.addresses.slice(1).map((a) => <dd key={a} className="dim small">{t("ou {address}", { address: `${a}${portSuffix}` })}</dd>)}
+              <dt>{t("Code")}</dt>
               <dd className="code">{info.code}</dd>
             </dl>
             <p className="dim small">
-              {status?.downloads ? `Reçu par ${status.downloads} appareil${status.downloads > 1 ? "s" : ""}. ` : "En attente d'un appareil… "}
-              Se ferme dans {minutes} min, ou après 10 codes erronés.
+              {status?.downloads ? `${plural(status.downloads, "Reçu par {n} appareil.", "Reçu par {n} appareils.")} ` : `${t("En attente d'un appareil…")} `}
+              {t("Se ferme dans {minutes} min, ou après 10 codes erronés.", { minutes })}
             </p>
           </>
         ) : (
-          <p className="dim">Partage terminé{status?.downloads ? ` : reçu par ${status.downloads} appareil${status.downloads > 1 ? "s" : ""}` : ""}.</p>
+          <p className="dim">{status?.downloads ? plural(status.downloads, "Partage terminé : reçu par {n} appareil.", "Partage terminé : reçu par {n} appareils.") : t("Partage terminé.")}</p>
         )}
-        <button className="btn" onClick={stop}>{active ? "Arrêter le partage" : "Fermer"}</button>
+        <button className="btn" onClick={stop}>{active ? t("Arrêter le partage") : t("Fermer")}</button>
       </div>
     );
   }
 
   return (
     <div className="card">
-      <h3><Icon name="upload" /> Envoyer vers un autre appareil</h3>
+      <h3><Icon name="upload" /> {t("Envoyer vers un autre appareil")}</h3>
       {sources.length > 0 && (
         <fieldset className="share-pick">
-          <legend>Sources et comptes</legend>
+          <legend>{t("Sources et comptes")}</legend>
           {sources.map((s) => (
             <label key={s.id} className="check">
               <input type="checkbox" checked={picked.has(s.id)} onChange={() => toggle(s.id)} />
@@ -144,14 +144,14 @@ function SendCard({ backend }: { backend: Backend }) {
           ))}
         </fieldset>
       )}
-      {hasKeys && <Toggle label="Clés de métadonnées (TMDB, OMDb)" checked={withMeta} onChange={setWithMeta} />}
-      <Toggle label="Profils" hint="Avec favoris, langues et préférences ; l'historique reste sur cet appareil." checked={withProfiles} onChange={setWithProfiles} />
-      {themes.length > 0 && <Toggle label={`Thèmes personnalisés (${themes.length})`} checked={withThemes} onChange={setWithThemes} />}
-      <Toggle label="Réglages" hint="Lecture, menu, fun, code PIN et protections. Le contenu adulte n'est jamais activé à distance." checked={withSettings} onChange={setWithSettings} />
-      {withCredentials && <p className="small warn-text"><Icon name="lock" /> Contient des identifiants : ne communiquez le code qu'à vos propres appareils.</p>}
+      {hasKeys && <Toggle label={t("Clés de métadonnées (TMDB, OMDb)")} checked={withMeta} onChange={setWithMeta} />}
+      <Toggle label={t("Profils")} hint={t("Avec favoris, langues et préférences ; l'historique reste sur cet appareil.")} checked={withProfiles} onChange={setWithProfiles} />
+      {themes.length > 0 && <Toggle label={t("Thèmes personnalisés ({n})", { n: themes.length })} checked={withThemes} onChange={setWithThemes} />}
+      <Toggle label={t("Réglages")} hint={t("Lecture, menu, fun, code PIN et protections. Le contenu adulte n'est jamais activé à distance.")} checked={withSettings} onChange={setWithSettings} />
+      {withCredentials && <p className="small warn-text"><Icon name="lock" /> {t("Contient des identifiants : ne communiquez le code qu'à vos propres appareils.")}</p>}
       {error && <p className="error-text small">{error}</p>}
       <button className="btn btn-primary" disabled={busy || nothing} onClick={start}>
-        {busy ? "Préparation…" : "Ouvrir le partage"}
+        {busy ? t("Préparation…") : t("Ouvrir le partage")}
       </button>
     </div>
   );
@@ -168,7 +168,7 @@ function ReceiveCard({ backend }: { backend: Backend }) {
     setError(null);
     setBusy(true);
     try {
-      const p = parsePayload(await track("Réception d'une configuration", backend.shareFetch(address, code), address));
+      const p = parsePayload(await track(t("Réception d'une configuration"), backend.shareFetch(address, code), address));
       try {
         localStorage.setItem(LAST_ADDRESS_KEY, address.trim());
       } catch {
@@ -186,19 +186,19 @@ function ReceiveCard({ backend }: { backend: Backend }) {
 
   return (
     <div className="card">
-      <h3><Icon name="download" /> Recevoir d'un autre appareil</h3>
-      <p className="dim small">Ouvrez le partage sur l'appareil qui a la configuration, puis recopiez son adresse et son code.</p>
+      <h3><Icon name="download" /> {t("Recevoir d'un autre appareil")}</h3>
+      <p className="dim small">{t("Ouvrez le partage sur l'appareil qui a la configuration, puis recopiez son adresse et son code.")}</p>
       <form className="row" onSubmit={(e) => (e.preventDefault(), fetchShare())}>
         <label className="field">
-          Adresse
+          {t("Adresse")}
           <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="192.168.1.20" inputMode="decimal" autoComplete="off" />
         </label>
         <label className="field">
-          Code
+          {t("Code")}
           <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ABCD-EFGH" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} />
         </label>
         <button className="btn btn-primary" disabled={busy || !address.trim() || code.replace(/[^a-z0-9]/gi, "").length < 8}>
-          {busy ? "Réception…" : "Recevoir"}
+          {busy ? t("Réception…") : t("Recevoir")}
         </button>
       </form>
       {error && <p className="error-text small">{error}</p>}
@@ -219,40 +219,40 @@ export function ReceivePreview({ payload, onDone }: { payload: SharePayload; onD
   function apply() {
     const r = applyPayload(payload, { sources, meta, profiles, themes, settings });
     const parts = [
-      r.sources && `${r.sources} source${r.sources > 1 ? "s" : ""}`,
-      r.profiles && `${r.profiles} profil${r.profiles > 1 ? "s" : ""}`,
-      r.themes && `${r.themes} thème${r.themes > 1 ? "s" : ""}`,
-      r.settings && "réglages",
-      r.meta && "clés de métadonnées",
+      r.sources && plural(r.sources, "{n} source", "{n} sources"),
+      r.profiles && plural(r.profiles, "{n} profil", "{n} profils"),
+      r.themes && plural(r.themes, "{n} thème", "{n} thèmes"),
+      r.settings && t("réglages"),
+      r.meta && t("clés de métadonnées"),
     ].filter(Boolean);
-    toast(parts.length ? `Importé : ${parts.join(", ")}.` : "Rien de nouveau : tout était déjà sur cet appareil.", "success");
+    toast(parts.length ? t("Importé : {list}.", { list: parts.join(", ") }) : t("Rien de nouveau : tout était déjà sur cet appareil."), "success");
     if (r.sources) useLibrary.getState().loadAll();
     onDone();
   }
 
   return (
     <div className="card">
-      <h3><Icon name="download" /> Configuration reçue</h3>
-      <p className="dim small">Rien n'est supprimé sur cet appareil : les éléments déjà présents sont conservés.</p>
+      <h3><Icon name="download" /> {t("Configuration reçue")}</h3>
+      <p className="dim small">{t("Rien n'est supprimé sur cet appareil : les éléments déjà présents sont conservés.")}</p>
       {!!payload.sources?.length && (
-        <Toggle label={`Sources et comptes (${payload.sources.length})`} hint={payload.sources.map((s) => s.name).join(" · ")} checked={sources} onChange={setSources} />
+        <Toggle label={t("Sources et comptes ({n})", { n: payload.sources.length })} hint={payload.sources.map((s) => s.name).join(" · ")} checked={sources} onChange={setSources} />
       )}
-      {payload.meta && <Toggle label="Clés de métadonnées" checked={meta} onChange={setMeta} />}
+      {payload.meta && <Toggle label={t("Clés de métadonnées")} checked={meta} onChange={setMeta} />}
       {!!payload.profiles?.length && (
-        <Toggle label={`Profils (${payload.profiles.length})${payload.profiles.some((p) => p.history.length) ? ", avec leur historique" : ""}`} hint={payload.profiles.map((p) => `${p.avatar} ${p.name}`).join(" · ")} checked={profiles} onChange={setProfiles} />
+        <Toggle label={payload.profiles.some((p) => p.history.length) ? t("Profils ({n}), avec leur historique", { n: payload.profiles.length }) : t("Profils ({n})", { n: payload.profiles.length })} hint={payload.profiles.map((p) => `${p.avatar} ${p.name}`).join(" · ")} checked={profiles} onChange={setProfiles} />
       )}
-      {!!payload.themes?.length && <Toggle label={`Thèmes personnalisés (${payload.themes.length})`} checked={themes} onChange={setThemes} />}
+      {!!payload.themes?.length && <Toggle label={t("Thèmes personnalisés ({n})", { n: payload.themes.length })} checked={themes} onChange={setThemes} />}
       {payload.settings && (
         <Toggle
-          label="Réglages"
-          hint={pinChanges ? "Le code PIN de l'appareil d'origine remplacera celui de cet appareil." : "Lecture, menu, fun et contrôle parental."}
+          label={t("Réglages")}
+          hint={pinChanges ? t("Le code PIN de l'appareil d'origine remplacera celui de cet appareil.") : t("Lecture, menu, fun et contrôle parental.")}
           checked={settings}
           onChange={setSettings}
         />
       )}
       <div className="row">
-        <button className="btn" onClick={onDone}>Annuler</button>
-        <button className="btn btn-primary" onClick={apply}>Importer</button>
+        <button className="btn" onClick={onDone}>{t("Annuler")}</button>
+        <button className="btn btn-primary" onClick={apply}>{t("Importer")}</button>
       </div>
     </div>
   );

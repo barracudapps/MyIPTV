@@ -1,5 +1,6 @@
 import type { Channel, Source } from "../types";
 import { CATALOG_ALL } from "./catalog";
+import { t, locale } from "./t";
 
 /** Langues proposées (ISO 639-1), avec leur nom en français et un drapeau indicatif. */
 export const LANGUAGES: { code: string; name: string; flag: string }[] = [
@@ -40,7 +41,10 @@ export const LANGUAGES: { code: string; name: string; flag: string }[] = [
   { code: "ku", name: "Kurde", flag: "🏳️" },
 ];
 
-export const langName = (code: string) => LANGUAGES.find((l) => l.code === code)?.name ?? code.toUpperCase();
+export const langName = (code: string) => {
+  const name = LANGUAGES.find((l) => l.code === code)?.name;
+  return name ? t(name) : code.toUpperCase();
+};
 export const langFlag = (code: string) => LANGUAGES.find((l) => l.code === code)?.flag ?? "🏳️";
 
 /** Pays principaux d'une langue (pour les radios, podcasts et guides). */
@@ -167,7 +171,7 @@ let regionNames: Intl.DisplayNames | null = null;
 /** Nom du pays en français (« FR » -> « France »). */
 export function countryName(code: string): string {
   try {
-    regionNames ??= new Intl.DisplayNames(["fr"], { type: "region" });
+    regionNames ??= new Intl.DisplayNames([locale()], { type: "region" });
     return regionNames.of(code.toUpperCase()) ?? code;
   } catch {
     return code;

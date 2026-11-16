@@ -2,6 +2,7 @@ import { isExternal } from "./subtitles";
 import type Hls from "hls.js";
 import type { AspectMode, AudioMode } from "./parental";
 import { code639_1 } from "./trackLang";
+import { t } from "./t";
 
 // ------------------------------------------------------------------ Son (WebAudio)
 
@@ -104,7 +105,7 @@ export const NO_TRACKS: Tracks = { audio: [], audioCurrent: -1, subtitles: [], s
 type NativeAudioTrack = { id: string; label: string; language: string; enabled: boolean };
 type VideoWithTracks = HTMLVideoElement & { audioTracks?: ArrayLike<NativeAudioTrack> & { length: number } };
 
-const label = (name: string | undefined, lang: string | undefined, i: number) => name?.trim() || (lang ? lang.toUpperCase() : `Piste ${i + 1}`);
+const label = (name: string | undefined, lang: string | undefined, i: number) => name?.trim() || (lang ? lang.toUpperCase() : t("Piste {n}", { n: i + 1 }));
 
 export function readTracks(video: HTMLVideoElement, hls: Hls | null): Tracks {
   if (hls) {

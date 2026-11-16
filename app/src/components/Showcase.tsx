@@ -8,6 +8,7 @@ import { openItem, VodRow } from "./VodView";
 import { Icon } from "./Icon";
 import { LazyImg } from "./LazyImg";
 import { translateLabel } from "../lib/i18n";
+import { t, uiLanguage } from "../lib/t";
 import type { VodItem, VodKind } from "../types";
 
 const HERO_MS = 9000;
@@ -34,7 +35,7 @@ export function Showcase({ kind, genres, part }: { kind: VodKind; genres: string
         // Un genre par libellé traduit (« Comedy » et « comedy » ne font qu'une rangée).
         const labels = new Set<string>();
         const unique = genres.filter((g) => {
-          const l = translateLabel(g, "fr").toLowerCase();
+          const l = translateLabel(g, uiLanguage()).toLowerCase();
           return !labels.has(l) && (labels.add(l), true);
         });
         const found = await Promise.all(unique.slice(0, 8).map(async (genre) => ({ genre, items: (await b.vodQuery({ ...base, genre, limit: 24 })).items })));
@@ -54,37 +55,37 @@ export function Showcase({ kind, genres, part }: { kind: VodKind; genres: string
 
   useEffect(() => {
     if (featured.length < 2) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % featured.length), HERO_MS);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setIndex((i) => (i + 1) % featured.length), HERO_MS);
+    return () => clearInterval(timer);
   }, [featured]);
 
   const hero = profile.kind === "child" || part !== "hero" ? undefined : featured[index];
-  if (part === "rows") return <>{rows.map((r) => <VodRow key={r.genre} title={translateLabel(r.genre, "fr")} items={r.items} />)}</>;
+  if (part === "rows") return <>{rows.map((r) => <VodRow key={r.genre} title={translateLabel(r.genre, uiLanguage())} items={r.items} />)}</>;
   return (
     <>
       {hero && (
-        <section className="hero" key={hero.id} aria-label="À la une">
+        <section className="hero" key={hero.id} aria-label={t("À la une")}>
           <div className="hero-art" aria-hidden="true">
             <LazyImg src={hero.backdrop ?? hero.poster!} alt="" referrerPolicy="no-referrer" unload={false} />
           </div>
           <div className="hero-text">
-            <span className="hero-kicker">À la une</span>
+            <span className="hero-kicker">{t("À la une")}</span>
             <h2 className="hero-title">{hero.title}</h2>
             <p className="hero-meta">
-              {[hero.year, hero.rating ? `★ ${hero.rating.toFixed(1)}` : null, ...(hero.genres ?? []).slice(0, 3).map((g) => translateLabel(g, "fr"))].filter(Boolean).join("  ·  ")}
+              {[hero.year, hero.rating ? `★ ${hero.rating.toFixed(1)}` : null, ...(hero.genres ?? []).slice(0, 3).map((g) => translateLabel(g, uiLanguage()))].filter(Boolean).join("  ·  ")}
             </p>
             {hero.plot && <p className="hero-plot">{hero.plot}</p>}
             <div className="row">
               <button className="btn btn-primary hero-play" onClick={() => openItem(hero)}>
-                <Icon name="play" /> Regarder
+                <Icon name="play" /> {t("Regarder")}
               </button>
               <button className="btn hero-more" onClick={() => useUi.setState({ detailId: hero.id })}>
-                <Icon name="info" /> Plus d'infos
+                <Icon name="info" /> {t("Plus d'infos")}
               </button>
             </div>
           </div>
           {featured.length > 1 && (
-            <div className="hero-dots" role="tablist" aria-label="Contenus à la une">
+            <div className="hero-dots" role="tablist" aria-label={t("Contenus à la une")}>
               {featured.map((f, i) => (
                 <button key={f.id} role="tab" aria-selected={i === index} aria-label={f.title} className={i === index ? "on" : ""} onClick={() => setIndex(i)} />
               ))}

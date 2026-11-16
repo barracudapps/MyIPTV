@@ -5,6 +5,7 @@ import type { Channel, Programme } from "../types";
 import { nowSec } from "../lib/util";
 import { displayName } from "../lib/variants";
 import { safeLocalStorage, useSettings } from "./settings";
+import { t } from "../lib/t";
 
 /** Rappel d'un programme à venir, propre à un profil. */
 export interface Reminder {
@@ -95,7 +96,7 @@ async function askPermission() {
 async function notify(r: Reminder) {
   const minutes = Math.max(0, Math.round((r.start - nowSec()) / 60));
   const title = r.title;
-  const body = minutes > 0 ? `Dans ${minutes} min sur ${r.channelName}` : `Commence sur ${r.channelName}`;
+  const body = minutes > 0 ? t("Dans {n} min sur {channel}", { n: minutes, channel: r.channelName }) : t("Commence sur {channel}", { channel: r.channelName });
   try {
     if (isTauri) {
       const n = await import("@tauri-apps/plugin-notification");

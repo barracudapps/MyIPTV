@@ -4,6 +4,7 @@ import type { Channel, Programme, RecInfo, Recording } from "../types";
 import { errorMessage, nowSec } from "../lib/util";
 import { useSettings } from "./settings";
 import { useUi } from "./ui";
+import { t } from "../lib/t";
 
 interface RecState {
   list: Recording[];
@@ -31,13 +32,13 @@ export const useRecordings = create<RecState>()((set, get) => ({
     try {
       const r = await (await getBackend()).recSchedule({
         channel: ch,
-        title: prog?.title ?? `${ch.name} (direct)`,
+        title: prog?.title ?? t("{name} (direct)", { name: ch.name }),
         subtitle: prog?.subtitle,
         start: prog?.start ?? start,
         stop,
         profileId: useSettings.getState().activeProfileId ?? undefined,
       });
-      useUi.getState().toast(r.status === "recording" ? `⏺ Enregistrement de « ${r.title} » en cours.` : `Enregistrement de « ${r.title} » programmé.`, "success");
+      useUi.getState().toast(r.status === "recording" ? t("⏺ Enregistrement de « {title} » en cours.", { title: r.title }) : t("Enregistrement de « {title} » programmé.", { title: r.title }), "success");
       await get().refresh();
     } catch (e) {
       useUi.getState().toast(errorMessage(e), "error");

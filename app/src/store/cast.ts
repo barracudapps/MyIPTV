@@ -3,6 +3,7 @@ import { getBackend, type CastDevice, type CastStatus } from "../platform";
 import { usePlayer } from "./player";
 import { useUi } from "./ui";
 import { errorMessage } from "../lib/util";
+import { t } from "../lib/t";
 
 interface CastState {
   /** Écran en cours d'utilisation (diffusion active). */
@@ -43,12 +44,12 @@ export const useCast = create<CastState>()((set, get) => ({
         set({ status });
         if (!status.active) {
           window.clearInterval(poll);
-          if (status.error) useUi.getState().toast(`Diffusion arrêtée : ${status.error}`, "error");
+          if (status.error) useUi.getState().toast(t("Diffusion arrêtée : {error}", { error: status.error }), "error");
           set({ device: null, status: null });
         }
       }, 1000);
     } catch (e) {
-      useUi.getState().toast(`Diffusion impossible : ${errorMessage(e)}`, "error");
+      useUi.getState().toast(t("Diffusion impossible : {error}", { error: errorMessage(e) }), "error");
     } finally {
       set({ starting: false });
     }

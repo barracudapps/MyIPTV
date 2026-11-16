@@ -4,6 +4,7 @@ import { useUi } from "../store/ui";
 import { disconnect, importHistory, startDeviceAuth, waitForDevice, type DeviceCode } from "../lib/trakt";
 import { errorMessage } from "../lib/util";
 import { Icon } from "./Icon";
+import { t, plural } from "../lib/t";
 
 /** Connexion Trakt du profil actif ; `withApp` : réglage de l'application (administrateur). */
 export function TraktCard({ withApp = false }: { withApp?: boolean }) {
@@ -30,9 +31,9 @@ export function TraktCard({ withApp = false }: { withApp?: boolean }) {
       const session = await waitForDevice(c, () => cancelled.current);
       useSettings.getState().updateProfile(profile.id, { trakt: session });
       setCode(null);
-      toast(`Trakt connecté${session.username ? ` (${session.username})` : ""}.`, "success");
+      toast(session.username ? t("Trakt connecté ({user}).", { user: session.username }) : t("Trakt connecté."), "success");
       const n = await importHistory().catch(() => 0);
-      if (n) toast(`${n} contenu${n > 1 ? "s" : ""} mis à jour depuis Trakt.`, "info");
+      if (n) toast(plural(n, "{n} contenu mis à jour depuis Trakt.", "{n} contenus mis à jour depuis Trakt."), "info");
     } catch (e) {
       setCode(null);
       if (!cancelled.current) setError(errorMessage(e));
@@ -43,7 +44,7 @@ export function TraktCard({ withApp = false }: { withApp?: boolean }) {
     setBusy(true);
     try {
       const n = await importHistory();
-      toast(n ? `${n} contenu${n > 1 ? "s" : ""} mis à jour depuis Trakt.` : "Historique déjà à jour.", "success");
+      toast(n ? plural(n, "{n} contenu mis à jour depuis Trakt.", "{n} contenus mis à jour depuis Trakt.") : t("Historique déjà à jour."), "success");
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -57,22 +58,21 @@ export function TraktCard({ withApp = false }: { withApp?: boolean }) {
         <Icon name="history" /> Trakt
       </h3>
       <p className="dim small">
-        Synchronise ce que {profile.name} regarde avec trakt.tv : films et épisodes marqués comme vus, reprise de lecture d'un appareil à l'autre. Les contenus sont
-        reconnus par leur identifiant TMDB (fourni par la source ou par la clé TMDB ci-dessus).
+        {t("Synchronise ce que {name} regarde avec trakt.tv : films et épisodes marqués comme vus, reprise de lecture d'un appareil à l'autre. Les contenus sont reconnus par leur identifiant TMDB (fourni par la source ou par la clé TMDB ci-dessus).", { name: profile.name })}
       </p>
       {withApp && (
         <>
           <label className="field">
-            Identifiant de l'application Trakt (Client ID)
+            {t("Identifiant de l'application Trakt (Client ID)")}
             <input value={meta.traktClientId ?? ""} onChange={(e) => setMeta({ traktClientId: e.target.value.trim() })} autoComplete="off" spellCheck={false} />
           </label>
           <label className="field">
-            Secret de l'application (Client Secret)
+            {t("Secret de l'application (Client Secret)")}
             <input type="password" value={meta.traktClientSecret ?? ""} onChange={(e) => setMeta({ traktClientSecret: e.target.value.trim() })} autoComplete="off" />
           </label>
           <p className="dim small">
-            Gratuit : sur trakt.tv › Settings › Your API Apps, créez une application avec l'adresse de redirection <code>urn:ietf:wg:oauth:2.0:oob</code>, puis
-            copiez ses deux identifiants ici.
+            {t("Gratuit : sur trakt.tv › Settings › Your API Apps, créez une application avec l'adresse de redirection")} <code>urn:ietf:wg:oauth:2.0:oob</code>
+            {t(", puis copiez ses deux identifiants ici.")}
           </p>
         </>
       )}
@@ -80,28 +80,28 @@ export function TraktCard({ withApp = false }: { withApp?: boolean }) {
         (profile.trakt ? (
           <div className="row">
             <span>
-              <Icon name="check" /> Connecté{profile.trakt.username ? ` : ${profile.trakt.username}` : ""}
+              <Icon name="check" /> {profile.trakt.username ? t("Connecté : {user}", { user: profile.trakt.username }) : t("Connecté")}
             </span>
             <button className="btn" disabled={busy} onClick={sync}>
-              <Icon name="refresh" /> {busy ? "Synchronisation…" : "Synchroniser"}
+              <Icon name="refresh" /> {busy ? t("Synchronisation…") : t("Synchroniser")}
             </button>
             <button className="btn" onClick={() => void disconnect()}>
-              Déconnecter
+              {t("Déconnecter")}
             </button>
           </div>
         ) : code ? (
           <div className="trakt-code">
-            <span className="dim">Sur un téléphone ou un ordinateur, ouvrez</span>
+            <span className="dim">{t("Sur un téléphone ou un ordinateur, ouvrez")}</span>
             <strong>{code.verificationUrl}</strong>
-            <span className="dim">et saisissez le code</span>
+            <span className="dim">{t("et saisissez le code")}</span>
             <span className="code">{code.userCode}</span>
             <button className="btn" onClick={() => ((cancelled.current = true), setCode(null))}>
-              Annuler
+              {t("Annuler")}
             </button>
           </div>
         ) : (
           <button className="btn btn-primary" onClick={connect}>
-            Connecter {profile.name} à Trakt
+            {t("Connecter {name} à Trakt", { name: profile.name })}
           </button>
         ))}
       {error && <p className="error-text small">{error}</p>}

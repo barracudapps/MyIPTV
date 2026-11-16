@@ -3,6 +3,7 @@ import { useActiveProfile, useSettings } from "../store/settings";
 import { useUi } from "../store/ui";
 import { usePlayer } from "../store/player";
 import { greeting, idleMood, randomTip, say, season, useFun, type MascotMood } from "../lib/fun";
+import { t } from "../lib/t";
 
 export type MascotKind = "zapi" | "ondine" | "pop" | "clap" | "mistigri" | "astro";
 
@@ -183,11 +184,11 @@ function Body({ kind, color }: { kind: MascotKind; color: string }) {
 export function MascotFigure({ mood, color, kind = "zapi", size = 72 }: { mood: MascotMood; color: string; kind?: MascotKind; size?: number }) {
   const [blink, setBlink] = useState(false);
   useEffect(() => {
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setBlink(true);
       setTimeout(() => setBlink(false), 140);
     }, 3800 + Math.random() * 2000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, []);
   return (
     <svg className={`mascot-svg mood-${mood} mascot-${kind}`} width={size} height={size} viewBox="-6 0 106 100" aria-hidden="true">
@@ -227,8 +228,8 @@ export function Mascot() {
   // Une astuce de temps en temps (mode bavard seulement), jamais pendant la lecture plein écran.
   useEffect(() => {
     if (f.chattiness !== "chatty") return;
-    const t = setInterval(() => !document.fullscreenElement && say(randomTip(), "think", 2), 4 * 60_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => !document.fullscreenElement && say(randomTip(), "think", 2), 4 * 60_000);
+    return () => clearInterval(timer);
   }, [f.chattiness]);
 
   useEffect(() => {
@@ -245,7 +246,7 @@ export function Mascot() {
       )}
       <button
         className="mascot-btn"
-        title={`${f.mascotName} — clic : une astuce · double-clic : masquer`}
+        title={t("{name} — clic : une astuce · double-clic : masquer", { name: f.mascotName })}
         onClick={() => say(randomTip(), "think", 0)}
         onDoubleClick={() => setHidden(true)}
       >
