@@ -1,3 +1,4 @@
+import { isExternal } from "./subtitles";
 import type Hls from "hls.js";
 import type { AspectMode, AudioMode } from "./parental";
 import { code639_1 } from "./trackLang";
@@ -130,7 +131,7 @@ export function readTracks(video: HTMLVideoElement, hls: Hls | null): Tracks {
   let subtitleCurrent = -1;
   for (let i = 0; i < video.textTracks.length; i++) {
     const t = video.textTracks[i];
-    if (t.kind !== "subtitles" && t.kind !== "captions") continue;
+    if ((t.kind !== "subtitles" && t.kind !== "captions") || isExternal(video, t)) continue;
     subtitles.push({ id: i, label: label(t.label, t.language, i), lang: code639_1(t.language) });
     if (t.mode === "showing") subtitleCurrent = i;
   }

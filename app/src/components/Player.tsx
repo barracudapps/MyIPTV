@@ -22,6 +22,7 @@ import { Icon } from "./Icon";
 import { ChannelLogo } from "./ChannelLogo";
 import { MascotFigure } from "./Mascot";
 import { useRecordings } from "../store/recordings";
+import { parseSubtitles, readSubtitleFile, showExternal, type Cue } from "../lib/subtitles";
 
 type Engine = { destroy(): void; hls?: HlsType; playingDate?: () => Date | null; kind?: string; stats?: () => { speedKBps?: number; decodedFrames?: number; droppedFrames?: number } };
 
@@ -178,6 +179,11 @@ export function Player() {
   const [miniPos, setMiniPos] = useState({ right: 16, bottom: 16 });
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
   const [panel, setPanel] = useState<Panel>(null);
+  /** Sous-titres d'un fichier choisi par l'utilisateur, avec leur décalage. */
+  const [extSubs, setExtSubs] = useState<{ name: string; cues: Cue[] } | null>(null);
+  const [extOn, setExtOn] = useState(false);
+  const [extOffset, setExtOffset] = useState(0);
+  const subInput = useRef<HTMLInputElement>(null);
   const [nextIn, setNextIn] = useState<number | null>(null);
   /** Conversion à la volée : position de départ du flux en cours et piste audio. */
   const remuxRef = useRef({ offset: 0, audio: 0 });
@@ -235,6 +241,33 @@ export function Player() {
     const v = videoRef.current;
     if (v) setTracks(readTracks(v, engineRef.current?.hls ?? null));
   }, []);
+
+  // Un fichier de sous-titres ne vaut que pour le contenu pour lequel il a été choisi.
+  const contentKey = media ? `${media.item.id}:${media.episode?.id ?? ""}` : (channel?.id ?? "");
+  useEffect(() => {
+    setExtSubs(null);
+    setExtOn(false);
+    setExtOffset(0);
+  }, [contentKey]);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) showExternal(v, extOn && extSubs ? extSubs.cues : null, extOffset);
+  }, [extSubs, extOn, extOffset]);
+
+  async function loadSubtitleFile(file: File | undefined) {
+    if (!file) return;
+    const cues = parseSubtitles(await readSubtitleFile(file));
+    if (!cues.length) {
+      useUi.getState().toast("Aucun sous-titre lisible dans ce fichier (formats .srt et .vtt).", "error");
+      return;
+    }
+    // Les sous-titres du flux laissent la place à ceux du fichier.
+    if (videoRef.current) setSubtitle(videoRef.current, engineRef.current?.hls ?? null, -1);
+    setExtSubs({ name: file.name, cues });
+    setExtOffset(0);
+    setExtOn(true);
+    refreshTracks();
+  }
 
   // Moteur de lecture.
   useEffect(() => {
@@ -886,7 +919,7 @@ export function Player() {
             {(
               [
                 ["audio", "Audio", tracks.audio.length > 1 || (isRemux && (info?.audioTracks?.length ?? 0) > 1)],
-                ["subtitles", "Sous-titres", tracks.subtitles.length > 0],
+                ["subtitles", "Sous-titres", true],
                 ["quality", "Qualité", tracks.qualities.length > 1],
                 ["picture", "Image", true],
                 ["sound", "Son", true],
@@ -925,14 +958,34 @@ export function Player() {
               ))}
             {panel === "subtitles" && (
               <>
-                <button className={`opt ${tracks.subtitleCurrent < 0 ? "on" : ""}`} onClick={() => (setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, -1), refreshTracks())}>
+                <button className={`opt ${tracks.subtitleCurrent < 0 && !extOn ? "on" : ""}`} onClick={() => (setExtOn(false), setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, -1), refreshTracks())}>
                   Désactivés
                 </button>
                 {tracks.subtitles.map((t) => (
-                  <button key={t.id} className={`opt ${tracks.subtitleCurrent === t.id ? "on" : ""}`} onClick={() => (setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, t.id), refreshTracks())}>
+                  <button key={t.id} className={`opt ${tracks.subtitleCurrent === t.id && !extOn ? "on" : ""}`} onClick={() => (setExtOn(false), setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, t.id), refreshTracks())}>
                     {t.label}
                   </button>
                 ))}
+                {extSubs && (
+                  <button className={`opt ${extOn ? "on" : ""}`} onClick={() => (setSubtitle(videoRef.current!, engineRef.current?.hls ?? null, -1), setExtOn(true), refreshTracks())}>
+                    {extSubs.name}
+                    <span className="dim">{extSubs.cues.length} répliques</span>
+                  </button>
+                )}
+                {extSubs && extOn && (
+                  <div className="opt-group">
+                    <span>Décalage</span>
+                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o - 0.5) * 10) / 10)}>−0,5 s</button>
+                    <span className="sub-offset">{extOffset > 0 ? "+" : ""}{extOffset.toFixed(1).replace(".", ",")} s</span>
+                    <button className="opt" onClick={() => setExtOffset((o) => Math.round((o + 0.5) * 10) / 10)}>+0,5 s</button>
+                    {extOffset !== 0 && <button className="opt" onClick={() => setExtOffset(0)}>Réinitialiser</button>}
+                  </div>
+                )}
+                <button className="opt" onClick={() => subInput.current?.click()}>
+                  <Icon name="upload" size={16} /> Ouvrir un fichier de sous-titres…
+                  <span className="dim">.srt ou .vtt</span>
+                </button>
+                <input ref={subInput} type="file" accept=".srt,.vtt,text/vtt,application/x-subrip" hidden onChange={(e) => (void loadSubtitleFile(e.target.files?.[0]), (e.target.value = ""))} />
               </>
             )}
             {panel === "quality" && (
