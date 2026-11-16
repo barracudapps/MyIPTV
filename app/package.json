@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "preview:web": "vite preview --outDir dist-web --port 4173",
     "package:tv": "node ../scripts/package-tv.mjs",
-    "build:mac": "bash scripts/build-mac.sh"
+    "build:mac": "bash scripts/build-mac.sh",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.26",
@@ -32,7 +33,9 @@
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^25.0.1",
     "typescript": "5.6",
-    "vite": "5.4"
+    "vite": "5.4",
+    "vitest": "^2.1.9"
   }
 }

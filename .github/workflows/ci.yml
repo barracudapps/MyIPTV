@@ -29,6 +29,8 @@ jobs:
         working-directory: app
       - run: npx tsc --noEmit
         working-directory: app
+      - run: npm test
+        working-directory: app
       - name: Version web / TV
         run: |
           cargo install wasm-bindgen-cli --version "$(grep -A1 'name = "wasm-bindgen"' Cargo.lock | sed -n 's/version = "\(.*\)"/\1/p' | head -1)"

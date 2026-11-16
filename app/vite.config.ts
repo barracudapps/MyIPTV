@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import pkg from "./package.json";
@@ -13,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     __NATIVE_BACKEND__: JSON.stringify(mode !== "web"),
   },
   clearScreen: false,
+  test: { environment: "jsdom", include: ["src/**/*.test.ts"] },
   // Les smart TV chargent l'app depuis le système de fichiers : chemins relatifs.
   base: "./",
   // Version web/TV : navigateurs intégrés anciens (Tizen 5 = Chromium 63, webOS 5 = Chromium 68).

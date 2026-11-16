@@ -49,7 +49,7 @@ Tests :
 ```bash
 cargo test --workspace                                   # tests unitaires
 STREAM_URL=<flux HLS> cargo test -p myiptv live_ -- --ignored   # timeshift sur un vrai flux
-cd app && npm run typecheck
+cd app && npm run typecheck && npm test                  # types et tests de l'interface (Vitest)
 ```
 
 ## Fonctionnalités
